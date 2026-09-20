@@ -4,16 +4,22 @@ export default {
 
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
     };
 
-    // CORS preflight
+    // ------------------------------------------------------------
+    // CORS PREFLIGHT
+    // ------------------------------------------------------------
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, {
+        headers: corsHeaders,
+      });
     }
 
+    // ------------------------------------------------------------
     // FRONTEND
+    // ------------------------------------------------------------
     if (
       request.method === "GET" &&
       (url.pathname === "/" ||
@@ -27,7 +33,63 @@ export default {
       });
     }
 
+    // ------------------------------------------------------------
+    // LIVE NEWS API
+    // ------------------------------------------------------------
+    if (request.method === "GET" && url.pathname === "/api/news") {
+      try {
+        const stock = url.searchParams.get("stock");
+
+        if (!stock) {
+          return new Response(
+            JSON.stringify({
+              error: "Stock name is required.",
+            }),
+            {
+              status: 400,
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+        }
+
+        const news = await fetchLiveNews(stock);
+
+        return new Response(
+          JSON.stringify({
+            stock,
+            news,
+          }),
+          {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+              "Cache-Control": "no-store",
+            },
+          }
+        );
+      } catch (err) {
+        return new Response(
+          JSON.stringify({
+            error: err?.message || "Unable to fetch live news.",
+          }),
+          {
+            status: 502,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+    }
+
+    // ------------------------------------------------------------
     // SENTIMENT API
+    // ------------------------------------------------------------
     if (request.method === "POST" && url.pathname === "/api/sentiment") {
       try {
         const { stock, news } = await request.json();
@@ -47,12 +109,17 @@ export default {
           );
         }
 
-        // Cloudflare Secrets Store
-        if (!env.GEMINI_KEY || typeof env.GEMINI_KEY.get !== "function") {
+        // --------------------------------------------------------
+        // CLOUDFLARE SECRETS STORE
+        // --------------------------------------------------------
+        if (
+          !env.GEMINI_KEY ||
+          typeof env.GEMINI_KEY.get !== "function"
+        ) {
           return new Response(
             JSON.stringify({
               error:
-                "GEMINI_KEY Secrets Store binding is missing. Bind GEMINI_KEY to this Worker in Cloudflare.",
+                "GEMINI_KEY Secrets Store binding is missing. Please verify the GEMINI_KEY binding in Cloudflare.",
             }),
             {
               status: 500,
@@ -81,21 +148,35 @@ export default {
           );
         }
 
+        // --------------------------------------------------------
+        // PREPARE NEWS FOR GEMINI
+        // --------------------------------------------------------
         const newsString = news
-          .map((n, i) => `[News ${i + 1}] ${n.title}`)
-          .join("\n");
+          .map(
+            (n, i) =>
+              `[News ${i + 1}]
+Title: ${n.title}
+Published: ${n.pubDate || "Unknown"}`
+          )
+          .join("\n\n");
 
         const prompt = `
 You are a financial news sentiment processor.
 
-Analyze the following recent news headlines for the stock "${stock}".
+Analyze the following recent news headlines for the stock/company:
 
-News:
+"${stock}"
+
+Recent news:
+
 ${newsString}
+
+Your task is to determine the overall sentiment based ONLY on the supplied news.
 
 Return ONLY valid JSON.
 Do not use markdown.
 Do not use code fences.
+Do not add any explanation outside the JSON.
 
 Required format:
 
@@ -111,15 +192,36 @@ Required format:
 }
 
 Rules:
-- sentimentScore must be an integer from 0 to 100.
-- verdict must be exactly one of:
-  "BULLISH", "BEARISH", "NEUTRAL"
-- tldrPoints must contain 3 concise points.
-- newsImpactScores must contain exactly one integer for each news item.
-- Impact scores should normally range from -100 to 100.
+
+1. sentimentScore must be an integer from 0 to 100.
+
+2. verdict must be exactly one of:
+"BULLISH"
+"BEARISH"
+"NEUTRAL"
+
+3. tldrPoints must contain exactly 3 concise points.
+
+4. newsImpactScores must contain exactly one integer for each news item.
+
+5. newsImpactScores should normally range from -100 to 100.
+
+6. Positive news should generally have positive impact.
+
+7. Negative news should generally have negative impact.
+
+8. Neutral or low-impact news should generally be close to 0.
+
+9. Do not invent facts that are not present in the supplied news.
+
+10. If the news is insufficient to determine a strong direction, use NEUTRAL.
+
+11. The response must be valid JSON.
 `;
 
-        // Gemini Generate Content API
+        // --------------------------------------------------------
+        // GEMINI API
+        // --------------------------------------------------------
         const apiResponse = await fetch(
           "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
           {
@@ -148,6 +250,9 @@ Rules:
 
         const aiData = await apiResponse.json();
 
+        // --------------------------------------------------------
+        // GEMINI ERROR
+        // --------------------------------------------------------
         if (!apiResponse.ok) {
           return new Response(
             JSON.stringify({
@@ -164,6 +269,9 @@ Rules:
           );
         }
 
+        // --------------------------------------------------------
+        // EXTRACT GEMINI RESPONSE
+        // --------------------------------------------------------
         const rawText =
           aiData?.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -183,6 +291,9 @@ Rules:
           );
         }
 
+        // --------------------------------------------------------
+        // PARSE JSON
+        // --------------------------------------------------------
         let parsed;
 
         try {
@@ -203,16 +314,50 @@ Rules:
           );
         }
 
+        // --------------------------------------------------------
+        // BASIC VALIDATION
+        // --------------------------------------------------------
+        if (
+          typeof parsed.sentimentScore !== "number" ||
+          !["BULLISH", "BEARISH", "NEUTRAL"].includes(
+            parsed.verdict
+          ) ||
+          !Array.isArray(parsed.tldrPoints) ||
+          !Array.isArray(parsed.newsImpactScores)
+        ) {
+          return new Response(
+            JSON.stringify({
+              error: "Gemini returned an unexpected response format.",
+              data: parsed,
+            }),
+            {
+              status: 502,
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+        }
+
+        // Keep score inside 0-100
+        parsed.sentimentScore = Math.max(
+          0,
+          Math.min(100, Math.round(parsed.sentimentScore))
+        );
+
         return new Response(JSON.stringify(parsed), {
+          status: 200,
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
+            "Cache-Control": "no-store",
           },
         });
       } catch (err) {
         return new Response(
           JSON.stringify({
-            error: err?.message || "Unknown server error",
+            error: err?.message || "Unknown server error.",
           }),
           {
             status: 500,
@@ -225,6 +370,9 @@ Rules:
       }
     }
 
+    // ------------------------------------------------------------
+    // DEFAULT RESPONSE
+    // ------------------------------------------------------------
     return new Response(
       "SinSigma SentimentAI — use /home to access the dashboard.",
       {
@@ -239,6 +387,110 @@ Rules:
 
 
 // ============================================================
+// LIVE GOOGLE NEWS FETCHER
+// ============================================================
+
+async function fetchLiveNews(query) {
+  const googleNewsUrl =
+    "https://news.google.com/rss/search?q=" +
+    encodeURIComponent(query + " stock when:24h") +
+    "&hl=en-IN&gl=IN&ceid=IN:en";
+
+  const response = await fetch(googleNewsUrl, {
+    method: "GET",
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; SinSigma-SentimentAI/1.0)",
+      "Accept": "application/rss+xml, application/xml, text/xml",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Google News request failed with status ${response.status}.`
+    );
+  }
+
+  const xmlText = await response.text();
+
+  if (!xmlText || xmlText.length < 100) {
+    throw new Error("Google News returned an empty response.");
+  }
+
+  const items = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
+
+  const articles = [];
+
+  for (let i = 0; i < Math.min(items.length, 5); i++) {
+    const item = items[i];
+
+    const title =
+      extractXmlValue(item, "title") ||
+      "Recent market update";
+
+    const pubDate =
+      extractXmlValue(item, "pubDate") ||
+      "Recent";
+
+    const link =
+      extractXmlValue(item, "link") ||
+      "#";
+
+    const source =
+      extractXmlValue(item, "source") ||
+      "Google News";
+
+    articles.push({
+      title: cleanXmlText(title),
+      pubDate: cleanXmlText(pubDate),
+      link: cleanXmlText(link),
+      source: cleanXmlText(source),
+    });
+  }
+
+  if (articles.length === 0) {
+    articles.push({
+      title: "No recent news found for this company.",
+      pubDate: "Live Feed",
+      link: "#",
+      source: "Google News",
+    });
+  }
+
+  return articles;
+}
+
+
+// ============================================================
+// XML HELPERS
+// ============================================================
+
+function extractXmlValue(xml, tag) {
+  const regex = new RegExp(
+    `<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`,
+    "i"
+  );
+
+  const match = xml.match(regex);
+
+  return match ? match[1].trim() : "";
+}
+
+
+function cleanXmlText(value) {
+  return value
+    .replace(/<!\[CDATA\[/g, "")
+    .replace(/\]\]>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
+
+// ============================================================
 // FRONTEND
 // ============================================================
 
@@ -248,8 +500,13 @@ function getFrontendHTML() {
 <html lang="en">
 
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>SinSigma SentimentAI</title>
 
@@ -261,6 +518,7 @@ function getFrontendHTML() {
   >
 
   <style>
+
     .glow-green {
       text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
     }
@@ -268,26 +526,47 @@ function getFrontendHTML() {
     .glow-red {
       text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
     }
+
   </style>
+
 </head>
 
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col">
 
-<header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+<body
+  class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col"
+>
 
-  <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
+<header
+  class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50"
+>
+
+  <div
+    class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center"
+  >
 
     <div class="flex items-center space-x-2">
 
-      <i class="fa-solid fa-chart-line text-emerald-500 text-2xl"></i>
+      <i
+        class="fa-solid fa-chart-line text-emerald-500 text-2xl"
+      ></i>
 
-      <span class="text-xl font-bold tracking-wider bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+      <span
+        class="text-xl font-bold tracking-wider bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent"
+      >
         SinSigma
       </span>
 
     </div>
 
-    <span class="text-xs text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+
+    <span
+      class="text-xs text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700"
+    >
       SentimentAI
     </span>
 
@@ -296,121 +575,145 @@ function getFrontendHTML() {
 </header>
 
 
-<main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
+<!-- =========================================================
+     MAIN
+========================================================= -->
 
-  <!-- SEARCH -->
+<main
+  class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full"
+>
 
-  <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8 shadow-xl">
 
-    <div class="relative w-full">
+<!-- =========================================================
+     SEARCH
+========================================================= -->
 
-      <i class="fa-solid fa-magnifying-glass absolute left-4 top-4 text-slate-500"></i>
+<div
+  class="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8 shadow-xl"
+>
 
-      <input
-        type="text"
-        id="stockInput"
-        placeholder="Enter stock name e.g. TATA MOTORS, RELIANCE, ZOMATO..."
-        class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-11 pr-4 py-3.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-      >
+  <div class="relative w-full">
 
-    </div>
+    <i
+      class="fa-solid fa-magnifying-glass absolute left-4 top-4 text-slate-500"
+    ></i>
 
-    <button
-      onclick="analyzeStock()"
-      class="w-full mt-4 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-bold py-3.5 px-6 rounded-lg hover:scale-[1.01] transition"
+    <input
+      type="text"
+      id="stockInput"
+      placeholder="Enter stock name e.g. TATA MOTORS, RELIANCE, ZOMATO..."
+      class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-11 pr-4 py-3.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+      onkeydown="if(event.key === 'Enter') analyzeStock()"
     >
 
-      <i class="fa-solid fa-brain"></i>
-
-      <span class="ml-2">
-        Analyze Live Sentiment
-      </span>
-
-    </button>
-
   </div>
 
 
-  <!-- LOADING -->
-
-  <div
-    id="loadingState"
-    class="hidden text-center py-20"
+  <button
+    id="analyzeButton"
+    onclick="analyzeStock()"
+    class="w-full mt-4 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-bold py-3.5 px-6 rounded-lg hover:scale-[1.01] transition"
   >
 
-    <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500 mb-4"></div>
+    <i class="fa-solid fa-brain"></i>
 
-    <p class="text-lg text-slate-400">
-      Fetching news and processing AI sentiment...
-    </p>
+    <span class="ml-2">
+      Analyze Live Sentiment
+    </span>
 
-  </div>
+  </button>
+
+</div>
 
 
-  <!-- RESULTS -->
+<!-- =========================================================
+     LOADING
+========================================================= -->
+
+<div
+  id="loadingState"
+  class="hidden text-center py-20"
+>
 
   <div
-    id="resultsDashboard"
-    class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8"
-  >
+    class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500 mb-4"
+  ></div>
 
-    <div class="lg:col-span-2 space-y-8">
+  <p class="text-lg text-slate-400">
+    Fetching live news and processing AI sentiment...
+  </p>
 
-      <!-- SCORE -->
+</div>
 
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center">
 
-        <h2 class="text-lg font-semibold text-slate-400 mb-6">
-          Overall Market Sentiment
-        </h2>
+<!-- =========================================================
+     RESULTS
+========================================================= -->
 
-        <div class="text-6xl font-extrabold" id="sentimentValue">
-          0%
-        </div>
+<div
+  id="resultsDashboard"
+  class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8"
+>
 
-        <div
-          class="text-2xl font-bold uppercase mt-4"
-          id="sentimentLabel"
-        >
-          ANALYZING...
-        </div>
 
+  <!-- LEFT -->
+
+  <div class="lg:col-span-2 space-y-8">
+
+
+    <!-- SCORE -->
+
+    <div
+      class="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center"
+    >
+
+      <h2
+        class="text-lg font-semibold text-slate-400 mb-6"
+      >
+        Overall Market Sentiment
+      </h2>
+
+
+      <div
+        class="text-6xl font-extrabold"
+        id="sentimentValue"
+      >
+        0%
       </div>
 
 
-      <!-- SUMMARY -->
-
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-
-        <h2 class="text-lg font-semibold text-slate-400 mb-4">
-
-          <i class="fa-solid fa-wand-magic-sparkles text-cyan-400 mr-2"></i>
-
-          AI Summary
-
-        </h2>
-
-        <div
-          id="aiSummary"
-          class="space-y-3 text-slate-300 text-sm"
-        ></div>
-
+      <div
+        class="text-2xl font-bold uppercase mt-4"
+        id="sentimentLabel"
+      >
+        ANALYZING...
       </div>
 
     </div>
 
 
-    <!-- NEWS -->
+    <!-- SUMMARY -->
 
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 h-[500px] flex flex-col">
+    <div
+      class="bg-slate-900 border border-slate-800 rounded-xl p-6"
+    >
 
-      <h2 class="text-lg font-semibold text-slate-400 mb-3">
-        Processed Live Feeds
+      <h2
+        class="text-lg font-semibold text-slate-400 mb-4"
+      >
+
+        <i
+          class="fa-solid fa-wand-magic-sparkles text-cyan-400 mr-2"
+        ></i>
+
+        AI Summary
+
       </h2>
 
+
       <div
-        id="newsFeed"
-        class="space-y-4 overflow-y-auto flex-grow pr-1"
+        id="aiSummary"
+        class="space-y-3 text-slate-300 text-sm"
       ></div>
 
     </div>
@@ -418,51 +721,98 @@ function getFrontendHTML() {
   </div>
 
 
-  <!-- INITIAL -->
+  <!-- =======================================================
+       NEWS
+  ======================================================== -->
 
   <div
-    id="initialState"
-    class="text-center py-20 text-slate-500"
+    class="bg-slate-900 border border-slate-800 rounded-xl p-6 h-[500px] flex flex-col"
   >
 
-    <i class="fa-solid fa-terminal text-6xl mb-4 opacity-30 block"></i>
+    <h2
+      class="text-lg font-semibold text-slate-400 mb-3"
+    >
+      Processed Live Feeds
+    </h2>
 
-    <span>
-      Enter a stock name or company name above to view analysis.
-    </span>
+
+    <div
+      id="newsFeed"
+      class="space-y-4 overflow-y-auto flex-grow pr-1"
+    ></div>
 
   </div>
 
+</div>
 
-  <!-- ERROR -->
+
+<!-- =========================================================
+     INITIAL
+========================================================= -->
+
+<div
+  id="initialState"
+  class="text-center py-20 text-slate-500"
+>
+
+  <i
+    class="fa-solid fa-terminal text-6xl mb-4 opacity-30 block"
+  ></i>
+
+  <span>
+    Enter a stock name or company name above to view analysis.
+  </span>
+
+</div>
+
+
+<!-- =========================================================
+     ERROR
+========================================================= -->
+
+<div
+  id="errorState"
+  class="hidden text-center py-10"
+>
 
   <div
-    id="errorState"
-    class="hidden text-center py-10"
+    class="bg-red-950/30 border border-red-900 rounded-xl p-6 max-w-2xl mx-auto"
   >
 
-    <div class="bg-red-950/30 border border-red-900 rounded-xl p-6 max-w-2xl mx-auto">
+    <i
+      class="fa-solid fa-circle-exclamation text-red-400 text-3xl mb-3"
+    ></i>
 
-      <i class="fa-solid fa-circle-exclamation text-red-400 text-3xl mb-3"></i>
 
-      <p
-        id="errorMessage"
-        class="text-red-300"
-      ></p>
-
-    </div>
+    <p
+      id="errorMessage"
+      class="text-red-300"
+    ></p>
 
   </div>
+
+</div>
+
 
 </main>
 
 
-<footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-600">
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer
+  class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-600"
+>
 
   &copy; 2026 SinSigma • Technology & Cybersecurity
 
 </footer>
 
+
+<!-- =========================================================
+     FRONTEND JAVASCRIPT
+========================================================= -->
 
 <script>
 
@@ -471,212 +821,220 @@ async function analyzeStock() {
   const stock =
     document.getElementById("stockInput").value.trim();
 
+
   if (!stock) {
-    alert("Please enter a stock name");
+
+    alert("Please enter a stock name.");
+
     return;
+
   }
+
 
   const initial =
     document.getElementById("initialState");
 
+
   const results =
     document.getElementById("resultsDashboard");
+
 
   const loading =
     document.getElementById("loadingState");
 
+
   const errorState =
     document.getElementById("errorState");
 
+
+  const button =
+    document.getElementById("analyzeButton");
+
+
   initial.classList.add("hidden");
+
   results.classList.add("hidden");
+
   errorState.classList.add("hidden");
+
   loading.classList.remove("hidden");
+
+  button.disabled = true;
+
+  button.classList.add("opacity-60", "cursor-not-allowed");
 
 
   try {
 
-    const news = await fetchLiveNews(stock);
+    // --------------------------------------------------------
+    // STEP 1: FETCH LIVE NEWS FROM OUR CLOUDFLARE WORKER
+    // --------------------------------------------------------
 
-    const res = await fetch("/api/sentiment", {
-
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json"
-      },
-
-      body: JSON.stringify({
-        stock,
-        news
-      })
-
-    });
+    const newsResponse =
+      await fetch(
+        "/api/news?stock=" +
+        encodeURIComponent(stock)
+      );
 
 
-    const aiResult = await res.json();
+    const newsData =
+      await newsResponse.json();
 
 
-    if (!res.ok) {
+    if (!newsResponse.ok) {
 
       throw new Error(
-        aiResult.error ||
-        aiResult.details?.error?.message ||
-        "Sentiment API failed"
+        newsData.error ||
+        "Unable to fetch live news."
       );
 
     }
 
 
-    renderDashboard(aiResult, news);
+    const news =
+      newsData.news || [];
 
 
-  } catch (e) {
+    if (!news.length) {
 
-    console.error(e);
+      throw new Error(
+        "No recent news found for this company."
+      );
+
+    }
+
+
+    // --------------------------------------------------------
+    // STEP 2: SEND NEWS TO GEMINI
+    // --------------------------------------------------------
+
+    const sentimentResponse =
+      await fetch("/api/sentiment", {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          stock,
+          news
+        })
+
+      });
+
+
+    const aiResult =
+      await sentimentResponse.json();
+
+
+    if (!sentimentResponse.ok) {
+
+      const geminiMessage =
+        aiResult.details?.error?.message;
+
+
+      throw new Error(
+        aiResult.error ||
+        geminiMessage ||
+        "Sentiment API failed."
+      );
+
+    }
+
+
+    // --------------------------------------------------------
+    // STEP 3: DISPLAY RESULTS
+    // --------------------------------------------------------
+
+    renderDashboard(
+      aiResult,
+      news,
+      stock
+    );
+
+
+  } catch (error) {
+
+    console.error(error);
 
     errorState.classList.remove("hidden");
 
-    document.getElementById("errorMessage").innerText =
-      e.message || "Unable to complete analysis.";
+    document.getElementById(
+      "errorMessage"
+    ).innerText =
+      error.message ||
+      "Unable to complete analysis.";
+
 
   } finally {
 
     loading.classList.add("hidden");
 
+    button.disabled = false;
+
+    button.classList.remove(
+      "opacity-60",
+      "cursor-not-allowed"
+    );
+
   }
 
 }
 
 
+// ============================================================
+// RENDER DASHBOARD
+// ============================================================
 
-async function fetchLiveNews(query) {
-
-  const googleNewsUrl =
-    "https://news.google.com/rss/search?q=" +
-    encodeURIComponent(query + " stock when:24h") +
-    "&hl=en-IN&gl=IN&ceid=IN:en";
-
-
-  const proxyUrl =
-    "https://api.allorigins.win/raw?url=" +
-    encodeURIComponent(googleNewsUrl);
-
-
-  const response =
-    await fetch(proxyUrl);
-
-
-  if (!response.ok) {
-    throw new Error("Unable to fetch live news.");
-  }
-
-
-  const xmlText =
-    await response.text();
-
-
-  const parser =
-    new DOMParser();
-
-
-  const xmlDoc =
-    parser.parseFromString(xmlText, "text/xml");
-
-
-  const items =
-    xmlDoc.getElementsByTagName("item");
-
-
-  const articles = [];
-
-
-  for (
-    let i = 0;
-    i < Math.min(items.length, 5);
-    i++
-  ) {
-
-    const titleNode =
-      items[i].getElementsByTagName("title")[0];
-
-    const pubDateNode =
-      items[i].getElementsByTagName("pubDate")[0];
-
-    const linkNode =
-      items[i].getElementsByTagName("link")[0];
-
-
-    articles.push({
-
-      title:
-        titleNode?.textContent ||
-        "Recent market update",
-
-      pubDate:
-        pubDateNode?.textContent ||
-        "Recent",
-
-      link:
-        linkNode?.textContent ||
-        "#"
-
-    });
-
-  }
-
-
-  if (articles.length === 0) {
-
-    articles.push({
-
-      title:
-        "No recent news found for this company.",
-
-      pubDate:
-        "Live Feed",
-
-      link:
-        "#"
-
-    });
-
-  }
-
-
-  return articles;
-
-}
-
-
-
-function renderDashboard(aiData, news) {
+function renderDashboard(
+  aiData,
+  news,
+  stock
+) {
 
   document
     .getElementById("resultsDashboard")
     .classList.remove("hidden");
 
 
+  // ----------------------------------------------------------
+  // SCORE
+  // ----------------------------------------------------------
+
+  const score =
+    Number(aiData.sentimentScore) || 0;
+
+
   document
     .getElementById("sentimentValue")
     .innerText =
-      String(aiData.sentimentScore) + "%";
+      score + "%";
 
+
+  // ----------------------------------------------------------
+  // VERDICT
+  // ----------------------------------------------------------
 
   const labelEl =
     document.getElementById("sentimentLabel");
 
 
-  labelEl.innerText =
+  const verdict =
     aiData.verdict || "NEUTRAL";
 
 
-  if (aiData.sentimentScore > 55) {
+  labelEl.innerText =
+    verdict;
+
+
+  if (score > 55) {
 
     labelEl.className =
       "text-2xl font-extrabold text-emerald-400 glow-green mt-4";
 
-  } else if (aiData.sentimentScore < 45) {
+  } else if (score < 45) {
 
     labelEl.className =
       "text-2xl font-extrabold text-red-500 glow-red mt-4";
@@ -689,6 +1047,10 @@ function renderDashboard(aiData, news) {
   }
 
 
+  // ----------------------------------------------------------
+  // SUMMARY
+  // ----------------------------------------------------------
+
   const summaryContainer =
     document.getElementById("aiSummary");
 
@@ -696,29 +1058,50 @@ function renderDashboard(aiData, news) {
   summaryContainer.innerHTML = "";
 
 
-  (aiData.tldrPoints || []).forEach(point => {
+  const points =
+    Array.isArray(aiData.tldrPoints)
+      ? aiData.tldrPoints
+      : [];
+
+
+  points.forEach(point => {
 
     const div =
       document.createElement("div");
+
 
     div.className =
       "flex items-start space-x-2 border-l-2 border-slate-700 pl-3 py-1";
 
 
-    div.innerHTML = \`
-      <i class="fa-solid fa-chevron-right text-xs text-emerald-500 mt-1"></i>
-      <span></span>
-    \`;
+    const icon =
+      document.createElement("i");
 
 
-    div.querySelector("span").textContent =
+    icon.className =
+      "fa-solid fa-chevron-right text-xs text-emerald-500 mt-1";
+
+
+    const span =
+      document.createElement("span");
+
+
+    span.textContent =
       point;
 
+
+    div.appendChild(icon);
+
+    div.appendChild(span);
 
     summaryContainer.appendChild(div);
 
   });
 
+
+  // ----------------------------------------------------------
+  // NEWS FEED
+  // ----------------------------------------------------------
 
   const feedContainer =
     document.getElementById("newsFeed");
@@ -730,7 +1113,9 @@ function renderDashboard(aiData, news) {
   news.forEach((item, index) => {
 
     const score =
-      aiData.newsImpactScores?.[index] ?? 0;
+      Number(
+        aiData.newsImpactScores?.[index] ?? 0
+      );
 
 
     const article =
@@ -741,25 +1126,7 @@ function renderDashboard(aiData, news) {
       "bg-slate-950 p-4 rounded-lg border border-slate-800 mb-3";
 
 
-    const title =
-      document.createElement("a");
-
-
-    title.href =
-      item.link || "#";
-
-    title.target =
-      "_blank";
-
-    title.rel =
-      "noopener noreferrer";
-
-    title.className =
-      "text-sm text-slate-200 block leading-snug hover:text-emerald-400";
-
-    title.textContent =
-      item.title;
-
+    // DATE + IMPACT
 
     const meta =
       document.createElement("div");
@@ -776,8 +1143,11 @@ function renderDashboard(aiData, news) {
     date.className =
       "text-[10px] text-slate-500";
 
+
     date.textContent =
-      String(item.pubDate).substring(0, 22);
+      String(
+        item.pubDate || "Recent"
+      ).substring(0, 28);
 
 
     const impact =
@@ -811,10 +1181,61 @@ function renderDashboard(aiData, news) {
 
 
     meta.appendChild(date);
+
     meta.appendChild(impact);
 
+
+    // TITLE
+
+    const title =
+      document.createElement("a");
+
+
+    title.href =
+      item.link || "#";
+
+
+    title.target =
+      "_blank";
+
+
+    title.rel =
+      "noopener noreferrer";
+
+
+    title.className =
+      "text-sm text-slate-200 block leading-snug hover:text-emerald-400";
+
+
+    title.textContent =
+      item.title || "News update";
+
+
     article.appendChild(meta);
+
     article.appendChild(title);
+
+
+    // SOURCE
+
+    if (item.source) {
+
+      const source =
+        document.createElement("div");
+
+
+      source.className =
+        "text-[10px] text-slate-600 mt-2";
+
+
+      source.textContent =
+        item.source;
+
+
+      article.appendChild(source);
+
+    }
+
 
     feedContainer.appendChild(article);
 
@@ -824,7 +1245,9 @@ function renderDashboard(aiData, news) {
 
 </script>
 
+
 </body>
+
 </html>
 `;
 }
