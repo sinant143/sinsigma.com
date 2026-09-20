@@ -1,17 +1,16 @@
 /*
-
-* SinSigma Citation Generator
-* Client-side citation formatting engine
-*
-* No API
-* No database
-* No external service
-  */
+ * SinSigma Citation Generator
+ * Client-side citation formatting engine
+ *
+ * No API
+ * No database
+ * No external service
+ */
 
 "use strict";
 
 /* =========================================================
-ELEMENTS
+   ELEMENTS
 ========================================================= */
 
 const styleSelect = document.getElementById("citation-style");
@@ -36,425 +35,248 @@ const inTextCitation = document.getElementById("in-text-citation");
 const currentYear = document.getElementById("current-year");
 
 /* =========================================================
-INITIAL SETUP
+   INITIAL SETUP
 ========================================================= */
 
 if (currentYear) {
-currentYear.textContent = new Date().getFullYear();
+    currentYear.textContent = new Date().getFullYear();
 }
 
 /* =========================================================
-HELPERS
+   HELPERS
 ========================================================= */
 
 function clean(value) {
-return value
-.trim()
-.replace(/\s+/g, " ");
+    return String(value || "")
+        .trim()
+        .replace(/\s+/g, " ");
 }
 
 function escapeHtml(value) {
-return value
-.replace(/&/g, "&")
-.replace(/</g, "<")
-.replace(/>/g, ">")
-.replace(/"/g, """)
-.replace(/'/g, "'");
-}
-
-function getInitials(name) {
-return name
-.split(/\s+/)
-.filter(Boolean)
-.map(part => part.charAt(0).toUpperCase() + ".")
-.join(" ");
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function getLastName(name) {
-const parts = name.split(/\s+/).filter(Boolean);
+    const parts = clean(name).split(/\s+/).filter(Boolean);
 
-```
-if (parts.length === 1) {
-    return parts[0];
-}
+    if (parts.length === 0) {
+        return "";
+    }
 
-return parts[parts.length - 1];
-```
-
+    return parts[parts.length - 1];
 }
 
 function getFirstName(name) {
-const parts = name.split(/\s+/).filter(Boolean);
+    const parts = clean(name).split(/\s+/).filter(Boolean);
 
-```
-if (parts.length === 1) {
-    return parts[0];
+    if (parts.length <= 1) {
+        return parts[0] || "";
+    }
+
+    return parts.slice(0, -1).join(" ");
 }
 
-return parts.slice(0, -1).join(" ");
-```
-
+function getInitials(name) {
+    return clean(name)
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(part => part.charAt(0).toUpperCase() + ".")
+        .join(" ");
 }
 
 function normalizeUrl(url) {
+    url = clean(url);
 
-```
-if (!url) {
-    return "";
-}
+    if (!url) {
+        return "";
+    }
 
-url = clean(url);
+    if (!/^https?:\/\//i.test(url)) {
+        return "https://" + url;
+    }
 
-if (!/^https?:\/\//i.test(url)) {
-    return "https://" + url;
-}
-
-return url;
-```
-
+    return url;
 }
 
 function normalizeDoi(doi) {
+    doi = clean(doi)
+        .replace(/^https?:\/\/doi\.org\//i, "")
+        .replace(/^doi:\s*/i, "");
 
-```
-if (!doi) {
-    return "";
-}
-
-doi = clean(doi)
-    .replace(/^https?:\/\/doi\.org\//i, "")
-    .replace(/^doi:\s*/i, "");
-
-return doi;
-```
-
+    return doi;
 }
 
 function doiUrl(doi) {
+    const normalized = normalizeDoi(doi);
 
-```
-const normalized = normalizeDoi(doi);
+    if (!normalized) {
+        return "";
+    }
 
-if (!normalized) {
-    return "";
-}
-
-return "https://doi.org/" + normalized;
-```
-
+    return "https://doi.org/" + normalized;
 }
 
 function italic(text) {
-return `<em>${escapeHtml(text)}</em>`;
+    return `<em>${escapeHtml(text)}</em>`;
 }
 
 function quoteTitle(text) {
-return `"${escapeHtml(text)}"`;
+    return `"${escapeHtml(text)}"`;
 }
 
 function displayTitle(text) {
-return escapeHtml(text);
+    return escapeHtml(text);
 }
 
 /* =========================================================
-AUTHOR FORMATTING
+   AUTHOR FORMATTING
 ========================================================= */
 
 function apaAuthor(author) {
+    const lastName = getLastName(author);
+    const firstName = getFirstName(author);
 
-```
-const lastName = getLastName(author);
-const firstName = getFirstName(author);
+    if (!firstName) {
+        return escapeHtml(lastName);
+    }
 
-if (!firstName) {
-    return escapeHtml(lastName);
-}
-
-return `${escapeHtml(lastName)}, ${escapeHtml(
-    getInitials(firstName)
-)}`;
-```
-
+    return `${escapeHtml(lastName)}, ${escapeHtml(getInitials(firstName))}`;
 }
 
 function mlaAuthor(author) {
+    const lastName = getLastName(author);
+    const firstName = getFirstName(author);
 
-```
-const lastName = getLastName(author);
-const firstName = getFirstName(author);
+    if (!firstName) {
+        return escapeHtml(lastName);
+    }
 
-if (!firstName) {
-    return escapeHtml(lastName);
-}
-
-return `${escapeHtml(lastName)}, ${escapeHtml(firstName)}`;
-```
-
+    return `${escapeHtml(lastName)}, ${escapeHtml(firstName)}`;
 }
 
 function harvardAuthor(author) {
+    const lastName = getLastName(author);
+    const firstName = getFirstName(author);
 
-```
-const lastName = getLastName(author);
-const firstName = getFirstName(author);
+    if (!firstName) {
+        return escapeHtml(lastName);
+    }
 
-if (!firstName) {
-    return escapeHtml(lastName);
-}
-
-return `${escapeHtml(lastName)}, ${escapeHtml(
-    getInitials(firstName)
-)}`;
-```
-
+    return `${escapeHtml(lastName)}, ${escapeHtml(getInitials(firstName))}`;
 }
 
 function chicagoAuthor(author) {
+    const lastName = getLastName(author);
+    const firstName = getFirstName(author);
 
-```
-const lastName = getLastName(author);
-const firstName = getFirstName(author);
+    if (!firstName) {
+        return escapeHtml(lastName);
+    }
 
-if (!firstName) {
-    return escapeHtml(lastName);
-}
-
-return `${escapeHtml(lastName)}, ${escapeHtml(firstName)}`;
-```
-
+    return `${escapeHtml(lastName)}, ${escapeHtml(firstName)}`;
 }
 
 function ieeeAuthor(author) {
+    const lastName = getLastName(author);
+    const firstName = getFirstName(author);
 
-```
-const lastName = getLastName(author);
-const firstName = getFirstName(author);
+    if (!firstName) {
+        return escapeHtml(lastName);
+    }
 
-if (!firstName) {
-    return escapeHtml(lastName);
-}
-
-return `${escapeHtml(getInitials(firstName))} ${escapeHtml(lastName)}`;
-```
-
+    return `${escapeHtml(getInitials(firstName))} ${escapeHtml(lastName)}`;
 }
 
 function vancouverAuthor(author) {
+    const lastName = getLastName(author);
+    const firstName = getFirstName(author);
 
-```
-const lastName = getLastName(author);
-const firstName = getFirstName(author);
+    if (!firstName) {
+        return escapeHtml(lastName);
+    }
 
-if (!firstName) {
-    return escapeHtml(lastName);
-}
+    const initials = getInitials(firstName).replace(/\s+/g, "");
 
-return `${escapeHtml(lastName)} ${escapeHtml(
-    getInitials(firstName).replace(/\s+/g, "")
-)}`;
-```
-
+    return `${escapeHtml(lastName)} ${escapeHtml(initials)}`;
 }
 
 /* =========================================================
-IN-TEXT CITATIONS
+   IN-TEXT CITATIONS
 ========================================================= */
 
 function makeInTextCitation(style, author, year) {
+    const lastName = escapeHtml(getLastName(author));
+    const safeYear = escapeHtml(year);
 
-```
-const lastName = escapeHtml(getLastName(author));
-const safeYear = escapeHtml(year);
+    switch (style) {
+        case "mla":
+            return `(${lastName})`;
 
-switch (style) {
+        case "chicago":
+            return `(${lastName} ${safeYear})`;
 
-    case "mla":
-        return `(${lastName})`;
+        case "ieee":
+            return `[1]`;
 
-    case "chicago":
-        return `(${lastName} ${safeYear})`;
+        case "vancouver":
+            return `(1)`;
 
-    case "ieee":
-        return `[1]`;
+        case "harvard":
+            return `(${lastName}, ${safeYear})`;
 
-    case "vancouver":
-        return `(1)`;
-
-    case "harvard":
-        return `(${lastName}, ${safeYear})`;
-
-    case "apa":
-    default:
-        return `(${lastName}, ${safeYear})`;
-}
-```
-
+        case "apa":
+        default:
+            return `(${lastName}, ${safeYear})`;
+    }
 }
 
 /* =========================================================
-APA 7
+   APA 7
 ========================================================= */
 
 function formatAPA(data) {
+    const author = apaAuthor(data.author);
+    const year = escapeHtml(data.year);
 
-```
-const author = apaAuthor(data.author);
-const year = escapeHtml(data.year);
-const title = displayTitle(data.title);
+    if (data.type === "book") {
+        let result = `${author} (${year}). ${italic(data.title)}`;
 
-if (data.type === "book") {
+        if (data.publication) {
+            result += `. ${escapeHtml(data.publication)}`;
+        }
 
-    const publisher = escapeHtml(data.publication);
-
-    return `${author} (${year}). ${italic(data.title)}.${publisher ? ` ${publisher}.` : ""}`;
-}
-
-
-if (data.type === "journal") {
-
-    const journal = escapeHtml(data.publication);
-
-    let result =
-        `${author} (${year}). ${title}. ` +
-        `${italic(data.publication)}`;
-
-    if (journal) {
         result += ".";
+
+        return result;
     }
 
-    if (data.doi) {
-        result += ` ${escapeHtml(doiUrl(data.doi))}`;
-    } else if (data.url) {
-        result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+    if (data.type === "journal") {
+        let result = `${author} (${year}). ${displayTitle(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}.`;
+        }
+
+        if (data.doi) {
+            result += ` ${escapeHtml(doiUrl(data.doi))}`;
+        } else if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
     }
 
-    return result;
-}
-
-
-let result =
-    `${author} (${year}). ${title}.`;
-
-if (data.publication) {
-    result += ` ${escapeHtml(data.publication)}.`;
-}
-
-if (data.doi) {
-    result += ` ${escapeHtml(doiUrl(data.doi))}`;
-} else if (data.url) {
-    result += ` ${escapeHtml(normalizeUrl(data.url))}`;
-}
-
-return result;
-```
-
-}
-
-/* =========================================================
-MLA 9
-========================================================= */
-
-function formatMLA(data) {
-
-```
-const author = mlaAuthor(data.author);
-const title = data.title;
-
-if (data.type === "book") {
-
-    let result =
-        `${author}. ${italic(title)}.`;
-
-    if (data.publication) {
-        result += ` ${escapeHtml(data.publication)},`;
-    }
-
-    if (data.year) {
-        result += ` ${escapeHtml(data.year)}.`;
-    }
-
-    return result;
-}
-
-
-if (data.type === "journal") {
-
-    let result =
-        `${author}. ${quoteTitle(title)} `;
-
-    if (data.publication) {
-        result += `${italic(data.publication)}, `;
-    }
-
-    if (data.year) {
-        result += `${escapeHtml(data.year)}.`;
-    }
-
-    if (data.doi) {
-        result += ` ${escapeHtml(doiUrl(data.doi))}.`;
-    } else if (data.url) {
-        result += ` ${escapeHtml(normalizeUrl(data.url))}.`;
-    }
-
-    return result;
-}
-
-
-let result =
-    `${author}. ${quoteTitle(title)}`;
-
-if (data.publication) {
-    result += `. ${italic(data.publication)}`;
-}
-
-if (data.year) {
-    result += `, ${escapeHtml(data.year)}`;
-}
-
-result += ".";
-
-if (data.url) {
-    result += ` ${escapeHtml(normalizeUrl(data.url))}.`;
-}
-
-return result;
-```
-
-}
-
-/* =========================================================
-HARVARD
-========================================================= */
-
-function formatHarvard(data) {
-
-```
-const author = harvardAuthor(data.author);
-const year = escapeHtml(data.year);
-
-if (data.type === "book") {
-
-    let result =
-        `${author} (${year}) ` +
-        `${italic(data.title)}.`;
+    let result = `${author} (${year}). ${displayTitle(data.title)}.`;
 
     if (data.publication) {
         result += ` ${escapeHtml(data.publication)}.`;
     }
 
-    return result;
-}
-
-
-if (data.type === "journal") {
-
-    let result =
-        `${author} (${year}) '${escapeHtml(data.title)}', `;
-
-    if (data.publication) {
-        result += `${italic(data.publication)}.`;
-    }
-
     if (data.doi) {
         result += ` ${escapeHtml(doiUrl(data.doi))}`;
     } else if (data.url) {
@@ -464,131 +286,51 @@ if (data.type === "journal") {
     return result;
 }
 
-
-let result =
-    `${author} (${year}) '${escapeHtml(data.title)}'.`;
-
-if (data.publication) {
-    result += ` ${escapeHtml(data.publication)}.`;
-}
-
-if (data.url) {
-    result += ` Available at: ${escapeHtml(normalizeUrl(data.url))}.`;
-}
-
-return result;
-```
-
-}
-
 /* =========================================================
-CHICAGO
+   MLA 9
 ========================================================= */
 
-function formatChicago(data) {
+function formatMLA(data) {
+    const author = mlaAuthor(data.author);
 
-```
-const author = chicagoAuthor(data.author);
+    if (data.type === "book") {
+        let result = `${author}. ${italic(data.title)}.`;
 
-if (data.type === "book") {
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)},`;
+        }
 
-    let result =
-        `${author}. ${italic(data.title)}.`;
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        return result;
+    }
+
+    if (data.type === "journal") {
+        let result = `${author}. ${quoteTitle(data.title)}`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)},`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.doi) {
+            result += ` ${escapeHtml(doiUrl(data.doi))}.`;
+        } else if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+    let result = `${author}. ${quoteTitle(data.title)}`;
 
     if (data.publication) {
-        result += ` ${escapeHtml(data.publication)}`;
-    }
-
-    if (data.year) {
-        result += `, ${escapeHtml(data.year)}.`;
-    } else {
-        result += ".";
-    }
-
-    return result;
-}
-
-
-if (data.type === "journal") {
-
-    let result =
-        `${author}. "${escapeHtml(data.title)}."`;
-
-    if (data.publication) {
-        result += ` ${italic(data.publication)}`;
-    }
-
-    if (data.year) {
-        result += ` (${escapeHtml(data.year)}).`;
-    } else {
-        result += ".";
-    }
-
-    if (data.doi) {
-        result += ` ${escapeHtml(doiUrl(data.doi))}`;
-    } else if (data.url) {
-        result += ` ${escapeHtml(normalizeUrl(data.url))}`;
-    }
-
-    return result;
-}
-
-
-let result =
-    `${author}. "${escapeHtml(data.title)}."`;
-
-if (data.publication) {
-    result += ` ${escapeHtml(data.publication)}.`;
-}
-
-if (data.year) {
-    result += ` ${escapeHtml(data.year)}.`;
-}
-
-if (data.url) {
-    result += ` ${escapeHtml(normalizeUrl(data.url))}`;
-}
-
-return result;
-```
-
-}
-
-/* =========================================================
-IEEE
-========================================================= */
-
-function formatIEEE(data) {
-
-```
-const author = ieeeAuthor(data.author);
-
-if (data.type === "book") {
-
-    let result =
-        `${author}, ${italic(data.title)}`;
-
-    if (data.publication) {
-        result += `, ${escapeHtml(data.publication)}`;
-    }
-
-    if (data.year) {
-        result += `, ${escapeHtml(data.year)}.`;
-    } else {
-        result += ".";
-    }
-
-    return result;
-}
-
-
-if (data.type === "journal") {
-
-    let result =
-        `${author}, "${escapeHtml(data.title)},"`;
-
-    if (data.publication) {
-        result += ` ${italic(data.publication)}`;
+        result += `. ${italic(data.publication)}`;
     }
 
     if (data.year) {
@@ -597,68 +339,106 @@ if (data.type === "journal") {
 
     result += ".";
 
-    if (data.doi) {
-        result += ` doi: ${escapeHtml(normalizeDoi(data.doi))}.`;
-    } else if (data.url) {
-        result += ` [Online]. Available: ${escapeHtml(normalizeUrl(data.url))}`;
+    if (data.url) {
+        result += ` ${escapeHtml(normalizeUrl(data.url))}.`;
     }
 
     return result;
-}
-
-
-let result =
-    `${author}, "${escapeHtml(data.title)},"`;
-
-if (data.publication) {
-    result += ` ${escapeHtml(data.publication)}`;
-}
-
-if (data.year) {
-    result += `, ${escapeHtml(data.year)}`;
-}
-
-result += ".";
-
-if (data.url) {
-    result += ` [Online]. Available: ${escapeHtml(normalizeUrl(data.url))}`;
-}
-
-return result;
-```
-
 }
 
 /* =========================================================
-VANCOUVER
+   HARVARD
 ========================================================= */
 
-function formatVancouver(data) {
+function formatHarvard(data) {
+    const author = harvardAuthor(data.author);
+    const year = escapeHtml(data.year);
 
-```
-const author = vancouverAuthor(data.author);
+    if (data.type === "book") {
+        let result = `${author} (${year}) ${italic(data.title)}.`;
 
-if (data.type === "book") {
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
 
-    let result =
-        `${author}. ${escapeHtml(data.title)}.`;
-
-    if (data.publication) {
-        result += ` ${escapeHtml(data.publication)};`;
+        return result;
     }
 
-    if (data.year) {
-        result += ` ${escapeHtml(data.year)}.`;
+    if (data.type === "journal") {
+        let result = `${author} (${year}) '${escapeHtml(data.title)}'`;
+
+        if (data.publication) {
+            result += `, ${italic(data.publication)}`;
+        }
+
+        result += ".";
+
+        if (data.doi) {
+            result += ` ${escapeHtml(doiUrl(data.doi))}`;
+        } else if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+    let result = `${author} (${year}) '${escapeHtml(data.title)}'.`;
+
+    if (data.publication) {
+        result += ` ${escapeHtml(data.publication)}.`;
+    }
+
+    if (data.url) {
+        result += ` Available at: ${escapeHtml(normalizeUrl(data.url))}.`;
     }
 
     return result;
 }
 
+/* =========================================================
+   CHICAGO
+========================================================= */
 
-if (data.type === "journal") {
+function formatChicago(data) {
+    const author = chicagoAuthor(data.author);
 
-    let result =
-        `${author}. ${escapeHtml(data.title)}.`;
+    if (data.type === "book") {
+        let result = `${author}. ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}.`;
+        } else {
+            result += ".";
+        }
+
+        return result;
+    }
+
+    if (data.type === "journal") {
+        let result = `${author}. ${quoteTitle(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += ` (${escapeHtml(data.year)}).`;
+        }
+
+        if (data.doi) {
+            result += ` ${escapeHtml(doiUrl(data.doi))}`;
+        } else if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+    let result = `${author}. ${quoteTitle(data.title)}.`;
 
     if (data.publication) {
         result += ` ${escapeHtml(data.publication)}.`;
@@ -668,250 +448,307 @@ if (data.type === "journal") {
         result += ` ${escapeHtml(data.year)}.`;
     }
 
-    if (data.doi) {
-        result += ` doi:${escapeHtml(normalizeDoi(data.doi))}`;
-    } else if (data.url) {
+    if (data.url) {
+        result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+    }
+
+    return result;
+}
+
+/* =========================================================
+   IEEE
+========================================================= */
+
+function formatIEEE(data) {
+    const author = ieeeAuthor(data.author);
+
+    if (data.type === "book") {
+        let result = `${author}, ${italic(data.title)}`;
+
+        if (data.publication) {
+            result += `, ${escapeHtml(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}.`;
+        } else {
+            result += ".";
+        }
+
+        return result;
+    }
+
+    if (data.type === "journal") {
+        let result = `${author}, ${quoteTitle(data.title)}`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}`;
+        }
+
+        result += ".";
+
+        if (data.doi) {
+            result += ` doi: ${escapeHtml(normalizeDoi(data.doi))}.`;
+        } else if (data.url) {
+            result += ` [Online]. Available: ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+    let result = `${author}, ${quoteTitle(data.title)}`;
+
+    if (data.publication) {
+        result += ` ${escapeHtml(data.publication)}`;
+    }
+
+    if (data.year) {
+        result += `, ${escapeHtml(data.year)}`;
+    }
+
+    result += ".";
+
+    if (data.url) {
+        result += ` [Online]. Available: ${escapeHtml(normalizeUrl(data.url))}`;
+    }
+
+    return result;
+}
+
+/* =========================================================
+   VANCOUVER
+========================================================= */
+
+function formatVancouver(data) {
+    const author = vancouverAuthor(data.author);
+
+    if (data.type === "book") {
+        let result = `${author}. ${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)};`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        return result;
+    }
+
+    if (data.type === "journal") {
+        let result = `${author}. ${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.doi) {
+            result += ` doi:${escapeHtml(normalizeDoi(data.doi))}`;
+        } else if (data.url) {
+            result += ` Available from: ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+    let result = `${author}. ${escapeHtml(data.title)}.`;
+
+    if (data.publication) {
+        result += ` ${escapeHtml(data.publication)}.`;
+    }
+
+    if (data.year) {
+        result += ` ${escapeHtml(data.year)}.`;
+    }
+
+    if (data.url) {
         result += ` Available from: ${escapeHtml(normalizeUrl(data.url))}`;
     }
 
     return result;
 }
 
-
-let result =
-    `${author}. ${escapeHtml(data.title)}.`;
-
-if (data.publication) {
-    result += ` ${escapeHtml(data.publication)}.`;
-}
-
-if (data.year) {
-    result += ` ${escapeHtml(data.year)}.`;
-}
-
-if (data.url) {
-    result += ` Available from: ${escapeHtml(normalizeUrl(data.url))}`;
-}
-
-return result;
-```
-
-}
-
 /* =========================================================
-MAIN FORMATTER
+   MAIN FORMATTER
 ========================================================= */
 
 function generateCitation(data) {
+    switch (data.style) {
+        case "mla":
+            return formatMLA(data);
 
-```
-switch (data.style) {
+        case "harvard":
+            return formatHarvard(data);
 
-    case "mla":
-        return formatMLA(data);
+        case "chicago":
+            return formatChicago(data);
 
-    case "harvard":
-        return formatHarvard(data);
+        case "ieee":
+            return formatIEEE(data);
 
-    case "chicago":
-        return formatChicago(data);
+        case "vancouver":
+            return formatVancouver(data);
 
-    case "ieee":
-        return formatIEEE(data);
-
-    case "vancouver":
-        return formatVancouver(data);
-
-    case "apa":
-    default:
-        return formatAPA(data);
-}
-```
-
+        case "apa":
+        default:
+            return formatAPA(data);
+    }
 }
 
 /* =========================================================
-VALIDATION
+   VALIDATION
 ========================================================= */
 
 function validateForm() {
+    const author = clean(authorInput.value);
+    const year = clean(yearInput.value);
+    const title = clean(titleInput.value);
 
-```
-const author = clean(authorInput.value);
-const year = clean(yearInput.value);
-const title = clean(titleInput.value);
+    if (!author) {
+        return "Please enter the author / writer name.";
+    }
 
-if (!author) {
-    return "Please enter the author / writer name.";
-}
+    if (!year) {
+        return "Please enter the publication year.";
+    }
 
-if (!year) {
-    return "Please enter the publication year.";
-}
+    if (!/^\d{4}$/.test(year)) {
+        return "Please enter a valid 4-digit year.";
+    }
 
-if (!/^\d{4}$/.test(year)) {
-    return "Please enter a valid 4-digit year.";
-}
+    if (!title) {
+        return "Please enter the source title.";
+    }
 
-if (!title) {
-    return "Please enter the source title.";
-}
-
-return "";
-```
-
+    return "";
 }
 
 /* =========================================================
-GENERATE BUTTON
+   GENERATE BUTTON
 ========================================================= */
 
-generateButton.addEventListener("click", () => {
+if (generateButton) {
+    generateButton.addEventListener("click", () => {
+        formMessage.textContent = "";
 
-```
-formMessage.textContent = "";
+        const error = validateForm();
 
-const error = validateForm();
+        if (error) {
+            resultBox.hidden = true;
+            formMessage.textContent = error;
+            return;
+        }
 
-if (error) {
-    resultBox.hidden = true;
-    formMessage.textContent = error;
-    return;
+        const data = {
+            style: styleSelect.value,
+            type: sourceTypeSelect.value,
+            author: clean(authorInput.value),
+            year: clean(yearInput.value),
+            title: clean(titleInput.value),
+            publication: clean(publicationInput.value),
+            url: clean(urlInput.value),
+            doi: clean(doiInput.value)
+        };
+
+        const citation = generateCitation(data);
+
+        citationText.innerHTML = citation;
+
+        inTextCitation.textContent = makeInTextCitation(
+            data.style,
+            data.author,
+            data.year
+        );
+
+        resultBox.hidden = false;
+
+        resultBox.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest"
+        });
+    });
 }
 
-
-const data = {
-
-    style: styleSelect.value,
-
-    type: sourceTypeSelect.value,
-
-    author: clean(authorInput.value),
-
-    year: clean(yearInput.value),
-
-    title: clean(titleInput.value),
-
-    publication: clean(publicationInput.value),
-
-    url: clean(urlInput.value),
-
-    doi: clean(doiInput.value)
-};
-
-
-const citation = generateCitation(data);
-
-
-citationText.innerHTML = citation;
-
-inTextCitation.textContent =
-    makeInTextCitation(
-        data.style,
-        data.author,
-        data.year
-    );
-
-
-resultBox.hidden = false;
-
-
-resultBox.scrollIntoView({
-    behavior: "smooth",
-    block: "nearest"
-});
-```
-
-});
-
 /* =========================================================
-COPY BUTTON
+   COPY BUTTON
 ========================================================= */
 
-copyButton.addEventListener("click", async () => {
+if (copyButton) {
+    copyButton.addEventListener("click", async () => {
+        const plainText = citationText.innerText.trim();
 
-```
-const plainText =
-    citationText.innerText.trim();
+        if (!plainText) {
+            return;
+        }
 
-if (!plainText) {
-    return;
+        try {
+            await navigator.clipboard.writeText(plainText);
+
+            copyButton.textContent = "Copied ✓";
+            copyButton.classList.add("copied");
+
+            setTimeout(() => {
+                copyButton.textContent = "Copy Citation";
+                copyButton.classList.remove("copied");
+            }, 1800);
+
+        } catch (error) {
+            const temporaryTextArea = document.createElement("textarea");
+
+            temporaryTextArea.value = plainText;
+            temporaryTextArea.style.position = "fixed";
+            temporaryTextArea.style.opacity = "0";
+
+            document.body.appendChild(temporaryTextArea);
+
+            temporaryTextArea.select();
+            document.execCommand("copy");
+
+            temporaryTextArea.remove();
+
+            copyButton.textContent = "Copied ✓";
+            copyButton.classList.add("copied");
+
+            setTimeout(() => {
+                copyButton.textContent = "Copy Citation";
+                copyButton.classList.remove("copied");
+            }, 1800);
+        }
+    });
 }
-
-
-try {
-
-    await navigator.clipboard.writeText(plainText);
-
-    copyButton.textContent = "Copied ✓";
-    copyButton.classList.add("copied");
-
-
-    setTimeout(() => {
-
-        copyButton.textContent = "Copy Citation";
-        copyButton.classList.remove("copied");
-
-    }, 1800);
-
-
-} catch (error) {
-
-    const temporaryTextArea =
-        document.createElement("textarea");
-
-    temporaryTextArea.value = plainText;
-
-    temporaryTextArea.style.position = "fixed";
-    temporaryTextArea.style.opacity = "0";
-
-    document.body.appendChild(temporaryTextArea);
-
-    temporaryTextArea.select();
-
-    document.execCommand("copy");
-
-    temporaryTextArea.remove();
-
-
-    copyButton.textContent = "Copied ✓";
-    copyButton.classList.add("copied");
-
-
-    setTimeout(() => {
-
-        copyButton.textContent = "Copy Citation";
-        copyButton.classList.remove("copied");
-
-    }, 1800);
-}
-```
-
-});
 
 /* =========================================================
-ENTER KEY SUPPORT
+   ENTER KEY SUPPORT
 ========================================================= */
 
 [
-authorInput,
-yearInput,
-titleInput,
-publicationInput,
-urlInput,
-doiInput
+    authorInput,
+    yearInput,
+    titleInput,
+    publicationInput,
+    urlInput,
+    doiInput
 ].forEach(input => {
-
-```
-input.addEventListener("keydown", event => {
-
-    if (event.key === "Enter") {
-        event.preventDefault();
-        generateButton.click();
+    if (!input) {
+        return;
     }
 
-});
-```
+    input.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            event.preventDefault();
 
+            if (generateButton) {
+                generateButton.click();
+            }
+        }
+    });
 });
-
