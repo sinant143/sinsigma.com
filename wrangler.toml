@@ -1,0 +1,6 @@
+name = "sinsigma-com"
+main = "index.js"
+compatibility_date = "2024-04-01"
+
+[vars]
+# Variables mapping handled via Cloudflare Dashboard Settings
