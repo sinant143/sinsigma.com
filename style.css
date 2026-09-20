@@ -578,40 +578,43 @@ RESPONSIVE
 ```
 
 }
+/* ================================
+   FINAL UI OVERRIDES
+   ================================ */
 
-/* Citation Context */
+/* Small, clean radio buttons */
 .context-options {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     margin-top: 8px;
 }
 
 .context-option {
-    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 7px 13px;
+    padding: 6px 12px;
     border: 1px solid #d9dee7;
     border-radius: 7px;
     background: #fff;
     cursor: pointer;
     font-size: 14px;
     line-height: 18px;
-    transition: all 0.2s ease;
 }
 
 .context-option input {
     appearance: none;
     -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    margin: 0;
+    width: 13px !important;
+    height: 13px !important;
+    min-width: 13px;
+    min-height: 13px;
+    margin: 0 !important;
+    padding: 0 !important;
     border: 1.5px solid #9aa4b2;
     border-radius: 50%;
     background: #fff;
-    cursor: pointer;
     position: relative;
     flex-shrink: 0;
 }
@@ -623,8 +626,8 @@ RESPONSIVE
 .context-option input:checked::after {
     content: "";
     position: absolute;
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
     top: 2.5px;
     left: 2.5px;
     border-radius: 50%;
@@ -636,10 +639,31 @@ RESPONSIVE
     background: #f7f8fa;
 }
 
-.context-option span {
-    white-space: nowrap;
+
+/* SinSigma logo — original dark square look */
+.brand-symbol {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: #111111;
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
 }
-.context-option:has(input:checked) {
-    border-color: #111827;
-    background: #f5f7fa;
+
+
+/* Keep Start Citing button prominent */
+.hero-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 24px;
+    padding: 12px 22px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
 }
