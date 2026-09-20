@@ -2,5 +2,6 @@ name = "sinsigma-com"
 main = "index.js"
 compatibility_date = "2024-04-01"
 
+# Secrets Store Centralized binding environment setup
 [vars]
-# Variables mapping handled via Cloudflare Dashboard Settings
+# Dashboard bindings will auto-route via centralized Store ID
