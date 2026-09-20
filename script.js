@@ -18,6 +18,9 @@ const citationContext = document.querySelectorAll(
     'input[name="citation-context"]'
 );
 const sourceTypeSelect = document.getElementById("source-type");
+const selectedContext = document.querySelector(
+    'input[name="citation-context"]:checked'
+)?.value || "international";
 
 const authorInput = document.getElementById("author");
 const yearInput = document.getElementById("year");
