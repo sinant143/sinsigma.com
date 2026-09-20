@@ -24,6 +24,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /* =========================================================
+       STATE
+    ========================================================= */
+
+    let sources = [];
+    let editingSourceId = null;
+
+    /* =========================================================
        HELPERS
     ========================================================= */
 
@@ -63,11 +70,9 @@ document.addEventListener("DOMContentLoaded", () => {
             return "";
         }
 
-        if (/^https?:\/\//i.test(url)) {
-            return url;
-        }
-
-        return `https://${url}`;
+        return /^https?:\/\//i.test(url)
+            ? url
+            : `https://${url}`;
     }
 
     function normalizeDoi(value) {
@@ -77,28 +82,21 @@ document.addEventListener("DOMContentLoaded", () => {
             return "";
         }
 
-        doi = doi
+        return doi
             .replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")
             .replace(/^doi:\s*/i, "");
-
-        return doi;
     }
 
     function parseAuthors(value) {
         return clean(value)
             .split(/\s*(?:;|\n)\s*/)
-            .map(item => item.trim())
+            .map(name => name.trim())
             .filter(Boolean);
     }
 
     function getLastName(name) {
         const parts = clean(name).split(/\s+/);
-
-        if (!parts.length) {
-            return "";
-        }
-
-        return parts[parts.length - 1];
+        return parts.length ? parts[parts.length - 1] : "";
     }
 
     function getInitials(name) {
@@ -111,21 +109,19 @@ document.addEventListener("DOMContentLoaded", () => {
             return "";
         }
 
-        const lastName = parts.pop();
+        const last = parts.pop();
 
         const initials = parts
             .map(part => `${part.charAt(0).toUpperCase()}.`)
             .join(" ");
 
         return initials
-            ? `${lastName}, ${initials}`
-            : lastName;
+            ? `${last}, ${initials}`
+            : last;
     }
 
     function apaAuthors(authors) {
-        if (!authors.length) {
-            return "";
-        }
+        if (!authors.length) return "";
 
         const formatted = authors.map(getInitials);
 
@@ -141,9 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function mlaAuthors(authors) {
-        if (!authors.length) {
-            return "";
-        }
+        if (!authors.length) return "";
 
         if (authors.length === 1) {
             return authors[0];
@@ -156,35 +150,25 @@ document.addEventListener("DOMContentLoaded", () => {
         return `${authors[0]}, et al.`;
     }
 
-    function chicagoAuthors(authors) {
-        if (!authors.length) {
-            return "";
-        }
-
-        return authors.join(", ");
-    }
-
     function harvardAuthors(authors) {
-        if (!authors.length) {
-            return "";
-        }
-
         return authors.map(getInitials).join(", ");
     }
 
-    function ieeeAuthors(authors) {
-        if (!authors.length) {
-            return "";
-        }
+    function chicagoAuthors(authors) {
+        return authors.join(", ");
+    }
 
+    function ieeeAuthors(authors) {
         return authors
             .map(name => {
                 const parts = clean(name).split(/\s+/);
+
                 if (parts.length === 1) {
                     return parts[0];
                 }
 
                 const last = parts.pop();
+
                 const initials = parts
                     .map(part => `${part.charAt(0).toUpperCase()}.`)
                     .join(" ");
@@ -195,10 +179,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function vancouverAuthors(authors) {
-        if (!authors.length) {
-            return "";
-        }
-
         return authors
             .map(name => {
                 const parts = clean(name).split(/\s+/);
@@ -208,6 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 const last = parts.pop();
+
                 const initials = parts
                     .map(part => part.charAt(0).toUpperCase())
                     .join("");
@@ -218,753 +199,724 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatDate(value) {
-        const date = clean(value);
+        if (!value) return "";
 
-        if (!date) {
-            return "";
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
         }
 
-        const parsed = new Date(date);
-
-        if (Number.isNaN(parsed.getTime())) {
-            return date;
-        }
-
-        return parsed.toLocaleDateString("en-IN", {
+        return date.toLocaleDateString("en-IN", {
             day: "numeric",
             month: "long",
             year: "numeric"
         });
     }
 
-    function getField(id) {
-        const element = document.getElementById(id);
-        return element ? clean(element.value) : "";
+    function fieldValue(id) {
+        const field = document.getElementById(id);
+        return field ? clean(field.value) : "";
     }
 
     /* =========================================================
-       DYNAMIC FIELD CREATION
-    ========================================================= */
-
-    let dynamicFieldsContainer = document.getElementById(
-        "dynamic-fields-container"
-    );
-
-    if (!dynamicFieldsContainer) {
-        dynamicFieldsContainer = document.createElement("div");
-        dynamicFieldsContainer.id = "dynamic-fields-container";
-
-        const doiElement = doiInput;
-
-        if (doiElement) {
-            const doiGroup =
-                doiElement.closest(".form-group") ||
-                doiElement.parentElement;
-
-            if (doiGroup && doiGroup.parentNode) {
-                doiGroup.parentNode.insertBefore(
-                    dynamicFieldsContainer,
-                    doiGroup.nextSibling
-                );
-            }
-        }
-    }
-
-    function createField({
-        id,
-        label,
-        placeholder = "",
-        type = "text",
-        required = false,
-        help = ""
-    }) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "form-group dynamic-field";
-        wrapper.dataset.dynamicField = id;
-
-        const labelElement = document.createElement("label");
-        labelElement.setAttribute("for", id);
-        labelElement.textContent = label;
-
-        wrapper.appendChild(labelElement);
-
-        let input;
-
-        if (type === "textarea") {
-            input = document.createElement("textarea");
-            input.rows = 3;
-        } else {
-            input = document.createElement("input");
-            input.type = type;
-        }
-
-        input.id = id;
-        input.placeholder = placeholder;
-
-        if (required) {
-            input.required = true;
-        }
-
-        wrapper.appendChild(input);
-
-        if (help) {
-            const helpText = document.createElement("small");
-            helpText.className = "field-help";
-            helpText.textContent = help;
-            wrapper.appendChild(helpText);
-        }
-
-        return wrapper;
-    }
-
-    function addField(config) {
-        dynamicFieldsContainer.appendChild(
-            createField(config)
-        );
-    }
-
-    function clearDynamicFields() {
-        dynamicFieldsContainer.innerHTML = "";
-    }
-
-    /* =========================================================
-       SOURCE CONFIGURATION
+       SOURCE LIST
     ========================================================= */
 
     const internationalSources = [
-        {
-            value: "website",
-            label: "Website"
-        },
-        {
-            value: "book",
-            label: "Book"
-        },
-        {
-            value: "journal",
-            label: "Journal Article"
-        }
+        ["website", "Website"],
+        ["book", "Book"],
+        ["journal", "Journal Article"]
     ];
 
     const indiaSources = [
-        {
-            value: "website",
-            label: "Website"
-        },
-        {
-            value: "book",
-            label: "Book"
-        },
-        {
-            value: "journal",
-            label: "Journal Article"
-        },
-        {
-            value: "government-report",
-            label: "Government Report"
-        },
-        {
-            value: "government-ministry",
-            label: "Government Ministry"
-        },
-        {
-            value: "indian-kanoon",
-            label: "Indian Kanoon"
-        },
-        {
-            value: "supreme-court",
-            label: "Supreme Court of India"
-        },
-        {
-            value: "high-court",
-            label: "High Court of India"
-        },
-        {
-            value: "gazette",
-            label: "Gazette Notification"
-        },
-        {
-            value: "rbi",
-            label: "RBI Publication"
-        },
-        {
-            value: "sebi",
-            label: "SEBI Publication"
-        },
-        {
-            value: "pib",
-            label: "PIB Press Release"
-        },
-        {
-            value: "newspaper",
-            label: "Newspaper Article"
-        },
-        {
-            value: "legislation",
-            label: "Act / Legislation"
-        }
+        ["website", "Website"],
+        ["book", "Book"],
+        ["journal", "Journal Article"],
+        ["government-report", "Government Report"],
+        ["government-ministry", "Government Ministry"],
+        ["indian-kanoon", "Indian Kanoon"],
+        ["supreme-court", "Supreme Court of India"],
+        ["high-court", "High Court of India"],
+        ["gazette", "Gazette Notification"],
+        ["rbi", "RBI Publication"],
+        ["sebi", "SEBI Publication"],
+        ["pib", "PIB Press Release"],
+        ["newspaper", "Newspaper Article"],
+        ["legislation", "Act / Legislation"]
     ];
 
     function updateSourceTypes() {
-        if (!sourceType) {
-            return;
-        }
+        if (!sourceType) return;
 
         const context = getSelectedContext();
 
-        const sources =
+        const list =
             context === "india"
                 ? indiaSources
                 : internationalSources;
 
-        const previousValue = sourceType.value;
+        const current = sourceType.value;
 
         sourceType.innerHTML = "";
 
-        sources.forEach(source => {
+        list.forEach(([value, label]) => {
             const option = document.createElement("option");
 
-            option.value = source.value;
-            option.textContent = source.label;
+            option.value = value;
+            option.textContent = label;
 
             sourceType.appendChild(option);
         });
 
-        const stillExists = sources.some(
-            source => source.value === previousValue
-        );
-
-        if (stillExists) {
-            sourceType.value = previousValue;
+        if (list.some(item => item[0] === current)) {
+            sourceType.value = current;
         } else {
-            sourceType.value = sources[0].value;
+            sourceType.value = list[0][0];
         }
 
-        updateSourceFields();
+        updateDynamicFields();
     }
 
     /* =========================================================
-       DYNAMIC SOURCE FIELDS
+       DYNAMIC FIELDS
     ========================================================= */
 
-    function updateSourceFields() {
-        clearDynamicFields();
+    let dynamicContainer =
+        document.getElementById("dynamic-fields-container");
+
+    if (!dynamicContainer) {
+        dynamicContainer = document.createElement("div");
+        dynamicContainer.id = "dynamic-fields-container";
+
+        const doiGroup =
+            doiInput?.closest(".form-group") ||
+            doiInput?.parentElement;
+
+        if (doiGroup && doiGroup.parentNode) {
+            doiGroup.parentNode.insertBefore(
+                dynamicContainer,
+                doiGroup.nextSibling
+            );
+        }
+    }
+
+    function createDynamicField(
+        id,
+        label,
+        type = "text",
+        placeholder = ""
+    ) {
+        const wrapper = document.createElement("div");
+
+        wrapper.className = "form-group dynamic-field";
+
+        const labelElement = document.createElement("label");
+
+        labelElement.htmlFor = id;
+        labelElement.textContent = label;
+
+        wrapper.appendChild(labelElement);
+
+        const input = document.createElement("input");
+
+        input.id = id;
+        input.type = type;
+        input.placeholder = placeholder;
+
+        wrapper.appendChild(input);
+
+        return wrapper;
+    }
+
+    function addDynamicField(
+        id,
+        label,
+        type = "text",
+        placeholder = ""
+    ) {
+        dynamicContainer.appendChild(
+            createDynamicField(
+                id,
+                label,
+                type,
+                placeholder
+            )
+        );
+    }
+
+    function updateDynamicFields() {
+        if (!dynamicContainer) return;
+
+        dynamicContainer.innerHTML = "";
 
         const context = getSelectedContext();
-        const source = sourceType ? sourceType.value : "website";
+        const source = sourceType?.value;
 
-        /*
-         * INTERNATIONAL WEBSITE
-         */
         if (
             context === "international" &&
             source === "website"
         ) {
-            addField({
-                id: "access-date",
-                label: "Access Date",
-                type: "date",
-                help: "Optional — useful for APA, MLA and Harvard."
-            });
+            addDynamicField(
+                "access-date",
+                "Access Date",
+                "date"
+            );
         }
 
-        /*
-         * INTERNATIONAL JOURNAL
-         */
         if (
             context === "international" &&
             source === "journal"
         ) {
-            addField({
-                id: "volume",
-                label: "Volume",
-                placeholder: "e.g. 12"
-            });
+            addDynamicField(
+                "volume",
+                "Volume",
+                "text",
+                "e.g. 12"
+            );
 
-            addField({
-                id: "issue",
-                label: "Issue",
-                placeholder: "e.g. 3"
-            });
+            addDynamicField(
+                "issue",
+                "Issue",
+                "text",
+                "e.g. 3"
+            );
 
-            addField({
-                id: "pages",
-                label: "Pages",
-                placeholder: "e.g. 145–162"
-            });
+            addDynamicField(
+                "pages",
+                "Pages",
+                "text",
+                "e.g. 145–162"
+            );
         }
 
-        /*
-         * INDIA — GOVERNMENT REPORT
-         */
         if (source === "government-report") {
-            addField({
-                id: "organisation",
-                label: "Ministry / Department / Organisation",
-                placeholder: "e.g. Ministry of Finance"
-            });
+            addDynamicField(
+                "organisation",
+                "Ministry / Department / Organisation",
+                "text",
+                "e.g. Ministry of Finance"
+            );
 
-            addField({
-                id: "report-number",
-                label: "Report Number",
-                placeholder: "e.g. Report No. 12/2026"
-            });
+            addDynamicField(
+                "report-number",
+                "Report Number",
+                "text",
+                "e.g. Report No. 12/2026"
+            );
 
-            addField({
-                id: "report-date",
-                label: "Report Date",
-                type: "date"
-            });
+            addDynamicField(
+                "report-date",
+                "Report Date",
+                "date"
+            );
         }
 
-        /*
-         * INDIA — GOVERNMENT MINISTRY
-         */
         if (source === "government-ministry") {
-            addField({
-                id: "ministry",
-                label: "Ministry / Department",
-                placeholder: "e.g. Ministry of Electronics and IT"
-            });
+            addDynamicField(
+                "ministry",
+                "Ministry / Department",
+                "text",
+                "e.g. Ministry of Electronics and IT"
+            );
 
-            addField({
-                id: "document-number",
-                label: "Document / Notification Number",
-                placeholder: "Optional"
-            });
+            addDynamicField(
+                "document-number",
+                "Document / Notification Number",
+                "text",
+                "Optional"
+            );
 
-            addField({
-                id: "document-date",
-                label: "Publication Date",
-                type: "date"
-            });
+            addDynamicField(
+                "document-date",
+                "Publication Date",
+                "date"
+            );
         }
 
-        /*
-         * INDIA — INDIAN KANOON
-         */
-        if (source === "indian-kanoon") {
-            addField({
-                id: "court",
-                label: "Court",
-                placeholder: "e.g. Supreme Court of India",
-                required: true
-            });
+        if (
+            source === "indian-kanoon" ||
+            source === "supreme-court" ||
+            source === "high-court"
+        ) {
+            addDynamicField(
+                "court",
+                source === "high-court"
+                    ? "High Court"
+                    : "Court",
+                "text",
+                source === "supreme-court"
+                    ? "Supreme Court of India"
+                    : "e.g. Bombay High Court"
+            );
 
-            addField({
-                id: "case-number",
-                label: "Case / Appeal Number",
-                placeholder: "e.g. Civil Appeal No. 1234 of 2026"
-            });
+            addDynamicField(
+                "case-number",
+                "Case / Appeal Number",
+                "text",
+                "e.g. Civil Appeal No. 1234 of 2026"
+            );
 
-            addField({
-                id: "judgment-date",
-                label: "Judgment Date",
-                type: "date",
-                required: true
-            });
+            addDynamicField(
+                "judgment-date",
+                "Judgment Date",
+                "date"
+            );
 
-            addField({
-                id: "case-citation",
-                label: "Law Report / Citation",
-                placeholder: "e.g. (1995) 1 SCC 478"
-            });
+            addDynamicField(
+                "case-citation",
+                "Law Report / Citation",
+                "text",
+                "e.g. (2026) 5 SCC 123"
+            );
 
-            addField({
-                id: "bench",
-                label: "Judge(s) / Bench",
-                placeholder: "e.g. D.Y. Chandrachud, J."
-            });
+            addDynamicField(
+                "bench",
+                "Judge(s) / Bench",
+                "text",
+                "e.g. D.Y. Chandrachud, J."
+            );
         }
 
-        /*
-         * INDIA — SUPREME COURT
-         */
-        if (source === "supreme-court") {
-            addField({
-                id: "court",
-                label: "Court",
-                placeholder: "Supreme Court of India",
-                required: true
-            });
-
-            addField({
-                id: "case-number",
-                label: "Case / Appeal Number",
-                placeholder: "e.g. Civil Appeal No. 1234 of 2026"
-            });
-
-            addField({
-                id: "judgment-date",
-                label: "Judgment Date",
-                type: "date",
-                required: true
-            });
-
-            addField({
-                id: "case-citation",
-                label: "Law Report / Citation",
-                placeholder: "e.g. (2026) 5 SCC 123"
-            });
-
-            addField({
-                id: "bench",
-                label: "Judge(s) / Bench",
-                placeholder: "e.g. A.B. CJI, C.D. J."
-            });
-        }
-
-        /*
-         * INDIA — HIGH COURT
-         */
-        if (source === "high-court") {
-            addField({
-                id: "court",
-                label: "High Court",
-                placeholder: "e.g. Bombay High Court",
-                required: true
-            });
-
-            addField({
-                id: "case-number",
-                label: "Case / Petition Number",
-                placeholder: "e.g. Writ Petition No. 1234 of 2026"
-            });
-
-            addField({
-                id: "judgment-date",
-                label: "Judgment Date",
-                type: "date",
-                required: true
-            });
-
-            addField({
-                id: "case-citation",
-                label: "Law Report / Citation",
-                placeholder: "Optional"
-            });
-
-            addField({
-                id: "bench",
-                label: "Judge(s) / Bench",
-                placeholder: "e.g. G.S. Patel, J."
-            });
-        }
-
-        /*
-         * INDIA — GAZETTE
-         */
         if (source === "gazette") {
-            addField({
-                id: "issuing-authority",
-                label: "Issuing Authority",
-                placeholder: "e.g. Ministry of Finance",
-                required: true
-            });
+            addDynamicField(
+                "issuing-authority",
+                "Issuing Authority",
+                "text",
+                "e.g. Ministry of Finance"
+            );
 
-            addField({
-                id: "notification-number",
-                label: "Notification Number",
-                placeholder: "e.g. S.O. 1234(E)"
-            });
+            addDynamicField(
+                "notification-number",
+                "Notification Number",
+                "text",
+                "e.g. S.O. 1234(E)"
+            );
 
-            addField({
-                id: "gazette-date",
-                label: "Notification Date",
-                type: "date",
-                required: true
-            });
+            addDynamicField(
+                "gazette-date",
+                "Notification Date",
+                "date"
+            );
 
-            addField({
-                id: "gazette-part",
-                label: "Gazette Part / Section",
-                placeholder: "Optional"
-            });
+            addDynamicField(
+                "gazette-part",
+                "Gazette Part / Section",
+                "text",
+                "Optional"
+            );
         }
 
-        /*
-         * INDIA — RBI
-         */
         if (source === "rbi") {
-            addField({
-                id: "rbi-document-type",
-                label: "RBI Document Type",
-                placeholder: "e.g. Notification, Circular, Report"
-            });
+            addDynamicField(
+                "rbi-document-type",
+                "RBI Document Type",
+                "text",
+                "e.g. Circular, Notification, Report"
+            );
 
-            addField({
-                id: "rbi-number",
-                label: "Notification / Circular Number",
-                placeholder: "e.g. RBI/2026-27/45"
-            });
+            addDynamicField(
+                "rbi-number",
+                "Notification / Circular Number",
+                "text",
+                "e.g. RBI/2026-27/45"
+            );
 
-            addField({
-                id: "rbi-date",
-                label: "Publication Date",
-                type: "date",
-                required: true
-            });
+            addDynamicField(
+                "rbi-date",
+                "Publication Date",
+                "date"
+            );
         }
 
-        /*
-         * INDIA — SEBI
-         */
         if (source === "sebi") {
-            addField({
-                id: "sebi-document-type",
-                label: "SEBI Document Type",
-                placeholder: "e.g. Circular, Regulation, Report"
-            });
+            addDynamicField(
+                "sebi-document-type",
+                "SEBI Document Type",
+                "text",
+                "e.g. Circular, Regulation, Report"
+            );
 
-            addField({
-                id: "sebi-number",
-                label: "Circular / Reference Number",
-                placeholder: "e.g. SEBI/HO/..."
-            });
+            addDynamicField(
+                "sebi-number",
+                "Circular / Reference Number",
+                "text",
+                "e.g. SEBI/HO/..."
+            );
 
-            addField({
-                id: "sebi-date",
-                label: "Publication Date",
-                type: "date",
-                required: true
-            });
+            addDynamicField(
+                "sebi-date",
+                "Publication Date",
+                "date"
+            );
         }
 
-        /*
-         * INDIA — PIB
-         */
         if (source === "pib") {
-            addField({
-                id: "pib-ministry",
-                label: "Ministry / Department",
-                placeholder: "e.g. Ministry of Finance"
-            });
+            addDynamicField(
+                "pib-ministry",
+                "Ministry / Department",
+                "text",
+                "e.g. Ministry of Finance"
+            );
 
-            addField({
-                id: "pib-release-number",
-                label: "Press Release Number",
-                placeholder: "e.g. PIB/2026/123"
-            });
+            addDynamicField(
+                "pib-release-number",
+                "Press Release Number",
+                "text",
+                "e.g. PIB/2026/123"
+            );
 
-            addField({
-                id: "pib-date",
-                label: "Release Date",
-                type: "date",
-                required: true
-            });
+            addDynamicField(
+                "pib-date",
+                "Release Date",
+                "date"
+            );
         }
 
-        /*
-         * INDIA — NEWSPAPER
-         */
         if (source === "newspaper") {
-            addField({
-                id: "edition",
-                label: "Edition / City",
-                placeholder: "e.g. Mumbai"
-            });
+            addDynamicField(
+                "edition",
+                "Edition / City",
+                "text",
+                "e.g. Mumbai"
+            );
 
-            addField({
-                id: "publication-date",
-                label: "Publication Date",
-                type: "date",
-                required: true
-            });
+            addDynamicField(
+                "publication-date",
+                "Publication Date",
+                "date"
+            );
         }
 
-        /*
-         * INDIA — LEGISLATION
-         */
         if (source === "legislation") {
-            addField({
-                id: "act-number",
-                label: "Act Number",
-                placeholder: "e.g. Act No. 21 of 2026"
-            });
+            addDynamicField(
+                "act-number",
+                "Act Number",
+                "text",
+                "e.g. Act No. 21 of 2026"
+            );
 
-            addField({
-                id: "issuing-authority",
-                label: "Issuing Authority",
-                placeholder: "e.g. Parliament of India"
-            });
+            addDynamicField(
+                "issuing-authority",
+                "Issuing Authority",
+                "text",
+                "e.g. Parliament of India"
+            );
 
-            addField({
-                id: "act-date",
-                label: "Date / Year",
-                type: "date"
-            });
+            addDynamicField(
+                "act-date",
+                "Date",
+                "date"
+            );
         }
     }
 
     /* =========================================================
-       FORM DATA
+       COLLECT CURRENT SOURCE
     ========================================================= */
 
-    function collectData() {
+    function collectCurrentSource() {
         return {
+            id: editingSourceId || Date.now(),
+
             context: getSelectedContext(),
-            style: citationStyle ? citationStyle.value : "apa",
-            source: sourceType ? sourceType.value : "website",
+
+            style: citationStyle?.value || "apa",
+
+            source: sourceType?.value || "website",
 
             author: clean(authorInput?.value),
-            authors: parseAuthors(authorInput?.value),
+
+            authors: parseAuthors(
+                authorInput?.value
+            ),
+
             year: clean(yearInput?.value),
+
             title: clean(titleInput?.value),
-            publication: clean(publicationInput?.value),
-            url: normalizeUrl(urlInput?.value),
-            doi: normalizeDoi(doiInput?.value),
 
-            accessDate: getField("access-date"),
+            publication: clean(
+                publicationInput?.value
+            ),
 
-            volume: getField("volume"),
-            issue: getField("issue"),
-            pages: getField("pages"),
+            url: normalizeUrl(
+                urlInput?.value
+            ),
 
-            organisation: getField("organisation"),
-            reportNumber: getField("report-number"),
-            reportDate: getField("report-date"),
+            doi: normalizeDoi(
+                doiInput?.value
+            ),
 
-            ministry: getField("ministry"),
-            documentNumber: getField("document-number"),
-            documentDate: getField("document-date"),
+            accessDate: fieldValue(
+                "access-date"
+            ),
 
-            court: getField("court"),
-            caseNumber: getField("case-number"),
-            judgmentDate: getField("judgment-date"),
-            caseCitation: getField("case-citation"),
-            bench: getField("bench"),
+            volume: fieldValue("volume"),
 
-            issuingAuthority: getField("issuing-authority"),
-            notificationNumber: getField("notification-number"),
-            gazetteDate: getField("gazette-date"),
-            gazettePart: getField("gazette-part"),
+            issue: fieldValue("issue"),
 
-            rbiDocumentType: getField("rbi-document-type"),
-            rbiNumber: getField("rbi-number"),
-            rbiDate: getField("rbi-date"),
+            pages: fieldValue("pages"),
 
-            sebiDocumentType: getField("sebi-document-type"),
-            sebiNumber: getField("sebi-number"),
-            sebiDate: getField("sebi-date"),
+            organisation: fieldValue(
+                "organisation"
+            ),
 
-            pibMinistry: getField("pib-ministry"),
-            pibReleaseNumber: getField("pib-release-number"),
-            pibDate: getField("pib-date"),
+            reportNumber: fieldValue(
+                "report-number"
+            ),
 
-            edition: getField("edition"),
-            publicationDate: getField("publication-date"),
+            reportDate: fieldValue(
+                "report-date"
+            ),
 
-            actNumber: getField("act-number"),
-            actDate: getField("act-date")
+            ministry: fieldValue(
+                "ministry"
+            ),
+
+            documentNumber: fieldValue(
+                "document-number"
+            ),
+
+            documentDate: fieldValue(
+                "document-date"
+            ),
+
+            court: fieldValue("court"),
+
+            caseNumber: fieldValue(
+                "case-number"
+            ),
+
+            judgmentDate: fieldValue(
+                "judgment-date"
+            ),
+
+            caseCitation: fieldValue(
+                "case-citation"
+            ),
+
+            bench: fieldValue("bench"),
+
+            issuingAuthority: fieldValue(
+                "issuing-authority"
+            ),
+
+            notificationNumber: fieldValue(
+                "notification-number"
+            ),
+
+            gazetteDate: fieldValue(
+                "gazette-date"
+            ),
+
+            gazettePart: fieldValue(
+                "gazette-part"
+            ),
+
+            rbiDocumentType: fieldValue(
+                "rbi-document-type"
+            ),
+
+            rbiNumber: fieldValue(
+                "rbi-number"
+            ),
+
+            rbiDate: fieldValue(
+                "rbi-date"
+            ),
+
+            sebiDocumentType: fieldValue(
+                "sebi-document-type"
+            ),
+
+            sebiNumber: fieldValue(
+                "sebi-number"
+            ),
+
+            sebiDate: fieldValue(
+                "sebi-date"
+            ),
+
+            pibMinistry: fieldValue(
+                "pib-ministry"
+            ),
+
+            pibReleaseNumber: fieldValue(
+                "pib-release-number"
+            ),
+
+            pibDate: fieldValue(
+                "pib-date"
+            ),
+
+            edition: fieldValue("edition"),
+
+            publicationDate: fieldValue(
+                "publication-date"
+            ),
+
+            actNumber: fieldValue(
+                "act-number"
+            ),
+
+            actDate: fieldValue(
+                "act-date"
+            )
         };
+    }
+
+    /* =========================================================
+       LOAD SOURCE INTO FORM
+    ========================================================= */
+
+    function setValue(element, value) {
+        if (element) {
+            element.value = value || "";
+        }
+    }
+
+    function loadSource(source) {
+        if (!source) return;
+
+        const radio = document.querySelector(
+            `input[name="citation-context"][value="${source.context}"]`
+        );
+
+        if (radio) {
+            radio.checked = true;
+        }
+
+        updateSourceTypes();
+
+        if (sourceType) {
+            sourceType.value = source.source;
+        }
+
+        updateDynamicFields();
+
+        if (citationStyle) {
+            citationStyle.value = source.style;
+        }
+
+        setValue(
+            authorInput,
+            source.author
+        );
+
+        setValue(
+            yearInput,
+            source.year
+        );
+
+        setValue(
+            titleInput,
+            source.title
+        );
+
+        setValue(
+            publicationInput,
+            source.publication
+        );
+
+        setValue(
+            urlInput,
+            source.url
+        );
+
+        setValue(
+            doiInput,
+            source.doi
+        );
+
+        Object.keys(source).forEach(key => {
+            const field = document.getElementById(
+                key.replace(
+                    /[A-Z]/g,
+                    letter => `-${letter.toLowerCase()}`
+                )
+            );
+
+            if (
+                field &&
+                ![
+                    "author",
+                    "year",
+                    "title",
+                    "publication",
+                    "url",
+                    "doi"
+                ].includes(key)
+            ) {
+                field.value =
+                    source[key] || "";
+            }
+        });
     }
 
     /* =========================================================
        VALIDATION
     ========================================================= */
 
-    function validateData(data) {
+    function validateSource(data) {
         if (!data.title) {
             return "Please enter the title.";
         }
 
-        const legalSources = [
-            "indian-kanoon",
+        const noAuthorRequired = [
+            "legislation",
             "supreme-court",
-            "high-court"
-        ];
-
-        const legislationSources = [
-            "legislation"
+            "high-court",
+            "indian-kanoon",
+            "gazette",
+            "rbi",
+            "sebi",
+            "pib",
+            "government-report",
+            "government-ministry"
         ];
 
         if (
-            !legalSources.includes(data.source) &&
-            !legislationSources.includes(data.source) &&
+            !noAuthorRequired.includes(
+                data.source
+            ) &&
             !data.author
         ) {
             return "Please enter the author / writer.";
-        }
-
-        if (
-            legalSources.includes(data.source) &&
-            !data.court
-        ) {
-            return "Please enter the court.";
-        }
-
-        if (
-            legalSources.includes(data.source) &&
-            !data.judgmentDate
-        ) {
-            return "Please enter the judgment date.";
-        }
-
-        if (
-            data.source === "gazette" &&
-            !data.issuingAuthority
-        ) {
-            return "Please enter the issuing authority.";
-        }
-
-        if (
-            data.source === "gazette" &&
-            !data.gazetteDate
-        ) {
-            return "Please enter the notification date.";
-        }
-
-        if (
-            data.source === "rbi" &&
-            !data.rbiDate
-        ) {
-            return "Please enter the RBI publication date.";
-        }
-
-        if (
-            data.source === "sebi" &&
-            !data.sebiDate
-        ) {
-            return "Please enter the SEBI publication date.";
-        }
-
-        if (
-            data.source === "pib" &&
-            !data.pibDate
-        ) {
-            return "Please enter the PIB release date.";
         }
 
         return "";
     }
 
     /* =========================================================
-       STANDARD INTERNATIONAL CITATIONS
+       INTERNATIONAL FORMATS
     ========================================================= */
 
     function formatAPA(data) {
-        const authors = apaAuthors(data.authors);
+        const authors = apaAuthors(
+            data.authors
+        );
 
         if (data.source === "book") {
-            return `${authors ? `${authors}. ` : ""}(${data.year}). ${italic(data.title)}.${data.publication ? ` ${escapeHtml(data.publication)}.` : ""}`;
+            return `${authors ? `${authors}. ` : ""}(${escapeHtml(data.year)}). ${italic(data.title)}.${data.publication ? ` ${escapeHtml(data.publication)}.` : ""}`;
         }
 
         if (data.source === "journal") {
-            let result = `${authors ? `${authors}. ` : ""}(${data.year}). ${escapeHtml(data.title)}.`;
+            let result =
+                `${authors ? `${authors}. ` : ""}(${escapeHtml(data.year)}). ${escapeHtml(data.title)}.`;
 
             if (data.publication) {
                 result += ` ${italic(data.publication)}`;
 
                 if (data.volume) {
-                    result += `, ${data.volume}`;
+                    result += `, ${escapeHtml(data.volume)}`;
                 }
 
                 if (data.issue) {
-                    result += `(${data.issue})`;
+                    result += `(${escapeHtml(data.issue)})`;
                 }
 
                 if (data.pages) {
-                    result += `, ${data.pages}`;
+                    result += `, ${escapeHtml(data.pages)}`;
                 }
 
                 result += ".";
@@ -979,7 +931,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return result;
         }
 
-        let result = `${authors ? `${authors}. ` : ""}(${data.year}). ${escapeHtml(data.title)}.`;
+        let result =
+            `${authors ? `${authors}. ` : ""}(${escapeHtml(data.year)}). ${escapeHtml(data.title)}.`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}.`;
@@ -993,14 +946,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatMLA(data) {
-        const authors = mlaAuthors(data.authors);
+        const authors = mlaAuthors(
+            data.authors
+        );
 
         if (data.source === "book") {
-            return `${authors ? `${authors}. ` : ""}${italic(data.title)}.${data.publication ? ` ${escapeHtml(data.publication)},` : ""} ${data.year}.`;
+            return `${authors ? `${authors}. ` : ""}${italic(data.title)}.${data.publication ? ` ${escapeHtml(data.publication)},` : ""} ${escapeHtml(data.year)}.`;
         }
 
         if (data.source === "journal") {
-            let result = `${authors ? `${authors}. ` : ""}${quote(data.title)}.`;
+            let result =
+                `${authors ? `${authors}. ` : ""}${quote(data.title)}.`;
 
             if (data.publication) {
                 result += ` ${italic(data.publication)}`;
@@ -1031,7 +987,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return result;
         }
 
-        let result = `${authors ? `${authors}. ` : ""}${quote(data.title)}.`;
+        let result =
+            `${authors ? `${authors}. ` : ""}${quote(data.title)}.`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)},`;
@@ -1049,25 +1006,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatHarvard(data) {
-        const authors = harvardAuthors(data.authors);
+        const authors =
+            harvardAuthors(data.authors);
 
-        let result = `${authors ? `${authors} ` : ""}(${data.year}) ${escapeHtml(data.title)}.`;
+        let result =
+            `${authors ? `${authors} ` : ""}(${escapeHtml(data.year)}) ${escapeHtml(data.title)}.`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}.`;
         }
 
         if (data.url) {
-            result += ` Available at: ${escapeHtml(data.url)}.`;
+            result += ` Available at: ${escapeHtml(data.url)}`;
         }
 
         return result;
     }
 
     function formatChicago(data) {
-        const authors = chicagoAuthors(data.authors);
+        const authors =
+            chicagoAuthors(data.authors);
 
-        let result = `${authors ? `${authors}. ` : ""}"${escapeHtml(data.title)}."`;
+        let result =
+            `${authors ? `${authors}. ` : ""}${escapeHtml(data.title)}.`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}.`;
@@ -1085,9 +1046,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatIEEE(data) {
-        const authors = ieeeAuthors(data.authors);
+        const authors =
+            ieeeAuthors(data.authors);
 
-        let result = `${authors ? `${authors}, ` : ""}"${escapeHtml(data.title)},"`;
+        let result =
+            `${authors ? `${authors}, ` : ""}"${escapeHtml(data.title)},"`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}`;
@@ -1119,9 +1082,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatVancouver(data) {
-        const authors = vancouverAuthors(data.authors);
+        const authors =
+            vancouverAuthors(data.authors);
 
-        let result = `${authors ? `${authors}. ` : ""}${escapeHtml(data.title)}.`;
+        let result =
+            `${authors ? `${authors}. ` : ""}${escapeHtml(data.title)}.`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}.`;
@@ -1149,23 +1114,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /* =========================================================
-       INDIA GOVERNMENT SOURCES
+       INDIA FORMATS
     ========================================================= */
 
     function formatGovernmentReport(data) {
-        const organisation =
-            data.organisation ||
-            data.publication ||
-            "Government of India";
+        let result =
+            `${escapeHtml(data.organisation || "Government of India")}.`;
 
-        const date =
-            formatDate(data.reportDate) ||
-            data.year;
-
-        let result = `${escapeHtml(organisation)}.`;
-
-        if (date) {
-            result += ` (${escapeHtml(date)}).`;
+        if (data.reportDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.reportDate) ||
+                data.year
+            )}).`;
         }
 
         result += ` ${italic(data.title)}.`;
@@ -1182,19 +1142,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatGovernmentMinistry(data) {
-        const ministry =
-            data.ministry ||
-            data.publication ||
-            "Government of India";
+        let result =
+            `${escapeHtml(data.ministry || "Government of India")}.`;
 
-        const date =
-            formatDate(data.documentDate) ||
-            data.year;
-
-        let result = `${escapeHtml(ministry)}.`;
-
-        if (date) {
-            result += ` (${escapeHtml(date)}).`;
+        if (data.documentDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.documentDate) ||
+                data.year
+            )}).`;
         }
 
         result += ` ${italic(data.title)}.`;
@@ -1210,16 +1165,9 @@ document.addEventListener("DOMContentLoaded", () => {
         return result;
     }
 
-    /* =========================================================
-       INDIAN LEGAL CITATIONS
-    ========================================================= */
-
     function formatIndianCase(data) {
-        const caseName = escapeHtml(data.title);
-        const court = escapeHtml(data.court);
-        const date = formatDate(data.judgmentDate);
-
-        let result = `${caseName}`;
+        let result =
+            `${escapeHtml(data.title)}`;
 
         if (data.caseCitation) {
             result += `, ${escapeHtml(data.caseCitation)}`;
@@ -1229,16 +1177,22 @@ document.addEventListener("DOMContentLoaded", () => {
             result += `, ${escapeHtml(data.caseNumber)}`;
         }
 
-        result += ` (${court}`;
+        result += ` (${escapeHtml(
+            data.court || "Indian Court"
+        )}`;
 
-        if (date) {
-            result += `, ${escapeHtml(date)}`;
+        if (data.judgmentDate) {
+            result += `, ${escapeHtml(
+                formatDate(data.judgmentDate)
+            )}`;
         }
 
-        result += `)`;
+        result += ")";
 
         if (data.bench) {
-            result += `, Bench: ${escapeHtml(data.bench)}`;
+            result += `, Bench: ${escapeHtml(
+                data.bench
+            )}`;
         }
 
         if (data.url) {
@@ -1250,46 +1204,31 @@ document.addEventListener("DOMContentLoaded", () => {
         return result;
     }
 
-    function formatIndianKanoon(data) {
-        let result = formatIndianCase(data);
-
-        if (data.style === "apa") {
-            result = `${escapeHtml(data.title)}. (${escapeHtml(data.year || new Date(data.judgmentDate).getFullYear() || "")}). ${escapeHtml(data.court)}.`;
-
-            if (data.caseCitation) {
-                result += ` ${escapeHtml(data.caseCitation)}.`;
-            }
-
-            if (data.url) {
-                result += ` ${escapeHtml(data.url)}`;
-            }
-        }
-
-        return result;
-    }
-
     function formatGazette(data) {
-        const authority =
-            data.issuingAuthority ||
-            data.publication ||
-            "Government of India";
+        let result =
+            `${escapeHtml(
+                data.issuingAuthority ||
+                "Government of India"
+            )}.`;
 
-        const date = formatDate(data.gazetteDate);
-
-        let result = `${escapeHtml(authority)}.`;
-
-        if (date) {
-            result += ` (${escapeHtml(date)}).`;
+        if (data.gazetteDate) {
+            result += ` (${escapeHtml(
+                formatDate(data.gazetteDate)
+            )}).`;
         }
 
         result += ` ${italic(data.title)}.`;
 
         if (data.notificationNumber) {
-            result += ` Notification No. ${escapeHtml(data.notificationNumber)}.`;
+            result += ` Notification No. ${escapeHtml(
+                data.notificationNumber
+            )}.`;
         }
 
         if (data.gazettePart) {
-            result += ` ${escapeHtml(data.gazettePart)}.`;
+            result += ` ${escapeHtml(
+                data.gazettePart
+            )}.`;
         }
 
         if (data.url) {
@@ -1300,24 +1239,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatRBI(data) {
-        const date =
-            formatDate(data.rbiDate) ||
-            data.year;
+        let result =
+            "Reserve Bank of India.";
 
-        let result = `Reserve Bank of India.`;
-
-        if (date) {
-            result += ` (${escapeHtml(date)}).`;
+        if (data.rbiDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.rbiDate) ||
+                data.year
+            )}).`;
         }
 
         result += ` ${italic(data.title)}.`;
 
         if (data.rbiDocumentType) {
-            result += ` ${escapeHtml(data.rbiDocumentType)}.`;
+            result += ` ${escapeHtml(
+                data.rbiDocumentType
+            )}.`;
         }
 
         if (data.rbiNumber) {
-            result += ` ${escapeHtml(data.rbiNumber)}.`;
+            result += ` ${escapeHtml(
+                data.rbiNumber
+            )}.`;
         }
 
         if (data.url) {
@@ -1328,24 +1271,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatSEBI(data) {
-        const date =
-            formatDate(data.sebiDate) ||
-            data.year;
+        let result =
+            "Securities and Exchange Board of India.";
 
-        let result = `Securities and Exchange Board of India.`;
-
-        if (date) {
-            result += ` (${escapeHtml(date)}).`;
+        if (data.sebiDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.sebiDate) ||
+                data.year
+            )}).`;
         }
 
         result += ` ${italic(data.title)}.`;
 
         if (data.sebiDocumentType) {
-            result += ` ${escapeHtml(data.sebiDocumentType)}.`;
+            result += ` ${escapeHtml(
+                data.sebiDocumentType
+            )}.`;
         }
 
         if (data.sebiNumber) {
-            result += ` ${escapeHtml(data.sebiNumber)}.`;
+            result += ` ${escapeHtml(
+                data.sebiNumber
+            )}.`;
         }
 
         if (data.url) {
@@ -1356,28 +1303,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatPIB(data) {
-        const ministry =
-            data.pibMinistry ||
-            data.publication ||
-            "Press Information Bureau";
+        let result =
+            `${escapeHtml(
+                data.pibMinistry ||
+                "Press Information Bureau"
+            )}.`;
 
-        const date =
-            formatDate(data.pibDate) ||
-            data.year;
-
-        let result = `${escapeHtml(ministry)}.`;
-
-        if (date) {
-            result += ` (${escapeHtml(date)}).`;
+        if (data.pibDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.pibDate) ||
+                data.year
+            )}).`;
         }
 
         result += ` ${italic(data.title)}.`;
 
         if (data.pibReleaseNumber) {
-            result += ` Press Release ${escapeHtml(data.pibReleaseNumber)}.`;
+            result += ` Press Release ${escapeHtml(
+                data.pibReleaseNumber
+            )}.`;
         }
 
-        result += ` Press Information Bureau.`;
+        result += " Press Information Bureau.";
 
         if (data.url) {
             result += ` ${escapeHtml(data.url)}`;
@@ -1387,24 +1334,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatNewspaper(data) {
-        const authors = harvardAuthors(data.authors);
+        const authors =
+            harvardAuthors(data.authors);
 
-        const date =
-            formatDate(data.publicationDate) ||
-            data.year;
-
-        let result = `${authors ? `${authors}. ` : ""}${escapeHtml(data.title)}.`;
+        let result =
+            `${authors ? `${authors}. ` : ""}${escapeHtml(data.title)}.`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}`;
         }
 
         if (data.edition) {
-            result += `, ${escapeHtml(data.edition)}`;
+            result += `, ${escapeHtml(
+                data.edition
+            )}`;
         }
 
-        if (date) {
-            result += `, ${escapeHtml(date)}.`;
+        if (
+            data.publicationDate ||
+            data.year
+        ) {
+            result += `, ${escapeHtml(
+                formatDate(data.publicationDate) ||
+                data.year
+            )}.`;
         }
 
         if (data.url) {
@@ -1415,18 +1368,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatLegislation(data) {
-        let result = `${italic(data.title)}`;
+        let result =
+            `${italic(data.title)}`;
 
         if (data.actNumber) {
-            result += `, ${escapeHtml(data.actNumber)}`;
+            result += `, ${escapeHtml(
+                data.actNumber
+            )}`;
         }
 
         if (data.year) {
-            result += ` (${escapeHtml(data.year)})`;
+            result += ` (${escapeHtml(
+                data.year
+            )})`;
         }
 
         if (data.issuingAuthority) {
-            result += `, ${escapeHtml(data.issuingAuthority)}`;
+            result += `, ${escapeHtml(
+                data.issuingAuthority
+            )}`;
         }
 
         if (data.url) {
@@ -1439,236 +1399,762 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /* =========================================================
-       MAIN FORMATTER
+       STYLE-AWARE INDIA FORMAT
     ========================================================= */
 
-    function generateCitation(data) {
+    function formatIndiaByStyle(data) {
+        const style =
+            data.style || "apa";
+
         /*
-         * India-specific sources get dedicated formatting.
+         * Legal/government data is source-specific,
+         * but the surrounding style changes according
+         * to the selected citation style.
          */
+
+        if (
+            data.source === "indian-kanoon" ||
+            data.source === "supreme-court" ||
+            data.source === "high-court"
+        ) {
+            if (style === "mla") {
+                let result =
+                    `${escapeHtml(data.title)}.`;
+
+                if (data.court) {
+                    result += ` ${escapeHtml(data.court)}.`;
+                }
+
+                if (data.caseCitation) {
+                    result += ` ${escapeHtml(
+                        data.caseCitation
+                    )}.`;
+                }
+
+                if (data.judgmentDate) {
+                    result += ` ${escapeHtml(
+                        formatDate(data.judgmentDate)
+                    )}.`;
+                }
+
+                if (data.url) {
+                    result += ` ${escapeHtml(data.url)}.`;
+                }
+
+                return result;
+            }
+
+            if (style === "ieee") {
+                let result =
+                    `"${escapeHtml(data.title)},"`;
+
+                if (data.court) {
+                    result += ` ${escapeHtml(
+                        data.court
+                    )}`;
+                }
+
+                if (data.caseCitation) {
+                    result += `, ${escapeHtml(
+                        data.caseCitation
+                    )}`;
+                }
+
+                if (data.judgmentDate) {
+                    result += `, ${escapeHtml(
+                        formatDate(data.judgmentDate)
+                    )}`;
+                }
+
+                result += ".";
+
+                if (data.url) {
+                    result += ` [Online]. Available: ${escapeHtml(
+                        data.url
+                    )}`;
+                }
+
+                return result;
+            }
+
+            if (style === "vancouver") {
+                let result =
+                    `${escapeHtml(data.title)}.`;
+
+                if (data.court) {
+                    result += ` ${escapeHtml(
+                        data.court
+                    )}`;
+                }
+
+                if (data.judgmentDate) {
+                    result += ` ${escapeHtml(
+                        formatDate(data.judgmentDate)
+                    )}`;
+                }
+
+                if (data.caseCitation) {
+                    result += `. ${escapeHtml(
+                        data.caseCitation
+                    )}`;
+                }
+
+                result += ".";
+
+                return result;
+            }
+
+            if (style === "chicago") {
+                return `${escapeHtml(data.title)}. ${data.court ? `${escapeHtml(data.court)}. ` : ""}${data.caseCitation ? `${escapeHtml(data.caseCitation)}. ` : ""}${data.judgmentDate ? `${escapeHtml(formatDate(data.judgmentDate))}.` : ""}`;
+            }
+
+            if (style === "harvard") {
+                return `${escapeHtml(data.title)} (${escapeHtml(data.year || "n.d.")}) ${data.court ? `${escapeHtml(data.court)}. ` : ""}${data.caseCitation ? `${escapeHtml(data.caseCitation)}. ` : ""}${data.url ? `Available at: ${escapeHtml(data.url)}` : ""}`;
+            }
+
+            return formatIndianCase(data);
+        }
+
+        if (data.source === "government-report") {
+            return formatGovernmentReport(data);
+        }
+
+        if (data.source === "government-ministry") {
+            return formatGovernmentMinistry(data);
+        }
+
+        if (data.source === "gazette") {
+            return formatGazette(data);
+        }
+
+        if (data.source === "rbi") {
+            return formatRBI(data);
+        }
+
+        if (data.source === "sebi") {
+            return formatSEBI(data);
+        }
+
+        if (data.source === "pib") {
+            return formatPIB(data);
+        }
+
+        if (data.source === "newspaper") {
+            return formatNewspaper(data);
+        }
+
+        if (data.source === "legislation") {
+            return formatLegislation(data);
+        }
+
+        return null;
+    }
+
+    /* =========================================================
+       FINAL FORMATTER
+    ========================================================= */
+
+    function formatCitation(data, number = null) {
+        let citation;
+
         if (data.context === "india") {
-            switch (data.source) {
-                case "government-report":
-                    return formatGovernmentReport(data);
+            citation =
+                formatIndiaByStyle(data);
+        }
 
-                case "government-ministry":
-                    return formatGovernmentMinistry(data);
+        if (!citation) {
+            switch (data.style) {
+                case "mla":
+                    citation = formatMLA(data);
+                    break;
 
-                case "indian-kanoon":
-                    return formatIndianKanoon(data);
+                case "harvard":
+                    citation = formatHarvard(data);
+                    break;
 
-                case "supreme-court":
-                    return formatIndianCase(data);
+                case "chicago":
+                    citation = formatChicago(data);
+                    break;
 
-                case "high-court":
-                    return formatIndianCase(data);
+                case "ieee":
+                    citation = formatIEEE(data);
+                    break;
 
-                case "gazette":
-                    return formatGazette(data);
+                case "vancouver":
+                    citation = formatVancouver(data);
+                    break;
 
-                case "rbi":
-                    return formatRBI(data);
-
-                case "sebi":
-                    return formatSEBI(data);
-
-                case "pib":
-                    return formatPIB(data);
-
-                case "newspaper":
-                    return formatNewspaper(data);
-
-                case "legislation":
-                    return formatLegislation(data);
+                case "apa":
+                default:
+                    citation = formatAPA(data);
+                    break;
             }
         }
 
         /*
-         * International standard sources.
+         * Numbered styles.
          */
-        switch (data.style) {
-            case "mla":
-                return formatMLA(data);
-
-            case "harvard":
-                return formatHarvard(data);
-
-            case "chicago":
-                return formatChicago(data);
-
-            case "ieee":
-                return formatIEEE(data);
-
-            case "vancouver":
-                return formatVancouver(data);
-
-            case "apa":
-            default:
-                return formatAPA(data);
+        if (
+            number &&
+            (
+                data.style === "ieee" ||
+                data.style === "vancouver"
+            )
+        ) {
+            return `[${number}] ${citation}`;
         }
+
+        return citation;
     }
 
     /* =========================================================
-       IN-TEXT CITATION
+       MULTIPLE SOURCE IN-TEXT CITATIONS
     ========================================================= */
 
-    function generateInText(data) {
-        const legalSources = [
-            "indian-kanoon",
-            "supreme-court",
-            "high-court",
-            "gazette",
-            "rbi",
-            "sebi",
-            "pib",
-            "government-report",
-            "government-ministry",
-            "legislation"
-        ];
-
-        if (legalSources.includes(data.source)) {
-            if (data.source === "supreme-court") {
-                return `(Supreme Court of India, ${data.year || "n.d."})`;
-            }
-
-            if (data.source === "high-court") {
-                return `(${data.court || "High Court"}, ${data.year || "n.d."})`;
-            }
-
-            if (data.source === "rbi") {
-                return `(Reserve Bank of India, ${data.year || "n.d."})`;
-            }
-
-            if (data.source === "sebi") {
-                return `(SEBI, ${data.year || "n.d."})`;
-            }
-
-            if (data.source === "pib") {
-                return `(${data.pibMinistry || "Press Information Bureau"}, ${data.year || "n.d."})`;
-            }
-
-            if (data.source === "government-report") {
-                return `(${data.organisation || "Government of India"}, ${data.year || "n.d."})`;
-            }
-
-            if (data.source === "government-ministry") {
-                return `(${data.ministry || "Government of India"}, ${data.year || "n.d."})`;
-            }
-
-            if (data.source === "gazette") {
-                return `(${data.issuingAuthority || "Government of India"}, ${data.year || "n.d."})`;
-            }
-
-            if (data.source === "legislation") {
-                return `(${data.title}, ${data.year || "n.d."})`;
-            }
-
-            return `(${getLastName(data.authors[0] || data.title)}, ${data.year || "n.d."})`;
+    function shortAuthor(data) {
+        if (
+            [
+                "government-report",
+                "government-ministry"
+            ].includes(data.source)
+        ) {
+            return (
+                data.organisation ||
+                data.ministry ||
+                "Government of India"
+            );
         }
 
-        if (!data.authors.length) {
-            return `(${data.year || "n.d."})`;
+        if (data.source === "rbi") {
+            return "Reserve Bank of India";
         }
 
-        if (data.authors.length === 1) {
-            return `(${getLastName(data.authors[0])}, ${data.year || "n.d."})`;
+        if (data.source === "sebi") {
+            return "SEBI";
         }
 
-        if (data.authors.length === 2) {
-            return `(${getLastName(data.authors[0])} & ${getLastName(data.authors[1])}, ${data.year || "n.d."})`;
+        if (data.source === "pib") {
+            return (
+                data.pibMinistry ||
+                "Press Information Bureau"
+            );
         }
 
-        return `(${getLastName(data.authors[0])} et al., ${data.year || "n.d."})`;
+        if (
+            data.source === "supreme-court"
+        ) {
+            return "Supreme Court of India";
+        }
+
+        if (
+            data.source === "high-court"
+        ) {
+            return data.court || "High Court";
+        }
+
+        if (
+            data.source === "indian-kanoon"
+        ) {
+            return (
+                data.authors[0]
+                    ? getLastName(data.authors[0])
+                    : data.title
+            );
+        }
+
+        return data.authors.length
+            ? getLastName(data.authors[0])
+            : data.title;
+    }
+
+    function generateCombinedInText(list) {
+        if (!list.length) {
+            return "";
+        }
+
+        const style =
+            list[0].style || "apa";
+
+        const entries = list.map(data => {
+            const author =
+                shortAuthor(data);
+
+            const year =
+                data.year ||
+                (
+                    data.judgmentDate
+                        ? new Date(
+                              data.judgmentDate
+                          ).getFullYear()
+                        : "n.d."
+                );
+
+            if (style === "mla") {
+                return data.authors.length > 1
+                    ? `${author} et al.`
+                    : author;
+            }
+
+            if (style === "ieee") {
+                return null;
+            }
+
+            if (style === "vancouver") {
+                return null;
+            }
+
+            if (style === "harvard") {
+                return `${author} ${year}`;
+            }
+
+            if (style === "chicago") {
+                return `${author} ${year}`;
+            }
+
+            return `${author}, ${year}`;
+        }).filter(Boolean);
+
+        if (
+            style === "ieee" ||
+            style === "vancouver"
+        ) {
+            const numbers =
+                list.map(
+                    (_, index) => index + 1
+                );
+
+            return style === "ieee"
+                ? `[${numbers.join(", ")}]`
+                : `(${numbers.join(", ")})`;
+        }
+
+        return `(${entries.join("; ")})`;
     }
 
     /* =========================================================
-       UI EVENTS
+       SOURCE SUMMARY UI
     ========================================================= */
 
-    document
-        .querySelectorAll('input[name="citation-context"]')
-        .forEach(radio => {
-            radio.addEventListener("change", () => {
-                updateSourceTypes();
+    function createSourceManager() {
+        const form =
+            generateBtn?.closest("form") ||
+            generateBtn?.parentElement;
 
-                if (citationResult) {
-                    citationResult.hidden = true;
+        if (!form) return;
+
+        let manager =
+            document.getElementById(
+                "source-manager"
+            );
+
+        if (manager) return;
+
+        manager =
+            document.createElement("div");
+
+        manager.id =
+            "source-manager";
+
+        manager.style.marginTop =
+            "22px";
+
+        const addButton =
+            document.createElement("button");
+
+        addButton.type = "button";
+
+        addButton.id =
+            "add-source-btn";
+
+        addButton.textContent =
+            "+ Add Another Source";
+
+        addButton.style.width =
+            "100%";
+
+        addButton.style.padding =
+            "12px 18px";
+
+        addButton.style.border =
+            "1px solid #111";
+
+        addButton.style.borderRadius =
+            "8px";
+
+        addButton.style.background =
+            "#fff";
+
+        addButton.style.color =
+            "#111";
+
+        addButton.style.fontWeight =
+            "600";
+
+        addButton.style.cursor =
+            "pointer";
+
+        addButton.addEventListener(
+            "click",
+            () => {
+                const data =
+                    collectCurrentSource();
+
+                const error =
+                    validateSource(data);
+
+                if (error) {
+                    if (formMessage) {
+                        formMessage.textContent =
+                            error;
+                    }
+
+                    return;
                 }
+
+                sources.push(data);
+
+                editingSourceId =
+                    null;
+
+                clearForm();
+
+                renderSourceList();
 
                 if (formMessage) {
-                    formMessage.textContent = "";
+                    formMessage.textContent =
+                        `Source ${sources.length} added.`;
                 }
-            });
-        });
-
-    if (sourceType) {
-        sourceType.addEventListener("change", () => {
-            updateSourceFields();
-
-            if (citationResult) {
-                citationResult.hidden = true;
             }
+        );
 
-            if (formMessage) {
-                formMessage.textContent = "";
+        manager.appendChild(
+            addButton
+        );
+
+        const list =
+            document.createElement("div");
+
+        list.id =
+            "source-list";
+
+        list.style.marginTop =
+            "12px";
+
+        manager.appendChild(list);
+
+        const generateAllButton =
+            document.createElement("button");
+
+        generateAllButton.type =
+            "button";
+
+        generateAllButton.id =
+            "generate-all-btn";
+
+        generateAllButton.textContent =
+            "Generate Bibliography";
+
+        generateAllButton.style.width =
+            "100%";
+
+        generateAllButton.style.padding =
+            "13px 20px";
+
+        generateAllButton.style.marginTop =
+            "12px";
+
+        generateAllButton.style.background =
+            "#111";
+
+        generateAllButton.style.color =
+            "#fff";
+
+        generateAllButton.style.border =
+            "1px solid #111";
+
+        generateAllButton.style.borderRadius =
+            "8px";
+
+        generateAllButton.style.fontSize =
+            "15px";
+
+        generateAllButton.style.fontWeight =
+            "600";
+
+        generateAllButton.style.cursor =
+            "pointer";
+
+        generateAllButton.addEventListener(
+            "click",
+            generateBibliography
+        );
+
+        manager.appendChild(
+            generateAllButton
+        );
+
+        form.appendChild(
+            manager
+        );
+    }
+
+    function renderSourceList() {
+        const list =
+            document.getElementById(
+                "source-list"
+            );
+
+        if (!list) return;
+
+        list.innerHTML = "";
+
+        sources.forEach(
+            (source, index) => {
+                const item =
+                    document.createElement(
+                        "div"
+                    );
+
+                item.style.display =
+                    "flex";
+
+                item.style.alignItems =
+                    "center";
+
+                item.style.justifyContent =
+                    "space-between";
+
+                item.style.gap =
+                    "10px";
+
+                item.style.padding =
+                    "10px 12px";
+
+                item.style.marginBottom =
+                    "8px";
+
+                item.style.border =
+                    "1px solid #e5e7eb";
+
+                item.style.borderRadius =
+                    "8px";
+
+                const label =
+                    document.createElement(
+                        "span"
+                    );
+
+                label.textContent =
+                    `Source ${index + 1}: ${source.title}`;
+
+                const remove =
+                    document.createElement(
+                        "button"
+                    );
+
+                remove.type =
+                    "button";
+
+                remove.textContent =
+                    "Remove";
+
+                remove.style.border =
+                    "0";
+
+                remove.style.background =
+                    "transparent";
+
+                remove.style.cursor =
+                    "pointer";
+
+                remove.style.fontWeight =
+                    "600";
+
+                remove.addEventListener(
+                    "click",
+                    () => {
+                        sources.splice(
+                            index,
+                            1
+                        );
+
+                        renderSourceList();
+
+                        if (
+                            formMessage
+                        ) {
+                            formMessage.textContent =
+                                "";
+                        }
+                    }
+                );
+
+                item.appendChild(
+                    label
+                );
+
+                item.appendChild(
+                    remove
+                );
+
+                list.appendChild(
+                    item
+                );
             }
-        });
+        );
+    }
+
+    function clearForm() {
+        setValue(
+            authorInput,
+            ""
+        );
+
+        setValue(
+            yearInput,
+            ""
+        );
+
+        setValue(
+            titleInput,
+            ""
+        );
+
+        setValue(
+            publicationInput,
+            ""
+        );
+
+        setValue(
+            urlInput,
+            ""
+        );
+
+        setValue(
+            doiInput,
+            ""
+        );
+
+        editingSourceId =
+            null;
+
+        updateDynamicFields();
     }
 
     /* =========================================================
-       GENERATE
+       BIBLIOGRAPHY GENERATION
     ========================================================= */
 
-    if (generateBtn) {
-        generateBtn.addEventListener("click", event => {
-            event.preventDefault();
+    function generateBibliography() {
+        const current =
+            collectCurrentSource();
 
-            const data = collectData();
-            const error = validateData(data);
+        const currentError =
+            validateSource(current);
 
-            if (error) {
-                if (formMessage) {
-                    formMessage.textContent = error;
-                }
-
-                if (citationResult) {
-                    citationResult.hidden = true;
-                }
-
-                return;
-            }
-
+        if (
+            currentError &&
+            sources.length === 0
+        ) {
             if (formMessage) {
-                formMessage.textContent = "";
+                formMessage.textContent =
+                    currentError;
             }
 
-            const citation = generateCitation(data);
-            const inText = generateInText(data);
+            return;
+        }
 
-            if (citationText) {
-                citationText.innerHTML = citation;
+        /*
+         * If the user has typed a source that
+         * hasn't been added yet, include it.
+         */
+        if (
+            current.title &&
+            !sources.some(
+                source =>
+                    source.id ===
+                    current.id
+            )
+        ) {
+            sources.push(current);
+        }
+
+        if (!sources.length) {
+            if (formMessage) {
+                formMessage.textContent =
+                    "Please add at least one source.";
             }
 
-            if (inTextCitation) {
-                inTextCitation.textContent = inText;
-            }
+            return;
+        }
 
-            if (citationResult) {
-                citationResult.hidden = false;
+        const style =
+            citationStyle?.value ||
+            sources[0].style ||
+            "apa";
 
-                setTimeout(() => {
-                    citationResult.scrollIntoView({
-                        behavior: "smooth",
-                        block: "nearest"
-                    });
-                }, 50);
-            }
+        sources =
+            sources.map(source => ({
+                ...source,
+                style
+            }));
 
-            if (copyBtn) {
-                copyBtn.textContent = "Copy Citation";
-                copyBtn.classList.remove("copied");
+        let output = "";
+
+        sources.forEach(
+            (source, index) => {
+                const citation =
+                    formatCitation(
+                        source,
+                        index + 1
+                    );
+
+                output +=
+                    `<div class="citation-entry" style="margin-bottom:18px;">${citation}</div>`;
             }
-        });
+        );
+
+        if (citationText) {
+            citationText.innerHTML =
+                output;
+        }
+
+        if (inTextCitation) {
+            inTextCitation.textContent =
+                generateCombinedInText(
+                    sources
+                );
+        }
+
+        if (citationResult) {
+            citationResult.hidden =
+                false;
+
+            setTimeout(() => {
+                citationResult.scrollIntoView(
+                    {
+                        behavior:
+                            "smooth",
+                        block:
+                            "nearest"
+                    }
+                );
+            }, 50);
+        }
+
+        if (copyBtn) {
+            copyBtn.textContent =
+                "Copy Citation";
+
+            copyBtn.classList.remove(
+                "copied"
+            );
+        }
+
+        if (formMessage) {
+            formMessage.textContent =
+                `${sources.length} source${sources.length > 1 ? "s" : ""} ready.`;
+        }
     }
 
     /* =========================================================
@@ -1680,72 +2166,177 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const text = citationText.innerText.trim();
+        const text =
+            citationText.innerText.trim();
 
         if (!text) {
             return;
         }
 
         try {
-            await navigator.clipboard.writeText(text);
+            await navigator.clipboard.writeText(
+                text
+            );
         } catch (error) {
-            const textarea = document.createElement("textarea");
+            const textarea =
+                document.createElement(
+                    "textarea"
+                );
 
-            textarea.value = text;
-            textarea.style.position = "fixed";
-            textarea.style.opacity = "0";
+            textarea.value =
+                text;
 
-            document.body.appendChild(textarea);
+            textarea.style.position =
+                "fixed";
+
+            textarea.style.opacity =
+                "0";
+
+            document.body.appendChild(
+                textarea
+            );
 
             textarea.focus();
             textarea.select();
 
-            document.execCommand("copy");
+            document.execCommand(
+                "copy"
+            );
 
             textarea.remove();
         }
 
         if (copyBtn) {
-            copyBtn.textContent = "Copied!";
-            copyBtn.classList.add("copied");
+            copyBtn.textContent =
+                "Copied!";
+
+            copyBtn.classList.add(
+                "copied"
+            );
 
             setTimeout(() => {
-                copyBtn.textContent = "Copy Citation";
-                copyBtn.classList.remove("copied");
+                copyBtn.textContent =
+                    "Copy Citation";
+
+                copyBtn.classList.remove(
+                    "copied"
+                );
             }, 1800);
         }
     }
 
-    if (copyBtn) {
-        copyBtn.addEventListener("click", event => {
-            event.preventDefault();
-            copyCitation();
+    /* =========================================================
+       EVENTS
+    ========================================================= */
+
+    document
+        .querySelectorAll(
+            'input[name="citation-context"]'
+        )
+        .forEach(radio => {
+            radio.addEventListener(
+                "change",
+                () => {
+                    updateSourceTypes();
+
+                    if (citationResult) {
+                        citationResult.hidden =
+                            true;
+                    }
+                }
+            );
         });
+
+    if (sourceType) {
+        sourceType.addEventListener(
+            "change",
+            () => {
+                updateDynamicFields();
+
+                if (citationResult) {
+                    citationResult.hidden =
+                        true;
+                }
+            }
+        );
+    }
+
+    if (citationStyle) {
+        citationStyle.addEventListener(
+            "change",
+            () => {
+                sources =
+                    sources.map(source => ({
+                        ...source,
+                        style:
+                            citationStyle.value
+                    }));
+
+                if (
+                    sources.length
+                ) {
+                    generateBibliography();
+                }
+            }
+        );
+    }
+
+    if (generateBtn) {
+        generateBtn.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+
+                const data =
+                    collectCurrentSource();
+
+                const error =
+                    validateSource(data);
+
+                if (error) {
+                    if (formMessage) {
+                        formMessage.textContent =
+                            error;
+                    }
+
+                    if (citationResult) {
+                        citationResult.hidden =
+                            true;
+                    }
+
+                    return;
+                }
+
+                /*
+                 * First source can be generated
+                 * immediately.
+                 */
+                sources = [data];
+
+                renderSourceList();
+
+                generateBibliography();
+            }
+        );
+    }
+
+    if (copyBtn) {
+        copyBtn.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+                copyCitation();
+            }
+        );
     }
 
     /* =========================================================
-       ENTER KEY
-    ========================================================= */
-
-    document.querySelectorAll("input, textarea").forEach(input => {
-        input.addEventListener("keydown", event => {
-            if (
-                event.key === "Enter" &&
-                !event.shiftKey &&
-                input.tagName !== "TEXTAREA"
-            ) {
-                event.preventDefault();
-
-                if (generateBtn) {
-                    generateBtn.click();
-                }
-            }
-        });
-    });
-
-    /* =========================================================
-       INITIAL LOAD
+       INITIALISE
     ========================================================= */
 
     updateSourceTypes();
+
+    createSourceManager();
+
+    renderSourceList();
 });
