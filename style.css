@@ -579,3 +579,41 @@ RESPONSIVE
 
 }
 
+/* Citation Context */
+.context-options {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.context-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid #d9dee7;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.context-option:hover {
+    border-color: #9aa4b2;
+}
+
+.context-option input {
+    margin: 0;
+    cursor: pointer;
+}
+
+.context-option input:checked + span {
+    font-weight: 600;
+}
+
+.context-option:has(input:checked) {
+    border-color: #111827;
+    background: #f5f7fa;
+}
