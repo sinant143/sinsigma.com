@@ -1,717 +1,45 @@
-
 document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("citation-form");
     const citationStyle = document.getElementById("citation-style");
     const sourceType = document.getElementById("source-type");
-    const author = document.getElementById("author");
-    const year = document.getElementById("year");
-    const title = document.getElementById("title");
-    const publication = document.getElementById("publication");
-    const url = document.getElementById("url");
-    const doi = document.getElementById("doi");
-    const formMessage = document.getElementById("form-message");
+
+    const authorInput = document.getElementById("author");
+    const yearInput = document.getElementById("year");
+    const titleInput = document.getElementById("title");
+    const publicationInput = document.getElementById("publication");
+    const urlInput = document.getElementById("url");
+    const doiInput = document.getElementById("doi");
+
+    const generateBtn = document.getElementById("generate-btn");
+    const copyBtn = document.getElementById("copy-btn");
+
     const citationResult = document.getElementById("citation-result");
     const citationText = document.getElementById("citation-text");
     const inTextCitation = document.getElementById("in-text-citation");
-    const copyBtn = document.getElementById("copy-btn");
-    const generateBtn = document.getElementById("generate-btn");
+    const formMessage = document.getElementById("form-message");
+
+    const currentYear = document.getElementById("current-year");
+
+    if (currentYear) {
+        currentYear.textContent = new Date().getFullYear();
+    }
+
+    /* =========================================================
+       STATE
+    ========================================================= */
 
     let sources = [];
-
-    /*
-     * ---------------------------------------------------------
-     * SOURCE REGIONS
-     * ---------------------------------------------------------
-     */
-
-    function ensureRegionSelector() {
-        if (document.getElementById("source-region")) return;
-
-        const styleGroup = citationStyle.closest(".form-group");
-        if (!styleGroup) return;
-
-        const group = document.createElement("div");
-        group.className = "form-group";
-        group.innerHTML = `
-            <label for="source-region">Source Region</label>
-            <select id="source-region">
-                <option value="global">Global</option>
-                <option value="india">India</option>
-            </select>
-        `;
-
-        styleGroup.insertAdjacentElement("afterend", group);
-    }
-
-    ensureRegionSelector();
-
-    const sourceRegion = document.getElementById("source-region");
-
-    /*
-     * ---------------------------------------------------------
-     * SOURCE TYPES
-     * ---------------------------------------------------------
-     */
-
-    const globalSources = [
-        { value: "website", label: "Website" },
-        { value: "book", label: "Book" },
-        { value: "journal", label: "Journal Article" },
-        { value: "newspaper", label: "Newspaper / Magazine Article" },
-        { value: "report", label: "Report" },
-        { value: "conference", label: "Conference Paper" },
-        { value: "thesis", label: "Thesis / Dissertation" },
-        { value: "video", label: "Video" }
-    ];
-
-    const indiaSources = [
-        { value: "indian-kanoon", label: "Indian Kanoon" },
-        { value: "supreme-court", label: "Supreme Court of India" },
-        { value: "high-court", label: "High Court of India" },
-        { value: "gazette", label: "Gazette Notification" },
-        { value: "rbi", label: "RBI Publication" },
-        { value: "sebi", label: "SEBI Publication" },
-        { value: "pib", label: "PIB Press Release" },
-        { value: "ministry", label: "Government Ministry" },
-        { value: "gov-report", label: "Government Report" },
-        { value: "act", label: "Act / Legislation" },
-        { value: "indian-newspaper", label: "Indian Newspaper Article" },
-        { value: "website", label: "Website" },
-        { value: "book", label: "Book" },
-        { value: "journal", label: "Journal Article" }
-    ];
-
-    function populateSourceTypes() {
-        if (!sourceType) return;
-
-        const region = sourceRegion ? sourceRegion.value : "global";
-        const list = region === "india" ? indiaSources : globalSources;
-
-        sourceType.innerHTML = "";
-
-        list.forEach(item => {
-            const option = document.createElement("option");
-            option.value = item.value;
-            option.textContent = item.label;
-            sourceType.appendChild(option);
-        });
-
-        updateSourceFields();
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * DYNAMIC FIELD HELPERS
-     * ---------------------------------------------------------
-     */
-
-    const baseFields = {
-        author: author ? author.closest(".form-group") : null,
-        year: year ? year.closest(".form-group") : null,
-        title: title ? title.closest(".form-group") : null,
-        publication: publication ? publication.closest(".form-group") : null,
-        url: url ? url.closest(".form-group") : null,
-        doi: doi ? doi.closest(".form-group") : null
-    };
-
-    let dynamicFieldsContainer = document.getElementById("dynamic-fields");
-
-    function getOrCreateDynamicContainer() {
-        if (dynamicFieldsContainer) return dynamicFieldsContainer;
-
-        dynamicFieldsContainer = document.createElement("div");
-        dynamicFieldsContainer.id = "dynamic-fields";
-
-        const lastBase =
-            baseFields.doi ||
-            baseFields.url ||
-            baseFields.publication ||
-            baseFields.title;
-
-        if (lastBase) {
-            lastBase.insertAdjacentElement("afterend", dynamicFieldsContainer);
-        } else if (form) {
-            form.appendChild(dynamicFieldsContainer);
-        }
-
-        return dynamicFieldsContainer;
-    }
-
-    function clearDynamicFields() {
-        const container = getOrCreateDynamicContainer();
-        container.innerHTML = "";
-    }
-
-    function createField({
-        id,
-        label,
-        type = "text",
-        placeholder = "",
-        required = false,
-        help = "",
-        options = []
-    }) {
-        const group = document.createElement("div");
-        group.className = "form-group dynamic-field";
-
-        const labelEl = document.createElement("label");
-        labelEl.setAttribute("for", id);
-        labelEl.textContent = label;
-
-        let input;
-
-        if (type === "textarea") {
-            input = document.createElement("textarea");
-            input.rows = 3;
-        } else if (type === "select") {
-            input = document.createElement("select");
-
-            options.forEach(optionData => {
-                const option = document.createElement("option");
-                option.value = optionData.value;
-                option.textContent = optionData.label;
-                input.appendChild(option);
-            });
-        } else {
-            input = document.createElement("input");
-            input.type = type;
-        }
-
-        input.id = id;
-        input.name = id;
-        input.placeholder = placeholder;
-
-        if (required) {
-            input.required = true;
-        }
-
-        group.appendChild(labelEl);
-        group.appendChild(input);
-
-        if (help) {
-            const helpEl = document.createElement("div");
-            helpEl.className = "field-help";
-            helpEl.textContent = help;
-            group.appendChild(helpEl);
-        }
-
-        return group;
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * BASE FIELD LABELS
-     * ---------------------------------------------------------
-     */
-
-    function setBaseFieldLabels() {
-        if (!baseFields.author) return;
-
-        const authorLabel = baseFields.author.querySelector("label");
-        const yearLabel = baseFields.year?.querySelector("label");
-        const titleLabel = baseFields.title?.querySelector("label");
-        const publicationLabel = baseFields.publication?.querySelector("label");
-        const urlLabel = baseFields.url?.querySelector("label");
-        const doiLabel = baseFields.doi?.querySelector("label");
-
-        if (authorLabel) authorLabel.textContent = "Author / Writer";
-        if (yearLabel) yearLabel.textContent = "Year";
-        if (titleLabel) titleLabel.textContent = "Title";
-        if (publicationLabel) publicationLabel.textContent = "Website / Journal / Publisher";
-        if (urlLabel) urlLabel.textContent = "URL";
-        if (doiLabel) doiLabel.textContent = "DOI";
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * SOURCE-SPECIFIC FIELDS
-     * ---------------------------------------------------------
-     */
-
-    function updateSourceFields() {
-        if (!sourceType) return;
-
-        clearDynamicFields();
-        setBaseFieldLabels();
-
-        const type = sourceType.value;
-        const region = sourceRegion ? sourceRegion.value : "global";
-        const container = getOrCreateDynamicContainer();
-
-        /*
-         * Hide / show common fields depending on source.
-         */
-
-        Object.values(baseFields).forEach(field => {
-            if (field) field.style.display = "";
-        });
-
-        if (type === "indian-kanoon") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Court / Publisher";
-            }
-
-            if (baseFields.url) {
-                baseFields.url.querySelector("label").textContent =
-                    "Indian Kanoon URL";
-            }
-
-            container.appendChild(createField({
-                id: "case-name",
-                label: "Case Name",
-                placeholder: "e.g. Kesavananda Bharati v. State of Kerala"
-            }));
-
-            container.appendChild(createField({
-                id: "case-number",
-                label: "Case / Citation Number",
-                placeholder: "e.g. AIR 1973 SC 1461"
-            }));
-
-            container.appendChild(createField({
-                id: "court",
-                label: "Court",
-                placeholder: "e.g. Supreme Court of India"
-            }));
-        }
-
-        if (type === "supreme-court" || type === "high-court") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Court";
-            }
-
-            if (baseFields.url) {
-                baseFields.url.querySelector("label").textContent =
-                    "Judgment URL";
-            }
-
-            container.appendChild(createField({
-                id: "case-name",
-                label: "Case Name",
-                placeholder: "e.g. State of Maharashtra v. XYZ"
-            }));
-
-            container.appendChild(createField({
-                id: "case-number",
-                label: "Case / Appeal Number",
-                placeholder: "e.g. Civil Appeal No. 1234 of 2025"
-            }));
-
-            container.appendChild(createField({
-                id: "court",
-                label: "Court",
-                placeholder:
-                    type === "supreme-court"
-                        ? "Supreme Court of India"
-                        : "High Court name"
-            }));
-
-            container.appendChild(createField({
-                id: "reporter",
-                label: "Law Reporter / Citation",
-                placeholder: "e.g. (2025) 3 SCC 100"
-            }));
-        }
-
-        if (type === "gazette") {
-            if (baseFields.author) {
-                baseFields.author.querySelector("label").textContent =
-                    "Issuing Authority";
-            }
-
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Gazette / Publication";
-            }
-
-            container.appendChild(createField({
-                id: "notification-number",
-                label: "Notification Number",
-                placeholder: "e.g. G.S.R. 123(E)"
-            }));
-
-            container.appendChild(createField({
-                id: "gazette-date",
-                label: "Notification Date",
-                type: "date"
-            }));
-
-            container.appendChild(createField({
-                id: "ministry",
-                label: "Ministry / Department",
-                placeholder: "e.g. Ministry of Finance"
-            }));
-        }
-
-        if (type === "rbi") {
-            if (baseFields.author) {
-                baseFields.author.querySelector("label").textContent =
-                    "Author / RBI";
-            }
-
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "RBI Publication / Department";
-            }
-
-            container.appendChild(createField({
-                id: "rbi-number",
-                label: "Circular / Notification Number",
-                placeholder: "e.g. RBI/2025-26/123"
-            }));
-
-            container.appendChild(createField({
-                id: "rbi-date",
-                label: "Publication Date",
-                type: "date"
-            }));
-        }
-
-        if (type === "sebi") {
-            if (baseFields.author) {
-                baseFields.author.querySelector("label").textContent =
-                    "Author / SEBI";
-            }
-
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "SEBI Publication / Department";
-            }
-
-            container.appendChild(createField({
-                id: "sebi-number",
-                label: "Circular / Notification Number",
-                placeholder: "e.g. SEBI/HO/IMD/..."
-            }));
-
-            container.appendChild(createField({
-                id: "sebi-date",
-                label: "Publication Date",
-                type: "date"
-            }));
-        }
-
-        if (type === "pib") {
-            if (baseFields.author) {
-                baseFields.author.querySelector("label").textContent =
-                    "Ministry / Government Authority";
-            }
-
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "PIB / Ministry";
-            }
-
-            container.appendChild(createField({
-                id: "release-number",
-                label: "Press Release Number",
-                placeholder: "e.g. PIB/2025/123"
-            }));
-
-            container.appendChild(createField({
-                id: "release-date",
-                label: "Release Date",
-                type: "date"
-            }));
-        }
-
-        if (type === "ministry") {
-            if (baseFields.author) {
-                baseFields.author.querySelector("label").textContent =
-                    "Ministry / Department";
-            }
-
-            container.appendChild(createField({
-                id: "department",
-                label: "Department / Division",
-                placeholder: "e.g. Department of Financial Services"
-            }));
-
-            container.appendChild(createField({
-                id: "document-number",
-                label: "Document / Notification Number",
-                placeholder: "Optional"
-            }));
-        }
-
-        if (type === "gov-report") {
-            if (baseFields.author) {
-                baseFields.author.querySelector("label").textContent =
-                    "Government Agency / Author";
-            }
-
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Ministry / Department / Publisher";
-            }
-
-            container.appendChild(createField({
-                id: "report-number",
-                label: "Report Number",
-                placeholder: "Optional"
-            }));
-
-            container.appendChild(createField({
-                id: "report-place",
-                label: "Place of Publication",
-                placeholder: "e.g. New Delhi"
-            }));
-        }
-
-        if (type === "act") {
-            if (baseFields.author) {
-                baseFields.author.querySelector("label").textContent =
-                    "Legislature / Authority";
-            }
-
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Act / Legislative Source";
-            }
-
-            container.appendChild(createField({
-                id: "act-number",
-                label: "Act Number",
-                placeholder: "e.g. Act No. 12 of 2025"
-            }));
-
-            container.appendChild(createField({
-                id: "section",
-                label: "Section / Article",
-                placeholder: "e.g. Section 43"
-            }));
-
-            container.appendChild(createField({
-                id: "assent-date",
-                label: "Assent / Enactment Date",
-                type: "date"
-            }));
-        }
-
-        if (type === "indian-newspaper") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Newspaper / Magazine";
-            }
-
-            container.appendChild(createField({
-                id: "edition",
-                label: "Edition",
-                placeholder: "e.g. Mumbai Edition"
-            }));
-
-            container.appendChild(createField({
-                id: "page",
-                label: "Page",
-                placeholder: "e.g. 5"
-            }));
-
-            container.appendChild(createField({
-                id: "publication-date",
-                label: "Publication Date",
-                type: "date"
-            }));
-        }
-
-        if (type === "journal") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Journal Name";
-            }
-
-            container.appendChild(createField({
-                id: "volume",
-                label: "Volume",
-                placeholder: "e.g. 12"
-            }));
-
-            container.appendChild(createField({
-                id: "issue",
-                label: "Issue",
-                placeholder: "e.g. 3"
-            }));
-
-            container.appendChild(createField({
-                id: "pages",
-                label: "Pages",
-                placeholder: "e.g. 45–67"
-            }));
-        }
-
-        if (type === "book") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Publisher";
-            }
-
-            container.appendChild(createField({
-                id: "edition",
-                label: "Edition",
-                placeholder: "e.g. 3rd ed."
-            }));
-        }
-
-        if (type === "report" || type === "conference" || type === "thesis") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    type === "thesis"
-                        ? "University / Institution"
-                        : "Publisher / Organization";
-            }
-
-            if (type === "report") {
-                container.appendChild(createField({
-                    id: "report-number",
-                    label: "Report Number",
-                    placeholder: "Optional"
-                }));
-            }
-
-            if (type === "conference") {
-                container.appendChild(createField({
-                    id: "conference-name",
-                    label: "Conference Name",
-                    placeholder: "e.g. IEEE International Conference"
-                }));
-
-                container.appendChild(createField({
-                    id: "pages",
-                    label: "Pages",
-                    placeholder: "e.g. 120–126"
-                }));
-            }
-
-            if (type === "thesis") {
-                container.appendChild(createField({
-                    id: "degree",
-                    label: "Degree",
-                    placeholder: "e.g. PhD dissertation"
-                }));
-            }
-        }
-
-        if (type === "newspaper") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Newspaper / Magazine";
-            }
-
-            container.appendChild(createField({
-                id: "publication-date",
-                label: "Publication Date",
-                type: "date"
-            }));
-
-            container.appendChild(createField({
-                id: "page",
-                label: "Page",
-                placeholder: "Optional"
-            }));
-        }
-
-        if (type === "video") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Channel / Publisher";
-            }
-
-            container.appendChild(createField({
-                id: "platform",
-                label: "Platform",
-                placeholder: "e.g. YouTube"
-            }));
-
-            container.appendChild(createField({
-                id: "video-date",
-                label: "Published Date",
-                type: "date"
-            }));
-        }
-
-        if (region === "global" && type === "website") {
-            if (baseFields.publication) {
-                baseFields.publication.querySelector("label").textContent =
-                    "Website / Publisher";
-            }
-        }
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * COLLECT FORM DATA
-     * ---------------------------------------------------------
-     */
-
-    function valueOf(id) {
-        const element = document.getElementById(id);
-        return element ? element.value.trim() : "";
-    }
-
-    function collectCurrentSource() {
-        const source = {
-            style: citationStyle ? citationStyle.value : "apa",
-            region: sourceRegion ? sourceRegion.value : "global",
-            type: sourceType ? sourceType.value : "website",
-
-            author: author ? author.value.trim() : "",
-            year: year ? year.value.trim() : "",
-            title: title ? title.value.trim() : "",
-            publication: publication ? publication.value.trim() : "",
-            url: url ? url.value.trim() : "",
-            doi: doi ? doi.value.trim() : "",
-
-            fields: {}
-        };
-
-        const dynamicContainer = document.getElementById("dynamic-fields");
-
-        if (dynamicContainer) {
-            dynamicContainer.querySelectorAll("input, textarea, select").forEach(input => {
-                source.fields[input.id] = input.value.trim();
-            });
-        }
-
-        return source;
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * VALIDATION
-     * ---------------------------------------------------------
-     */
-
-    function validateSource(source) {
-        if (!source.title) {
-            return "Please enter the source title.";
-        }
-
-        if (!source.year && !source.fields["publication-date"] && !source.fields["gazette-date"] &&
-            !source.fields["rbi-date"] && !source.fields["sebi-date"] &&
-            !source.fields["release-date"]) {
-            return "Please enter the publication year or date.";
-        }
-
-        return "";
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * FORMAT HELPERS
-     * ---------------------------------------------------------
-     */
+    let editingSourceId = null;
+
+    /* =========================================================
+       HELPERS
+    ========================================================= */
 
     function clean(value) {
-        return (value || "").trim();
+        return String(value || "").trim();
     }
 
-    function italic(text) {
-        return text ? `<em>${escapeHtml(text)}</em>` : "";
-    }
-
-    function escapeHtml(text) {
-        return String(text || "")
+    function escapeHtml(value) {
+        return String(value || "")
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -719,924 +47,2296 @@ document.addEventListener("DOMContentLoaded", () => {
             .replace(/'/g, "&#039;");
     }
 
-    function plain(text) {
-        return String(text || "")
-            .replace(/<[^>]*>/g, "")
-            .replace(/&amp;/g, "&")
-            .replace(/&lt;/g, "<")
-            .replace(/&gt;/g, ">")
-            .replace(/&quot;/g, '"')
-            .replace(/&#039;/g, "'");
+    function italic(value) {
+        return `<em>${escapeHtml(value)}</em>`;
     }
 
-    function formatAuthorAPA(value) {
-        if (!value) return "";
+    function quote(value) {
+        return `“${escapeHtml(value)}”`;
+    }
 
-        const authors = value
-            .split(",")
-            .map(a => a.trim())
+    function getSelectedContext() {
+        const selected = document.querySelector(
+            'input[name="citation-context"]:checked'
+        );
+
+        return selected ? selected.value : "international";
+    }
+
+    function normalizeUrl(value) {
+        const url = clean(value);
+
+        if (!url) {
+            return "";
+        }
+
+        return /^https?:\/\//i.test(url)
+            ? url
+            : `https://${url}`;
+    }
+
+    function normalizeDoi(value) {
+        let doi = clean(value);
+
+        if (!doi) {
+            return "";
+        }
+
+        return doi
+            .replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")
+            .replace(/^doi:\s*/i, "");
+    }
+
+    function parseAuthors(value) {
+        return clean(value)
+            .split(/\s*(?:;|\n)\s*/)
+            .map(name => name.trim())
+            .filter(Boolean);
+    }
+
+    function getLastName(name) {
+        const parts = clean(name).split(/\s+/);
+        return parts.length ? parts[parts.length - 1] : "";
+    }
+
+    function getInitials(name) {
+        const parts = clean(name)
+            .replace(/,/g, "")
+            .split(/\s+/)
             .filter(Boolean);
 
+        if (!parts.length) {
+            return "";
+        }
+
+        const last = parts.pop();
+
+        const initials = parts
+            .map(part => `${part.charAt(0).toUpperCase()}.`)
+            .join(" ");
+
+        return initials
+            ? `${last}, ${initials}`
+            : last;
+    }
+
+    function apaAuthors(authors) {
+        if (!authors.length) return "";
+
+        const formatted = authors.map(getInitials);
+
+        if (formatted.length === 1) {
+            return formatted[0];
+        }
+
+        if (formatted.length === 2) {
+            return `${formatted[0]}, & ${formatted[1]}`;
+        }
+
+        return `${formatted.slice(0, -1).join(", ")}, & ${formatted[formatted.length - 1]}`;
+    }
+
+    function mlaAuthors(authors) {
+        if (!authors.length) return "";
+
+        if (authors.length === 1) {
+            return authors[0];
+        }
+
+        if (authors.length === 2) {
+            return `${authors[0]}, and ${authors[1]}`;
+        }
+
+        return `${authors[0]}, et al.`;
+    }
+
+    function harvardAuthors(authors) {
+        return authors.map(getInitials).join(", ");
+    }
+
+    function chicagoAuthors(authors) {
+        return authors.join(", ");
+    }
+
+    function ieeeAuthors(authors) {
         return authors
             .map(name => {
-                if (name.includes(",")) return name;
+                const parts = clean(name).split(/\s+/);
 
-                const parts = name.split(/\s+/);
-                if (parts.length === 1) return parts[0];
+                if (parts.length === 1) {
+                    return parts[0];
+                }
 
                 const last = parts.pop();
+
                 const initials = parts
-                    .map(p => p.charAt(0).toUpperCase() + ".")
+                    .map(part => `${part.charAt(0).toUpperCase()}.`)
                     .join(" ");
 
-                return `${last}, ${initials}`;
+                return `${initials} ${last}`;
             })
             .join(", ");
     }
 
-    function shortAuthor(authorValue) {
-        if (!authorValue) return "Unknown";
+    function vancouverAuthors(authors) {
+        return authors
+            .map(name => {
+                const parts = clean(name).split(/\s+/);
 
-        const first = authorValue.split(",")[0].trim();
+                if (parts.length === 1) {
+                    return parts[0];
+                }
 
-        if (first.includes(",")) {
-            return first.split(",")[0].trim();
-        }
+                const last = parts.pop();
 
-        const parts = first.split(/\s+/);
+                const initials = parts
+                    .map(part => part.charAt(0).toUpperCase())
+                    .join("");
 
-        return parts.length > 1
-            ? parts[parts.length - 1]
-            : parts[0];
+                return `${last} ${initials}`;
+            })
+            .join(", ");
     }
 
-    function getDate(source) {
-        return (
-            source.year ||
-            source.fields["publication-date"] ||
-            source.fields["gazette-date"] ||
-            source.fields["rbi-date"] ||
-            source.fields["sebi-date"] ||
-            source.fields["release-date"] ||
-            source.fields["assent-date"] ||
-            ""
+    function formatDate(value) {
+        if (!value) return "";
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return date.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+        });
+    }
+
+    function fieldValue(id) {
+        const field = document.getElementById(id);
+        return field ? clean(field.value) : "";
+    }
+
+    /* =========================================================
+       SOURCE LIST
+    ========================================================= */
+
+    const internationalSources = [
+        ["website", "Website"],
+        ["book", "Book"],
+        ["journal", "Journal Article"]
+    ];
+
+    const indiaSources = [
+        ["website", "Website"],
+        ["book", "Book"],
+        ["journal", "Journal Article"],
+        ["government-report", "Government Report"],
+        ["government-ministry", "Government Ministry"],
+        ["indian-kanoon", "Indian Kanoon"],
+        ["supreme-court", "Supreme Court of India"],
+        ["high-court", "High Court of India"],
+        ["gazette", "Gazette Notification"],
+        ["rbi", "RBI Publication"],
+        ["sebi", "SEBI Publication"],
+        ["pib", "PIB Press Release"],
+        ["newspaper", "Newspaper Article"],
+        ["legislation", "Act / Legislation"]
+    ];
+
+    function updateSourceTypes() {
+        if (!sourceType) return;
+
+        const context = getSelectedContext();
+
+        const list =
+            context === "india"
+                ? indiaSources
+                : internationalSources;
+
+        const current = sourceType.value;
+
+        sourceType.innerHTML = "";
+
+        list.forEach(([value, label]) => {
+            const option = document.createElement("option");
+
+            option.value = value;
+            option.textContent = label;
+
+            sourceType.appendChild(option);
+        });
+
+        if (list.some(item => item[0] === current)) {
+            sourceType.value = current;
+        } else {
+            sourceType.value = list[0][0];
+        }
+
+        updateDynamicFields();
+    }
+
+    /* =========================================================
+       DYNAMIC FIELDS
+    ========================================================= */
+
+    let dynamicContainer =
+        document.getElementById("dynamic-fields-container");
+
+    if (!dynamicContainer) {
+        dynamicContainer = document.createElement("div");
+        dynamicContainer.id = "dynamic-fields-container";
+
+        const doiGroup =
+            doiInput?.closest(".form-group") ||
+            doiInput?.parentElement;
+
+        if (doiGroup && doiGroup.parentNode) {
+            doiGroup.parentNode.insertBefore(
+                dynamicContainer,
+                doiGroup.nextSibling
+            );
+        }
+    }
+
+    function createDynamicField(
+        id,
+        label,
+        type = "text",
+        placeholder = ""
+    ) {
+        const wrapper = document.createElement("div");
+
+        wrapper.className = "form-group dynamic-field";
+
+        const labelElement = document.createElement("label");
+
+        labelElement.htmlFor = id;
+        labelElement.textContent = label;
+
+        wrapper.appendChild(labelElement);
+
+        const input = document.createElement("input");
+
+        input.id = id;
+        input.type = type;
+        input.placeholder = placeholder;
+
+        wrapper.appendChild(input);
+
+        return wrapper;
+    }
+
+    function addDynamicField(
+        id,
+        label,
+        type = "text",
+        placeholder = ""
+    ) {
+        dynamicContainer.appendChild(
+            createDynamicField(
+                id,
+                label,
+                type,
+                placeholder
+            )
         );
     }
 
-    function getYear(source) {
-        const date = getDate(source);
-        const match = String(date).match(/\d{4}/);
-        return match ? match[0] : "";
-    }
+    function updateDynamicFields() {
+        if (!dynamicContainer) return;
 
-    /*
-     * ---------------------------------------------------------
-     * GLOBAL FORMATS
-     * ---------------------------------------------------------
-     */
+        dynamicContainer.innerHTML = "";
 
-    function formatGlobal(source, number) {
-        const style = source.style;
-        const a = clean(source.author);
-        const apaAuthor = formatAuthorAPA(a);
-        const last = shortAuthor(a);
-        const y = getYear(source);
-        const t = clean(source.title);
-        const p = clean(source.publication);
-        const u = clean(source.url);
-        const d = clean(source.doi);
-
-        const doiUrl = d
-            ? (d.startsWith("http") ? d : `https://doi.org/${d}`)
-            : "";
-
-        if (source.type === "website") {
-            if (style === "apa") {
-                return `${apaAuthor ? apaAuthor + ". " : ""}(${y || "n.d."}). ${italic(t)}. ${p ? escapeHtml(p) + ". " : ""}${escapeHtml(u)}`;
-            }
-
-            if (style === "mla") {
-                return `${a ? escapeHtml(a) + ". " : ""}${italic(t)}. ${p ? escapeHtml(p) + ", " : ""}${y || "n.d."}, ${escapeHtml(u)}.`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(a || p)} (${y || "n.d."}) ${italic(t)}. Available at: ${escapeHtml(u)}.`;
-            }
-
-            if (style === "chicago") {
-                return `${a ? escapeHtml(a) + ". " : ""}${italic(t)}. ${p ? escapeHtml(p) + ", " : ""}${y || "n.d."}. ${escapeHtml(u)}.`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${a ? escapeHtml(a) + ", " : ""}"${escapeHtml(t)}," ${p ? escapeHtml(p) + ", " : ""}${y || "n.d."}. [Online]. Available: ${escapeHtml(u)}`;
-            }
-
-            if (style === "vancouver") {
-                return `${number}. ${escapeHtml(a || p)}. ${escapeHtml(t)}. ${p ? escapeHtml(p) + ". " : ""}${y || "n.d."}. Available from: ${escapeHtml(u)}`;
-            }
-        }
-
-        if (source.type === "book") {
-            const edition = clean(source.fields.edition);
-
-            if (style === "apa") {
-                return `${escapeHtml(apaAuthor)} (${y}). ${italic(t)}${edition ? ` (${escapeHtml(edition)}).` : "."} ${escapeHtml(p)}.`;
-            }
-
-            if (style === "mla") {
-                return `${escapeHtml(a)}. ${italic(t)}${edition ? `, ${escapeHtml(edition)}` : ""}. ${escapeHtml(p)}, ${y}.`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(a)} (${y}) ${italic(t)}${edition ? `, ${escapeHtml(edition)}` : ""}. ${escapeHtml(p)}.`;
-            }
-
-            if (style === "chicago") {
-                return `${escapeHtml(a)}. ${italic(t)}${edition ? `, ${escapeHtml(edition)}` : ""}. ${escapeHtml(p)}, ${y}.`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${escapeHtml(a)}, ${italic(t)}${edition ? `, ${escapeHtml(edition)}` : ""}. ${escapeHtml(p)}, ${y}.`;
-            }
-
-            if (style === "vancouver") {
-                return `${number}. ${escapeHtml(a)}. ${escapeHtml(t)}${edition ? `. ${escapeHtml(edition)}` : ""}. ${escapeHtml(p)}; ${y}.`;
-            }
-        }
-
-        if (source.type === "journal") {
-            const volume = clean(source.fields.volume);
-            const issue = clean(source.fields.issue);
-            const pages = clean(source.fields.pages);
-
-            if (style === "apa") {
-                return `${escapeHtml(apaAuthor)} (${y}). ${escapeHtml(t)}. ${italic(p)}${volume ? `, ${escapeHtml(volume)}` : ""}${issue ? `(${escapeHtml(issue)})` : ""}${pages ? `, ${escapeHtml(pages)}` : ""}.${doiUrl ? ` ${escapeHtml(doiUrl)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${escapeHtml(a)}. "${escapeHtml(t)}." ${italic(p)}${volume ? `, vol. ${escapeHtml(volume)}` : ""}${issue ? `, no. ${escapeHtml(issue)}` : ""}, ${y}${pages ? `, pp. ${escapeHtml(pages)}` : ""}.${doiUrl ? ` ${escapeHtml(doiUrl)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(a)} (${y}) '${escapeHtml(t)}', ${italic(p)}${volume ? `, ${escapeHtml(volume)}` : ""}${issue ? `(${escapeHtml(issue)})` : ""}${pages ? `, pp. ${escapeHtml(pages)}` : ""}.${doiUrl ? ` ${escapeHtml(doiUrl)}` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${escapeHtml(a)}. "${escapeHtml(t)}." ${italic(p)} ${volume || ""}${issue ? `, no. ${escapeHtml(issue)}` : ""} (${y})${pages ? `: ${escapeHtml(pages)}` : ""}.${doiUrl ? ` ${escapeHtml(doiUrl)}` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${escapeHtml(a)}, "${escapeHtml(t)}," ${italic(p)}${volume ? `, vol. ${escapeHtml(volume)}` : ""}${issue ? `, no. ${escapeHtml(issue)}` : ""}${pages ? `, pp. ${escapeHtml(pages)}` : ""}, ${y}.${doiUrl ? ` [Online]. Available: ${escapeHtml(doiUrl)}` : ""}`;
-            }
-
-            if (style === "vancouver") {
-                return `${number}. ${escapeHtml(a)}. ${escapeHtml(t)}. ${italic(p)}. ${y}${volume ? `;${escapeHtml(volume)}` : ""}${issue ? `(${escapeHtml(issue)})` : ""}${pages ? `:${escapeHtml(pages)}` : ""}.`;
-            }
-        }
-
-        if (source.type === "newspaper" || source.type === "indian-newspaper") {
-            const date =
-                source.fields["publication-date"] ||
-                source.year ||
-                "";
-
-            const page = clean(source.fields.page);
-
-            if (style === "apa") {
-                return `${escapeHtml(apaAuthor)} (${escapeHtml(date) || "n.d."}). ${escapeHtml(t)}. ${italic(p)}${page ? `, p. ${escapeHtml(page)}` : ""}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${escapeHtml(a)}. "${escapeHtml(t)}." ${italic(p)}, ${escapeHtml(date)}${page ? `, p. ${escapeHtml(page)}` : ""}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(a)} (${escapeHtml(date) || "n.d."}) '${escapeHtml(t)}', ${italic(p)}${page ? `, p. ${escapeHtml(page)}` : ""}.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${escapeHtml(a)}. "${escapeHtml(t)}." ${italic(p)}, ${escapeHtml(date)}${page ? `, ${escapeHtml(page)}` : ""}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${escapeHtml(a)}, "${escapeHtml(t)}," ${italic(p)}, ${escapeHtml(date)}${page ? `, p. ${escapeHtml(page)}` : ""}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-            }
-
-            return `${number}. ${escapeHtml(a)}. ${escapeHtml(t)}. ${italic(p)}. ${escapeHtml(date)}${page ? `: ${escapeHtml(page)}` : ""}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-        }
-
-        /*
-         * Generic fallback for report, conference, thesis, video.
-         */
-
-        if (style === "apa") {
-            return `${escapeHtml(apaAuthor || p)} (${y || "n.d."}). ${italic(t)}. ${escapeHtml(p)}.${u ? ` ${escapeHtml(u)}` : ""}`;
-        }
-
-        if (style === "mla") {
-            return `${escapeHtml(a || p)}. ${italic(t)}. ${escapeHtml(p)}, ${y || "n.d."}.${u ? ` ${escapeHtml(u)}` : ""}`;
-        }
-
-        if (style === "harvard") {
-            return `${escapeHtml(a || p)} (${y || "n.d."}) ${italic(t)}. ${escapeHtml(p)}.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-        }
-
-        if (style === "chicago") {
-            return `${escapeHtml(a || p)}. ${italic(t)}. ${escapeHtml(p)}, ${y || "n.d."}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-        }
-
-        if (style === "ieee") {
-            return `[${number}] ${escapeHtml(a || p)}, ${italic(t)}, ${escapeHtml(p)}, ${y || "n.d."}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-        }
-
-        return `${number}. ${escapeHtml(a || p)}. ${escapeHtml(t)}. ${escapeHtml(p)}; ${y || "n.d."}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * INDIA FORMATS
-     * ---------------------------------------------------------
-     */
-
-    function formatIndia(source, number) {
-        const style = source.style;
-        const type = source.type;
-
-        const a = clean(source.author);
-        const t = clean(source.title);
-        const p = clean(source.publication);
-        const u = clean(source.url);
-        const y = getYear(source);
-
-        const caseName = clean(source.fields["case-name"]);
-        const caseNumber = clean(source.fields["case-number"]);
-        const court = clean(source.fields["court"]) || p;
-        const reporter = clean(source.fields["reporter"]);
-        const notification = clean(source.fields["notification-number"]);
-        const ministry = clean(source.fields["ministry"]);
-        const rbiNumber = clean(source.fields["rbi-number"]);
-        const sebiNumber = clean(source.fields["sebi-number"]);
-        const releaseNumber = clean(source.fields["release-number"]);
-        const department = clean(source.fields["department"]);
-        const documentNumber = clean(source.fields["document-number"]);
-        const actNumber = clean(source.fields["act-number"]);
-        const section = clean(source.fields["section"]);
-        const reportNumber = clean(source.fields["report-number"]);
-
-        /*
-         * Legal cases
-         */
+        const context = getSelectedContext();
+        const source = sourceType?.value;
 
         if (
-            type === "indian-kanoon" ||
-            type === "supreme-court" ||
-            type === "high-court"
+            context === "international" &&
+            source === "website"
         ) {
-            const name = caseName || t;
-
-            if (style === "apa") {
-                return `${escapeHtml(name)}${reporter ? `, ${escapeHtml(reporter)}` : ""}${caseNumber ? ` (${escapeHtml(caseNumber)})` : ""}. ${escapeHtml(court)}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${escapeHtml(name)}${caseNumber ? `, ${escapeHtml(caseNumber)}` : ""}. ${escapeHtml(court)}${reporter ? `, ${escapeHtml(reporter)}` : ""}${y ? `, ${y}` : ""}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(name)} (${y || "n.d."})${reporter ? ` ${escapeHtml(reporter)}` : ""}. ${escapeHtml(court)}.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${escapeHtml(name)}${reporter ? `, ${escapeHtml(reporter)}` : ""}. ${escapeHtml(court)}, ${y || "n.d."}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${escapeHtml(name)}, ${escapeHtml(court)}${reporter ? `, ${escapeHtml(reporter)}` : ""}${y ? `, ${y}` : ""}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-            }
-
-            return `${number}. ${escapeHtml(name)}. ${escapeHtml(court)}${reporter ? `; ${escapeHtml(reporter)}` : ""}${y ? `; ${y}` : ""}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-        }
-
-        /*
-         * Gazette
-         */
-
-        if (type === "gazette") {
-            const authority = a || ministry || "Government of India";
-            const date =
-                source.fields["gazette-date"] ||
-                y ||
-                "";
-
-            const core =
-                `${escapeHtml(authority)}. ${italic(t)}${notification ? `, ${escapeHtml(notification)}` : ""}. ${escapeHtml(p)}`;
-
-            if (style === "apa") {
-                return `${core} (${escapeHtml(date) || "n.d."}).${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${core}, ${escapeHtml(date) || "n.d."}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(authority)} (${escapeHtml(date) || "n.d."}) ${italic(t)}${notification ? ` (${escapeHtml(notification)})` : ""}. ${escapeHtml(p)}.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${core}, ${escapeHtml(date) || "n.d."}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${core}, ${escapeHtml(date) || "n.d."}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-            }
-
-            return `${number}. ${core}. ${escapeHtml(date) || "n.d."}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-        }
-
-        /*
-         * RBI
-         */
-
-        if (type === "rbi") {
-            const authority = a || "Reserve Bank of India";
-            const date = source.fields["rbi-date"] || y || "";
-
-            if (style === "apa") {
-                return `${escapeHtml(authority)} (${escapeHtml(date) || "n.d."}). ${italic(t)}${rbiNumber ? ` (${escapeHtml(rbiNumber)})` : ""}. ${escapeHtml(p)}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${escapeHtml(authority)}. ${italic(t)}${rbiNumber ? `, ${escapeHtml(rbiNumber)}` : ""}. ${escapeHtml(p)}, ${escapeHtml(date) || "n.d."}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(authority)} (${escapeHtml(date) || "n.d."}) ${italic(t)}${rbiNumber ? ` (${escapeHtml(rbiNumber)})` : ""}. ${escapeHtml(p)}.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${escapeHtml(authority)}. ${italic(t)}${rbiNumber ? `, ${escapeHtml(rbiNumber)}` : ""}. ${escapeHtml(p)}, ${escapeHtml(date) || "n.d."}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${escapeHtml(authority)}, "${escapeHtml(t)}," ${escapeHtml(p)}${rbiNumber ? `, ${escapeHtml(rbiNumber)}` : ""}, ${escapeHtml(date) || "n.d."}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-            }
-
-            return `${number}. ${escapeHtml(authority)}. ${escapeHtml(t)}. ${escapeHtml(p)}${rbiNumber ? `; ${escapeHtml(rbiNumber)}` : ""}; ${escapeHtml(date) || "n.d."}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-        }
-
-        /*
-         * SEBI
-         */
-
-        if (type === "sebi") {
-            const authority = a || "Securities and Exchange Board of India";
-            const date = source.fields["sebi-date"] || y || "";
-
-            if (style === "apa") {
-                return `${escapeHtml(authority)} (${escapeHtml(date) || "n.d."}). ${italic(t)}${sebiNumber ? ` (${escapeHtml(sebiNumber)})` : ""}. ${escapeHtml(p)}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${escapeHtml(authority)}. ${italic(t)}${sebiNumber ? `, ${escapeHtml(sebiNumber)}` : ""}. ${escapeHtml(p)}, ${escapeHtml(date) || "n.d."}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(authority)} (${escapeHtml(date) || "n.d."}) ${italic(t)}${sebiNumber ? ` (${escapeHtml(sebiNumber)})` : ""}. ${escapeHtml(p)}.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${escapeHtml(authority)}. ${italic(t)}${sebiNumber ? `, ${escapeHtml(sebiNumber)}` : ""}. ${escapeHtml(p)}, ${escapeHtml(date) || "n.d."}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${escapeHtml(authority)}, "${escapeHtml(t)}," ${escapeHtml(p)}${sebiNumber ? `, ${escapeHtml(sebiNumber)}` : ""}, ${escapeHtml(date) || "n.d."}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-            }
-
-            return `${number}. ${escapeHtml(authority)}. ${escapeHtml(t)}. ${escapeHtml(p)}${sebiNumber ? `; ${escapeHtml(sebiNumber)}` : ""}; ${escapeHtml(date) || "n.d."}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-        }
-
-        /*
-         * PIB
-         */
-
-        if (type === "pib") {
-            const authority = a || ministry || "Government of India";
-            const date = source.fields["release-date"] || y || "";
-
-            if (style === "apa") {
-                return `${escapeHtml(authority)} (${escapeHtml(date) || "n.d."}). ${italic(t)}${releaseNumber ? ` (${escapeHtml(releaseNumber)})` : ""}. Press Information Bureau.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${escapeHtml(authority)}. "${escapeHtml(t)}." Press Information Bureau${releaseNumber ? `, ${escapeHtml(releaseNumber)}` : ""}, ${escapeHtml(date) || "n.d."}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(authority)} (${escapeHtml(date) || "n.d."}) ${italic(t)}${releaseNumber ? ` (${escapeHtml(releaseNumber)})` : ""}. Press Information Bureau.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${escapeHtml(authority)}. "${escapeHtml(t)}." Press Information Bureau${releaseNumber ? `, ${escapeHtml(releaseNumber)}` : ""}, ${escapeHtml(date) || "n.d."}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${escapeHtml(authority)}, "${escapeHtml(t)}," Press Information Bureau${releaseNumber ? `, ${escapeHtml(releaseNumber)}` : ""}, ${escapeHtml(date) || "n.d."}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-            }
-
-            return `${number}. ${escapeHtml(authority)}. ${escapeHtml(t)}. Press Information Bureau${releaseNumber ? `; ${escapeHtml(releaseNumber)}` : ""}; ${escapeHtml(date) || "n.d."}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-        }
-
-        /*
-         * Ministry / Government Report
-         */
-
-        if (type === "ministry" || type === "gov-report") {
-            const authority = a || department || ministry || p || "Government of India";
-            const reportNo = reportNumber || documentNumber || "";
-            const yValue = y || "n.d.";
-
-            if (style === "apa") {
-                return `${escapeHtml(authority)} (${escapeHtml(yValue)}). ${italic(t)}${reportNo ? ` (${escapeHtml(reportNo)})` : ""}. ${escapeHtml(p)}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${escapeHtml(authority)}. ${italic(t)}${reportNo ? `, ${escapeHtml(reportNo)}` : ""}. ${escapeHtml(p)}, ${escapeHtml(yValue)}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(authority)} (${escapeHtml(yValue)}) ${italic(t)}${reportNo ? ` (${escapeHtml(reportNo)})` : ""}. ${escapeHtml(p)}.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${escapeHtml(authority)}. ${italic(t)}${reportNo ? `, ${escapeHtml(reportNo)}` : ""}. ${escapeHtml(p)}, ${escapeHtml(yValue)}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${escapeHtml(authority)}, ${italic(t)}${reportNo ? `, ${escapeHtml(reportNo)}` : ""}, ${escapeHtml(p)}, ${escapeHtml(yValue)}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-            }
-
-            return `${number}. ${escapeHtml(authority)}. ${escapeHtml(t)}${reportNo ? `; ${escapeHtml(reportNo)}` : ""}. ${escapeHtml(p)}; ${escapeHtml(yValue)}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-        }
-
-        /*
-         * Act / Legislation
-         */
-
-        if (type === "act") {
-            const authority = a || "India";
-            const yValue = y || "n.d.";
-
-            if (style === "apa") {
-                return `${escapeHtml(authority)}. (${escapeHtml(yValue)}). ${italic(t)}${actNumber ? ` (${escapeHtml(actNumber)})` : ""}${section ? `, ${escapeHtml(section)}` : ""}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "mla") {
-                return `${italic(t)}${actNumber ? `, ${escapeHtml(actNumber)}` : ""}. ${escapeHtml(authority)}, ${escapeHtml(yValue)}${section ? `, ${escapeHtml(section)}` : ""}.${u ? ` ${escapeHtml(u)}` : ""}`;
-            }
-
-            if (style === "harvard") {
-                return `${escapeHtml(authority)} (${escapeHtml(yValue)}) ${italic(t)}${actNumber ? ` (${escapeHtml(actNumber)})` : ""}${section ? `, ${escapeHtml(section)}` : ""}.${u ? ` Available at: ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "chicago") {
-                return `${italic(t)}${actNumber ? `, ${escapeHtml(actNumber)}` : ""}. ${escapeHtml(authority)}, ${escapeHtml(yValue)}${section ? `, ${escapeHtml(section)}` : ""}.${u ? ` ${escapeHtml(u)}.` : ""}`;
-            }
-
-            if (style === "ieee") {
-                return `[${number}] ${italic(t)}${actNumber ? `, ${escapeHtml(actNumber)}` : ""}, ${escapeHtml(authority)}, ${escapeHtml(yValue)}${section ? `, ${escapeHtml(section)}` : ""}.${u ? ` [Online]. Available: ${escapeHtml(u)}` : ""}`;
-            }
-
-            return `${number}. ${escapeHtml(authority)}. ${escapeHtml(t)}${actNumber ? `; ${escapeHtml(actNumber)}` : ""}${section ? `; ${escapeHtml(section)}` : ""}; ${escapeHtml(yValue)}.${u ? ` Available from: ${escapeHtml(u)}` : ""}`;
-        }
-
-        return formatGlobal(source, number);
-    }
-
-    function formatSource(source, number) {
-        if (source.region === "india") {
-            return formatIndia(source, number);
-        }
-
-        return formatGlobal(source, number);
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * IN-TEXT CITATIONS
-     * ---------------------------------------------------------
-     */
-
-    function getInTextCitation(source, number) {
-        const style = source.style;
-        const authorName = shortAuthor(source.author);
-        const year = getYear(source);
-
-        if (
-            source.type === "indian-kanoon" ||
-            source.type === "supreme-court" ||
-            source.type === "high-court"
-        ) {
-            const caseName =
-                source.fields["case-name"] ||
-                source.title ||
-                "Case";
-
-            if (style === "ieee" || style === "vancouver") {
-                return `[${number}]`;
-            }
-
-            if (style === "mla") {
-                return `(${caseName})`;
-            }
-
-            return `(${caseName}${year ? `, ${year}` : ""})`;
-        }
-
-        if (style === "ieee" || style === "vancouver") {
-            return `[${number}]`;
-        }
-
-        if (style === "mla") {
-            return authorName !== "Unknown"
-                ? `(${authorName})`
-                : `(${source.title})`;
-        }
-
-        if (style === "chicago") {
-            return `(${authorName}${year ? ` ${year}` : ""})`;
-        }
-
-        return `(${authorName}${year ? `, ${year}` : ""})`;
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * SOURCE MANAGER UI
-     * ---------------------------------------------------------
-     */
-
-    function ensureSourceManager() {
-        if (document.getElementById("source-manager")) return;
-
-        const manager = document.createElement("div");
-        manager.id = "source-manager";
-        manager.className = "source-manager";
-
-        manager.innerHTML = `
-            <div class="source-manager-actions">
-                <button type="button" id="add-source-btn" class="hero-button">
-                    + Add Another Source
-                </button>
-
-                <button type="button" id="generate-bibliography-btn" class="generate-btn">
-                    Generate Bibliography
-                </button>
-            </div>
-
-            <div id="source-list"></div>
-        `;
-
-        if (citationResult && citationResult.parentElement) {
-            citationResult.parentElement.insertBefore(
-                manager,
-                citationResult
+            addDynamicField(
+                "access-date",
+                "Access Date",
+                "date"
             );
-        } else if (form) {
-            form.insertAdjacentElement("afterend", manager);
         }
 
-        document
-            .getElementById("add-source-btn")
-            .addEventListener("click", addCurrentSource);
+        if (
+            context === "international" &&
+            source === "journal"
+        ) {
+            addDynamicField(
+                "volume",
+                "Volume",
+                "text",
+                "e.g. 12"
+            );
 
-        document
-            .getElementById("generate-bibliography-btn")
-            .addEventListener("click", generateBibliography);
+            addDynamicField(
+                "issue",
+                "Issue",
+                "text",
+                "e.g. 3"
+            );
+
+            addDynamicField(
+                "pages",
+                "Pages",
+                "text",
+                "e.g. 145–162"
+            );
+        }
+
+        if (source === "government-report") {
+            addDynamicField(
+                "organisation",
+                "Ministry / Department / Organisation",
+                "text",
+                "e.g. Ministry of Finance"
+            );
+
+            addDynamicField(
+                "report-number",
+                "Report Number",
+                "text",
+                "e.g. Report No. 12/2026"
+            );
+
+            addDynamicField(
+                "report-date",
+                "Report Date",
+                "date"
+            );
+        }
+
+        if (source === "government-ministry") {
+            addDynamicField(
+                "ministry",
+                "Ministry / Department",
+                "text",
+                "e.g. Ministry of Electronics and IT"
+            );
+
+            addDynamicField(
+                "document-number",
+                "Document / Notification Number",
+                "text",
+                "Optional"
+            );
+
+            addDynamicField(
+                "document-date",
+                "Publication Date",
+                "date"
+            );
+        }
+
+        if (
+            source === "indian-kanoon" ||
+            source === "supreme-court" ||
+            source === "high-court"
+        ) {
+            addDynamicField(
+                "court",
+                source === "high-court"
+                    ? "High Court"
+                    : "Court",
+                "text",
+                source === "supreme-court"
+                    ? "Supreme Court of India"
+                    : "e.g. Bombay High Court"
+            );
+
+            addDynamicField(
+                "case-number",
+                "Case / Appeal Number",
+                "text",
+                "e.g. Civil Appeal No. 1234 of 2026"
+            );
+
+            addDynamicField(
+                "judgment-date",
+                "Judgment Date",
+                "date"
+            );
+
+            addDynamicField(
+                "case-citation",
+                "Law Report / Citation",
+                "text",
+                "e.g. (2026) 5 SCC 123"
+            );
+
+            addDynamicField(
+                "bench",
+                "Judge(s) / Bench",
+                "text",
+                "e.g. D.Y. Chandrachud, J."
+            );
+        }
+
+        if (source === "gazette") {
+            addDynamicField(
+                "issuing-authority",
+                "Issuing Authority",
+                "text",
+                "e.g. Ministry of Finance"
+            );
+
+            addDynamicField(
+                "notification-number",
+                "Notification Number",
+                "text",
+                "e.g. S.O. 1234(E)"
+            );
+
+            addDynamicField(
+                "gazette-date",
+                "Notification Date",
+                "date"
+            );
+
+            addDynamicField(
+                "gazette-part",
+                "Gazette Part / Section",
+                "text",
+                "Optional"
+            );
+        }
+
+        if (source === "rbi") {
+            addDynamicField(
+                "rbi-document-type",
+                "RBI Document Type",
+                "text",
+                "e.g. Circular, Notification, Report"
+            );
+
+            addDynamicField(
+                "rbi-number",
+                "Notification / Circular Number",
+                "text",
+                "e.g. RBI/2026-27/45"
+            );
+
+            addDynamicField(
+                "rbi-date",
+                "Publication Date",
+                "date"
+            );
+        }
+
+        if (source === "sebi") {
+            addDynamicField(
+                "sebi-document-type",
+                "SEBI Document Type",
+                "text",
+                "e.g. Circular, Regulation, Report"
+            );
+
+            addDynamicField(
+                "sebi-number",
+                "Circular / Reference Number",
+                "text",
+                "e.g. SEBI/HO/..."
+            );
+
+            addDynamicField(
+                "sebi-date",
+                "Publication Date",
+                "date"
+            );
+        }
+
+        if (source === "pib") {
+            addDynamicField(
+                "pib-ministry",
+                "Ministry / Department",
+                "text",
+                "e.g. Ministry of Finance"
+            );
+
+            addDynamicField(
+                "pib-release-number",
+                "Press Release Number",
+                "text",
+                "e.g. PIB/2026/123"
+            );
+
+            addDynamicField(
+                "pib-date",
+                "Release Date",
+                "date"
+            );
+        }
+
+        if (source === "newspaper") {
+            addDynamicField(
+                "edition",
+                "Edition / City",
+                "text",
+                "e.g. Mumbai"
+            );
+
+            addDynamicField(
+                "publication-date",
+                "Publication Date",
+                "date"
+            );
+        }
+
+        if (source === "legislation") {
+            addDynamicField(
+                "act-number",
+                "Act Number",
+                "text",
+                "e.g. Act No. 21 of 2026"
+            );
+
+            addDynamicField(
+                "issuing-authority",
+                "Issuing Authority",
+                "text",
+                "e.g. Parliament of India"
+            );
+
+            addDynamicField(
+                "act-date",
+                "Date",
+                "date"
+            );
+        }
     }
 
-    ensureSourceManager();
+    /* =========================================================
+       COLLECT CURRENT SOURCE
+    ========================================================= */
+
+    function collectCurrentSource() {
+        return {
+            id: editingSourceId || Date.now(),
+
+            context: getSelectedContext(),
+
+            style: citationStyle?.value || "apa",
+
+            source: sourceType?.value || "website",
+
+            author: clean(authorInput?.value),
+
+            authors: parseAuthors(
+                authorInput?.value
+            ),
+
+            year: clean(yearInput?.value),
+
+            title: clean(titleInput?.value),
+
+            publication: clean(
+                publicationInput?.value
+            ),
+
+            url: normalizeUrl(
+                urlInput?.value
+            ),
+
+            doi: normalizeDoi(
+                doiInput?.value
+            ),
+
+            accessDate: fieldValue(
+                "access-date"
+            ),
+
+            volume: fieldValue("volume"),
+
+            issue: fieldValue("issue"),
+
+            pages: fieldValue("pages"),
+
+            organisation: fieldValue(
+                "organisation"
+            ),
+
+            reportNumber: fieldValue(
+                "report-number"
+            ),
+
+            reportDate: fieldValue(
+                "report-date"
+            ),
+
+            ministry: fieldValue(
+                "ministry"
+            ),
+
+            documentNumber: fieldValue(
+                "document-number"
+            ),
+
+            documentDate: fieldValue(
+                "document-date"
+            ),
+
+            court: fieldValue("court"),
+
+            caseNumber: fieldValue(
+                "case-number"
+            ),
+
+            judgmentDate: fieldValue(
+                "judgment-date"
+            ),
+
+            caseCitation: fieldValue(
+                "case-citation"
+            ),
+
+            bench: fieldValue("bench"),
+
+            issuingAuthority: fieldValue(
+                "issuing-authority"
+            ),
+
+            notificationNumber: fieldValue(
+                "notification-number"
+            ),
+
+            gazetteDate: fieldValue(
+                "gazette-date"
+            ),
+
+            gazettePart: fieldValue(
+                "gazette-part"
+            ),
+
+            rbiDocumentType: fieldValue(
+                "rbi-document-type"
+            ),
+
+            rbiNumber: fieldValue(
+                "rbi-number"
+            ),
+
+            rbiDate: fieldValue(
+                "rbi-date"
+            ),
+
+            sebiDocumentType: fieldValue(
+                "sebi-document-type"
+            ),
+
+            sebiNumber: fieldValue(
+                "sebi-number"
+            ),
+
+            sebiDate: fieldValue(
+                "sebi-date"
+            ),
+
+            pibMinistry: fieldValue(
+                "pib-ministry"
+            ),
+
+            pibReleaseNumber: fieldValue(
+                "pib-release-number"
+            ),
+
+            pibDate: fieldValue(
+                "pib-date"
+            ),
+
+            edition: fieldValue("edition"),
+
+            publicationDate: fieldValue(
+                "publication-date"
+            ),
+
+            actNumber: fieldValue(
+                "act-number"
+            ),
+
+            actDate: fieldValue(
+                "act-date"
+            )
+        };
+    }
+
+    /* =========================================================
+       LOAD SOURCE INTO FORM
+    ========================================================= */
+
+    function setValue(element, value) {
+        if (element) {
+            element.value = value || "";
+        }
+    }
+
+    function loadSource(source) {
+        if (!source) return;
+
+        const radio = document.querySelector(
+            `input[name="citation-context"][value="${source.context}"]`
+        );
+
+        if (radio) {
+            radio.checked = true;
+        }
+
+        updateSourceTypes();
+
+        if (sourceType) {
+            sourceType.value = source.source;
+        }
+
+        updateDynamicFields();
+
+        if (citationStyle) {
+            citationStyle.value = source.style;
+        }
+
+        setValue(
+            authorInput,
+            source.author
+        );
+
+        setValue(
+            yearInput,
+            source.year
+        );
+
+        setValue(
+            titleInput,
+            source.title
+        );
+
+        setValue(
+            publicationInput,
+            source.publication
+        );
+
+        setValue(
+            urlInput,
+            source.url
+        );
+
+        setValue(
+            doiInput,
+            source.doi
+        );
+
+        Object.keys(source).forEach(key => {
+            const field = document.getElementById(
+                key.replace(
+                    /[A-Z]/g,
+                    letter => `-${letter.toLowerCase()}`
+                )
+            );
+
+            if (
+                field &&
+                ![
+                    "author",
+                    "year",
+                    "title",
+                    "publication",
+                    "url",
+                    "doi"
+                ].includes(key)
+            ) {
+                field.value =
+                    source[key] || "";
+            }
+        });
+    }
+
+    /* =========================================================
+       VALIDATION
+    ========================================================= */
+
+    function validateSource(data) {
+        if (!data.title) {
+            return "Please enter the title.";
+        }
+
+        const noAuthorRequired = [
+            "legislation",
+            "supreme-court",
+            "high-court",
+            "indian-kanoon",
+            "gazette",
+            "rbi",
+            "sebi",
+            "pib",
+            "government-report",
+            "government-ministry"
+        ];
+
+        if (
+            !noAuthorRequired.includes(
+                data.source
+            ) &&
+            !data.author
+        ) {
+            return "Please enter the author / writer.";
+        }
+
+        return "";
+    }
+
+    /* =========================================================
+       INTERNATIONAL FORMATS
+    ========================================================= */
+
+    function formatAPA(data) {
+        const authors = apaAuthors(
+            data.authors
+        );
+
+        if (data.source === "book") {
+            return `${authors ? `${authors}. ` : ""}(${escapeHtml(data.year)}). ${italic(data.title)}.${data.publication ? ` ${escapeHtml(data.publication)}.` : ""}`;
+        }
+
+        if (data.source === "journal") {
+            let result =
+                `${authors ? `${authors}. ` : ""}(${escapeHtml(data.year)}). ${escapeHtml(data.title)}.`;
+
+            if (data.publication) {
+                result += ` ${italic(data.publication)}`;
+
+                if (data.volume) {
+                    result += `, ${escapeHtml(data.volume)}`;
+                }
+
+                if (data.issue) {
+                    result += `(${escapeHtml(data.issue)})`;
+                }
+
+                if (data.pages) {
+                    result += `, ${escapeHtml(data.pages)}`;
+                }
+
+                result += ".";
+            }
+
+            if (data.doi) {
+                result += ` https://doi.org/${escapeHtml(data.doi)}`;
+            } else if (data.url) {
+                result += ` ${escapeHtml(data.url)}`;
+            }
+
+            return result;
+        }
+
+        let result =
+            `${authors ? `${authors}. ` : ""}(${escapeHtml(data.year)}). ${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatMLA(data) {
+        const authors = mlaAuthors(
+            data.authors
+        );
+
+        if (data.source === "book") {
+            return `${authors ? `${authors}. ` : ""}${italic(data.title)}.${data.publication ? ` ${escapeHtml(data.publication)},` : ""} ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.source === "journal") {
+            let result =
+                `${authors ? `${authors}. ` : ""}${quote(data.title)}.`;
+
+            if (data.publication) {
+                result += ` ${italic(data.publication)}`;
+            }
+
+            if (data.volume) {
+                result += `, vol. ${escapeHtml(data.volume)}`;
+            }
+
+            if (data.issue) {
+                result += `, no. ${escapeHtml(data.issue)}`;
+            }
+
+            if (data.year) {
+                result += `, ${escapeHtml(data.year)}`;
+            }
+
+            if (data.pages) {
+                result += `, pp. ${escapeHtml(data.pages)}`;
+            }
+
+            result += ".";
+
+            if (data.url) {
+                result += ` ${escapeHtml(data.url)}.`;
+            }
+
+            return result;
+        }
+
+        let result =
+            `${authors ? `${authors}. ` : ""}${quote(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)},`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}.`;
+        }
+
+        return result;
+    }
+
+    function formatHarvard(data) {
+        const authors =
+            harvardAuthors(data.authors);
+
+        let result =
+            `${authors ? `${authors} ` : ""}(${escapeHtml(data.year)}) ${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` Available at: ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatChicago(data) {
+        const authors =
+            chicagoAuthors(data.authors);
+
+        let result =
+            `${authors ? `${authors}. ` : ""}${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}.`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}.`;
+        }
+
+        return result;
+    }
+
+    function formatIEEE(data) {
+        const authors =
+            ieeeAuthors(data.authors);
+
+        let result =
+            `${authors ? `${authors}, ` : ""}"${escapeHtml(data.title)},"`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}`;
+        }
+
+        if (data.volume) {
+            result += `, vol. ${escapeHtml(data.volume)}`;
+        }
+
+        if (data.issue) {
+            result += `, no. ${escapeHtml(data.issue)}`;
+        }
+
+        if (data.pages) {
+            result += `, pp. ${escapeHtml(data.pages)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}`;
+        }
+
+        result += ".";
+
+        if (data.url) {
+            result += ` [Online]. Available: ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatVancouver(data) {
+        const authors =
+            vancouverAuthors(data.authors);
+
+        let result =
+            `${authors ? `${authors}. ` : ""}${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}.`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}`;
+        }
+
+        if (data.volume) {
+            result += `;${escapeHtml(data.volume)}`;
+        }
+
+        if (data.issue) {
+            result += `(${escapeHtml(data.issue)})`;
+        }
+
+        if (data.pages) {
+            result += `:${escapeHtml(data.pages)}`;
+        }
+
+        result += ".";
+
+        return result;
+    }
+
+    /* =========================================================
+       INDIA FORMATS
+    ========================================================= */
+
+    function formatGovernmentReport(data) {
+        let result =
+            `${escapeHtml(data.organisation || "Government of India")}.`;
+
+        if (data.reportDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.reportDate) ||
+                data.year
+            )}).`;
+        }
+
+        result += ` ${italic(data.title)}.`;
+
+        if (data.reportNumber) {
+            result += ` ${escapeHtml(data.reportNumber)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatGovernmentMinistry(data) {
+        let result =
+            `${escapeHtml(data.ministry || "Government of India")}.`;
+
+        if (data.documentDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.documentDate) ||
+                data.year
+            )}).`;
+        }
+
+        result += ` ${italic(data.title)}.`;
+
+        if (data.documentNumber) {
+            result += ` ${escapeHtml(data.documentNumber)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatIndianCase(data) {
+        let result =
+            `${escapeHtml(data.title)}`;
+
+        if (data.caseCitation) {
+            result += `, ${escapeHtml(data.caseCitation)}`;
+        }
+
+        if (data.caseNumber) {
+            result += `, ${escapeHtml(data.caseNumber)}`;
+        }
+
+        result += ` (${escapeHtml(
+            data.court || "Indian Court"
+        )}`;
+
+        if (data.judgmentDate) {
+            result += `, ${escapeHtml(
+                formatDate(data.judgmentDate)
+            )}`;
+        }
+
+        result += ")";
+
+        if (data.bench) {
+            result += `, Bench: ${escapeHtml(
+                data.bench
+            )}`;
+        }
+
+        if (data.url) {
+            result += `. ${escapeHtml(data.url)}`;
+        } else {
+            result += ".";
+        }
+
+        return result;
+    }
+
+    function formatGazette(data) {
+        let result =
+            `${escapeHtml(
+                data.issuingAuthority ||
+                "Government of India"
+            )}.`;
+
+        if (data.gazetteDate) {
+            result += ` (${escapeHtml(
+                formatDate(data.gazetteDate)
+            )}).`;
+        }
+
+        result += ` ${italic(data.title)}.`;
+
+        if (data.notificationNumber) {
+            result += ` Notification No. ${escapeHtml(
+                data.notificationNumber
+            )}.`;
+        }
+
+        if (data.gazettePart) {
+            result += ` ${escapeHtml(
+                data.gazettePart
+            )}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatRBI(data) {
+        let result =
+            "Reserve Bank of India.";
+
+        if (data.rbiDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.rbiDate) ||
+                data.year
+            )}).`;
+        }
+
+        result += ` ${italic(data.title)}.`;
+
+        if (data.rbiDocumentType) {
+            result += ` ${escapeHtml(
+                data.rbiDocumentType
+            )}.`;
+        }
+
+        if (data.rbiNumber) {
+            result += ` ${escapeHtml(
+                data.rbiNumber
+            )}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatSEBI(data) {
+        let result =
+            "Securities and Exchange Board of India.";
+
+        if (data.sebiDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.sebiDate) ||
+                data.year
+            )}).`;
+        }
+
+        result += ` ${italic(data.title)}.`;
+
+        if (data.sebiDocumentType) {
+            result += ` ${escapeHtml(
+                data.sebiDocumentType
+            )}.`;
+        }
+
+        if (data.sebiNumber) {
+            result += ` ${escapeHtml(
+                data.sebiNumber
+            )}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatPIB(data) {
+        let result =
+            `${escapeHtml(
+                data.pibMinistry ||
+                "Press Information Bureau"
+            )}.`;
+
+        if (data.pibDate || data.year) {
+            result += ` (${escapeHtml(
+                formatDate(data.pibDate) ||
+                data.year
+            )}).`;
+        }
+
+        result += ` ${italic(data.title)}.`;
+
+        if (data.pibReleaseNumber) {
+            result += ` Press Release ${escapeHtml(
+                data.pibReleaseNumber
+            )}.`;
+        }
+
+        result += " Press Information Bureau.";
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatNewspaper(data) {
+        const authors =
+            harvardAuthors(data.authors);
+
+        let result =
+            `${authors ? `${authors}. ` : ""}${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}`;
+        }
+
+        if (data.edition) {
+            result += `, ${escapeHtml(
+                data.edition
+            )}`;
+        }
+
+        if (
+            data.publicationDate ||
+            data.year
+        ) {
+            result += `, ${escapeHtml(
+                formatDate(data.publicationDate) ||
+                data.year
+            )}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(data.url)}`;
+        }
+
+        return result;
+    }
+
+    function formatLegislation(data) {
+        let result =
+            `${italic(data.title)}`;
+
+        if (data.actNumber) {
+            result += `, ${escapeHtml(
+                data.actNumber
+            )}`;
+        }
+
+        if (data.year) {
+            result += ` (${escapeHtml(
+                data.year
+            )})`;
+        }
+
+        if (data.issuingAuthority) {
+            result += `, ${escapeHtml(
+                data.issuingAuthority
+            )}`;
+        }
+
+        if (data.url) {
+            result += `. ${escapeHtml(data.url)}`;
+        } else {
+            result += ".";
+        }
+
+        return result;
+    }
+
+    /* =========================================================
+       STYLE-AWARE INDIA FORMAT
+    ========================================================= */
+
+    function formatIndiaByStyle(data) {
+        const style =
+            data.style || "apa";
+
+        /*
+         * Legal/government data is source-specific,
+         * but the surrounding style changes according
+         * to the selected citation style.
+         */
+
+        if (
+            data.source === "indian-kanoon" ||
+            data.source === "supreme-court" ||
+            data.source === "high-court"
+        ) {
+            if (style === "mla") {
+                let result =
+                    `${escapeHtml(data.title)}.`;
+
+                if (data.court) {
+                    result += ` ${escapeHtml(data.court)}.`;
+                }
+
+                if (data.caseCitation) {
+                    result += ` ${escapeHtml(
+                        data.caseCitation
+                    )}.`;
+                }
+
+                if (data.judgmentDate) {
+                    result += ` ${escapeHtml(
+                        formatDate(data.judgmentDate)
+                    )}.`;
+                }
+
+                if (data.url) {
+                    result += ` ${escapeHtml(data.url)}.`;
+                }
+
+                return result;
+            }
+
+            if (style === "ieee") {
+                let result =
+                    `"${escapeHtml(data.title)},"`;
+
+                if (data.court) {
+                    result += ` ${escapeHtml(
+                        data.court
+                    )}`;
+                }
+
+                if (data.caseCitation) {
+                    result += `, ${escapeHtml(
+                        data.caseCitation
+                    )}`;
+                }
+
+                if (data.judgmentDate) {
+                    result += `, ${escapeHtml(
+                        formatDate(data.judgmentDate)
+                    )}`;
+                }
+
+                result += ".";
+
+                if (data.url) {
+                    result += ` [Online]. Available: ${escapeHtml(
+                        data.url
+                    )}`;
+                }
+
+                return result;
+            }
+
+            if (style === "vancouver") {
+                let result =
+                    `${escapeHtml(data.title)}.`;
+
+                if (data.court) {
+                    result += ` ${escapeHtml(
+                        data.court
+                    )}`;
+                }
+
+                if (data.judgmentDate) {
+                    result += ` ${escapeHtml(
+                        formatDate(data.judgmentDate)
+                    )}`;
+                }
+
+                if (data.caseCitation) {
+                    result += `. ${escapeHtml(
+                        data.caseCitation
+                    )}`;
+                }
+
+                result += ".";
+
+                return result;
+            }
+
+            if (style === "chicago") {
+                return `${escapeHtml(data.title)}. ${data.court ? `${escapeHtml(data.court)}. ` : ""}${data.caseCitation ? `${escapeHtml(data.caseCitation)}. ` : ""}${data.judgmentDate ? `${escapeHtml(formatDate(data.judgmentDate))}.` : ""}`;
+            }
+
+            if (style === "harvard") {
+                return `${escapeHtml(data.title)} (${escapeHtml(data.year || "n.d.")}) ${data.court ? `${escapeHtml(data.court)}. ` : ""}${data.caseCitation ? `${escapeHtml(data.caseCitation)}. ` : ""}${data.url ? `Available at: ${escapeHtml(data.url)}` : ""}`;
+            }
+
+            return formatIndianCase(data);
+        }
+
+        if (data.source === "government-report") {
+            return formatGovernmentReport(data);
+        }
+
+        if (data.source === "government-ministry") {
+            return formatGovernmentMinistry(data);
+        }
+
+        if (data.source === "gazette") {
+            return formatGazette(data);
+        }
+
+        if (data.source === "rbi") {
+            return formatRBI(data);
+        }
+
+        if (data.source === "sebi") {
+            return formatSEBI(data);
+        }
+
+        if (data.source === "pib") {
+            return formatPIB(data);
+        }
+
+        if (data.source === "newspaper") {
+            return formatNewspaper(data);
+        }
+
+        if (data.source === "legislation") {
+            return formatLegislation(data);
+        }
+
+        return null;
+    }
+
+    /* =========================================================
+       FINAL FORMATTER
+    ========================================================= */
+
+    function formatCitation(data, number = null) {
+        let citation;
+
+        if (data.context === "india") {
+            citation =
+                formatIndiaByStyle(data);
+        }
+
+        if (!citation) {
+            switch (data.style) {
+                case "mla":
+                    citation = formatMLA(data);
+                    break;
+
+                case "harvard":
+                    citation = formatHarvard(data);
+                    break;
+
+                case "chicago":
+                    citation = formatChicago(data);
+                    break;
+
+                case "ieee":
+                    citation = formatIEEE(data);
+                    break;
+
+                case "vancouver":
+                    citation = formatVancouver(data);
+                    break;
+
+                case "apa":
+                default:
+                    citation = formatAPA(data);
+                    break;
+            }
+        }
+
+        /*
+         * Numbered styles.
+         */
+        if (
+            number &&
+            (
+                data.style === "ieee" ||
+                data.style === "vancouver"
+            )
+        ) {
+            return `[${number}] ${citation}`;
+        }
+
+        return citation;
+    }
+
+    /* =========================================================
+       MULTIPLE SOURCE IN-TEXT CITATIONS
+    ========================================================= */
+
+    function shortAuthor(data) {
+        if (
+            [
+                "government-report",
+                "government-ministry"
+            ].includes(data.source)
+        ) {
+            return (
+                data.organisation ||
+                data.ministry ||
+                "Government of India"
+            );
+        }
+
+        if (data.source === "rbi") {
+            return "Reserve Bank of India";
+        }
+
+        if (data.source === "sebi") {
+            return "SEBI";
+        }
+
+        if (data.source === "pib") {
+            return (
+                data.pibMinistry ||
+                "Press Information Bureau"
+            );
+        }
+
+        if (
+            data.source === "supreme-court"
+        ) {
+            return "Supreme Court of India";
+        }
+
+        if (
+            data.source === "high-court"
+        ) {
+            return data.court || "High Court";
+        }
+
+        if (
+            data.source === "indian-kanoon"
+        ) {
+            return (
+                data.authors[0]
+                    ? getLastName(data.authors[0])
+                    : data.title
+            );
+        }
+
+        return data.authors.length
+            ? getLastName(data.authors[0])
+            : data.title;
+    }
+
+    function generateCombinedInText(list) {
+        if (!list.length) {
+            return "";
+        }
+
+        const style =
+            list[0].style || "apa";
+
+        const entries = list.map(data => {
+            const author =
+                shortAuthor(data);
+
+            const year =
+                data.year ||
+                (
+                    data.judgmentDate
+                        ? new Date(
+                              data.judgmentDate
+                          ).getFullYear()
+                        : "n.d."
+                );
+
+            if (style === "mla") {
+                return data.authors.length > 1
+                    ? `${author} et al.`
+                    : author;
+            }
+
+            if (style === "ieee") {
+                return null;
+            }
+
+            if (style === "vancouver") {
+                return null;
+            }
+
+            if (style === "harvard") {
+                return `${author} ${year}`;
+            }
+
+            if (style === "chicago") {
+                return `${author} ${year}`;
+            }
+
+            return `${author}, ${year}`;
+        }).filter(Boolean);
+
+        if (
+            style === "ieee" ||
+            style === "vancouver"
+        ) {
+            const numbers =
+                list.map(
+                    (_, index) => index + 1
+                );
+
+            return style === "ieee"
+                ? `[${numbers.join(", ")}]`
+                : `(${numbers.join(", ")})`;
+        }
+
+        return `(${entries.join("; ")})`;
+    }
+
+    /* =========================================================
+       SOURCE SUMMARY UI
+    ========================================================= */
+
+    function createSourceManager() {
+        const form =
+            generateBtn?.closest("form") ||
+            generateBtn?.parentElement;
+
+        if (!form) return;
+
+        let manager =
+            document.getElementById(
+                "source-manager"
+            );
+
+        if (manager) return;
+
+        manager =
+            document.createElement("div");
+
+        manager.id =
+            "source-manager";
+
+        manager.style.marginTop =
+            "22px";
+
+        const addButton =
+            document.createElement("button");
+
+        addButton.type = "button";
+
+        addButton.id =
+            "add-source-btn";
+
+        addButton.textContent =
+            "+ Add Another Source";
+
+        addButton.style.width =
+            "100%";
+
+        addButton.style.padding =
+            "12px 18px";
+
+        addButton.style.border =
+            "1px solid #111";
+
+        addButton.style.borderRadius =
+            "8px";
+
+        addButton.style.background =
+            "#fff";
+
+        addButton.style.color =
+            "#111";
+
+        addButton.style.fontWeight =
+            "600";
+
+        addButton.style.cursor =
+            "pointer";
+
+        addButton.addEventListener(
+            "click",
+            () => {
+                const data =
+                    collectCurrentSource();
+
+                const error =
+                    validateSource(data);
+
+                if (error) {
+                    if (formMessage) {
+                        formMessage.textContent =
+                            error;
+                    }
+
+                    return;
+                }
+
+                sources.push(data);
+
+                editingSourceId =
+                    null;
+
+                clearForm();
+
+                renderSourceList();
+
+                if (formMessage) {
+                    formMessage.textContent =
+                        `Source ${sources.length} added.`;
+                }
+            }
+        );
+
+        manager.appendChild(
+            addButton
+        );
+
+        const list =
+            document.createElement("div");
+
+        list.id =
+            "source-list";
+
+        list.style.marginTop =
+            "12px";
+
+        manager.appendChild(list);
+
+        const generateAllButton =
+            document.createElement("button");
+
+        generateAllButton.type =
+            "button";
+
+        generateAllButton.id =
+            "generate-all-btn";
+
+        generateAllButton.textContent =
+            "Generate Bibliography";
+
+        generateAllButton.style.width =
+            "100%";
+
+        generateAllButton.style.padding =
+            "13px 20px";
+
+        generateAllButton.style.marginTop =
+            "12px";
+
+        generateAllButton.style.background =
+            "#111";
+
+        generateAllButton.style.color =
+            "#fff";
+
+        generateAllButton.style.border =
+            "1px solid #111";
+
+        generateAllButton.style.borderRadius =
+            "8px";
+
+        generateAllButton.style.fontSize =
+            "15px";
+
+        generateAllButton.style.fontWeight =
+            "600";
+
+        generateAllButton.style.cursor =
+            "pointer";
+
+        generateAllButton.addEventListener(
+            "click",
+            generateBibliography
+        );
+
+        manager.appendChild(
+            generateAllButton
+        );
+
+        form.appendChild(
+            manager
+        );
+    }
 
     function renderSourceList() {
-        const list = document.getElementById("source-list");
+        const list =
+            document.getElementById(
+                "source-list"
+            );
+
         if (!list) return;
 
         list.innerHTML = "";
 
-        sources.forEach((source, index) => {
-            const card = document.createElement("div");
-            card.className = "source-item";
+        sources.forEach(
+            (source, index) => {
+                const item =
+                    document.createElement(
+                        "div"
+                    );
 
-            const regionLabel =
-                source.region === "india"
-                    ? "India"
-                    : "Global";
+                item.style.display =
+                    "flex";
 
-            const typeLabel = getSourceTypeLabel(source.type);
+                item.style.alignItems =
+                    "center";
 
-            card.innerHTML = `
-                <div>
-                    <strong>Source ${index + 1}</strong>
-                    <div>${escapeHtml(source.title)}</div>
-                    <small>
-                        ${escapeHtml(source.style.toUpperCase())}
-                        · ${escapeHtml(regionLabel)}
-                        · ${escapeHtml(typeLabel)}
-                    </small>
-                </div>
+                item.style.justifyContent =
+                    "space-between";
 
-                <button type="button" class="remove-source-btn" data-index="${index}">
-                    Remove
-                </button>
-            `;
+                item.style.gap =
+                    "10px";
 
-            list.appendChild(card);
-        });
+                item.style.padding =
+                    "10px 12px";
 
-        list.querySelectorAll(".remove-source-btn").forEach(button => {
-            button.addEventListener("click", () => {
-                const index = Number(button.dataset.index);
-                sources.splice(index, 1);
-                renderSourceList();
+                item.style.marginBottom =
+                    "8px";
 
-                if (sources.length === 0 && citationResult) {
-                    citationResult.hidden = true;
-                }
-            });
-        });
+                item.style.border =
+                    "1px solid #e5e7eb";
+
+                item.style.borderRadius =
+                    "8px";
+
+                const label =
+                    document.createElement(
+                        "span"
+                    );
+
+                label.textContent =
+                    `Source ${index + 1}: ${source.title}`;
+
+                const remove =
+                    document.createElement(
+                        "button"
+                    );
+
+                remove.type =
+                    "button";
+
+                remove.textContent =
+                    "Remove";
+
+                remove.style.border =
+                    "0";
+
+                remove.style.background =
+                    "transparent";
+
+                remove.style.cursor =
+                    "pointer";
+
+                remove.style.fontWeight =
+                    "600";
+
+                remove.addEventListener(
+                    "click",
+                    () => {
+                        sources.splice(
+                            index,
+                            1
+                        );
+
+                        renderSourceList();
+
+                        if (
+                            formMessage
+                        ) {
+                            formMessage.textContent =
+                                "";
+                        }
+                    }
+                );
+
+                item.appendChild(
+                    label
+                );
+
+                item.appendChild(
+                    remove
+                );
+
+                list.appendChild(
+                    item
+                );
+            }
+        );
     }
 
-    function getSourceTypeLabel(value) {
-        const all = [...globalSources, ...indiaSources];
-        const item = all.find(x => x.value === value);
+    function clearForm() {
+        setValue(
+            authorInput,
+            ""
+        );
 
-        return item ? item.label : value;
+        setValue(
+            yearInput,
+            ""
+        );
+
+        setValue(
+            titleInput,
+            ""
+        );
+
+        setValue(
+            publicationInput,
+            ""
+        );
+
+        setValue(
+            urlInput,
+            ""
+        );
+
+        setValue(
+            doiInput,
+            ""
+        );
+
+        editingSourceId =
+            null;
+
+        updateDynamicFields();
     }
 
-    function addCurrentSource() {
-        const current = collectCurrentSource();
-        const error = validateSource(current);
+    /* =========================================================
+       BIBLIOGRAPHY GENERATION
+    ========================================================= */
 
-        if (error) {
-            showMessage(error, true);
+    function generateBibliography() {
+        const current =
+            collectCurrentSource();
+
+        const currentError =
+            validateSource(current);
+
+        if (
+            currentError &&
+            sources.length === 0
+        ) {
+            if (formMessage) {
+                formMessage.textContent =
+                    currentError;
+            }
+
             return;
         }
 
-        sources.push(current);
-        renderSourceList();
-
-        showMessage(
-            `Source ${sources.length} added to your bibliography.`,
-            false
-        );
-
-        resetSourceForm();
-    }
-
-    function resetSourceForm() {
-        if (author) author.value = "";
-        if (year) year.value = "";
-        if (title) title.value = "";
-        if (publication) publication.value = "";
-        if (url) url.value = "";
-        if (doi) doi.value = "";
-
-        const dynamicContainer = document.getElementById("dynamic-fields");
-
-        if (dynamicContainer) {
-            dynamicContainer
-                .querySelectorAll("input, textarea, select")
-                .forEach(input => {
-                    input.value = "";
-                });
-        }
-
-        citationResult.hidden = true;
-        setBaseFieldLabels();
-        updateSourceFields();
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * BIBLIOGRAPHY
-     * ---------------------------------------------------------
-     */
-
-    function generateBibliography() {
-        if (sources.length === 0) {
-            const current = collectCurrentSource();
-            const error = validateSource(current);
-
-            if (error) {
-                showMessage(
-                    "Add at least one valid source before generating the bibliography.",
-                    true
-                );
-                return;
-            }
-
-            sources.push(current);
-            renderSourceList();
-        }
-
-        const style = sources[0].style;
-
         /*
-         * All sources should use the selected style.
+         * If the user has typed a source that
+         * hasn't been added yet, include it.
          */
-
-        sources = sources.map(source => ({
-            ...source,
-            style
-        }));
-
-        const references = sources.map((source, index) => {
-            return formatSource(source, index + 1);
-        });
-
-        const inTexts = sources.map((source, index) => {
-            return getInTextCitation(source, index + 1);
-        });
-
-        citationText.innerHTML = references
-            .map((reference, index) => {
-                return `<div class="reference-item">${reference}</div>`;
-            })
-            .join("");
-
-        let combinedInText = "";
-
-        if (style === "ieee" || style === "vancouver") {
-            combinedInText = inTexts.join(", ");
-        } else {
-            combinedInText = inTexts.join("; ");
-        }
-
-        inTextCitation.innerHTML = escapeHtml(combinedInText);
-
-        citationResult.hidden = false;
-
-        citationResult.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-
-        showMessage(
-            `${sources.length} source${sources.length > 1 ? "s" : ""} formatted successfully.`,
-            false
-        );
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * SINGLE GENERATE BUTTON
-     * ---------------------------------------------------------
-     */
-
-    if (form) {
-        form.addEventListener("submit", event => {
-            event.preventDefault();
-
-            const current = collectCurrentSource();
-            const error = validateSource(current);
-
-            if (error) {
-                showMessage(error, true);
-                return;
-            }
-
-            /*
-             * If bibliography already has sources,
-             * add the current source and generate all.
-             */
-
+        if (
+            current.title &&
+            !sources.some(
+                source =>
+                    source.id ===
+                    current.id
+            )
+        ) {
             sources.push(current);
-            renderSourceList();
-            generateBibliography();
+        }
 
-            resetSourceForm();
-        });
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * COPY
-     * ---------------------------------------------------------
-     */
-
-    if (copyBtn) {
-        copyBtn.addEventListener("click", async () => {
-            const references = sources
-                .map((source, index) => plain(formatSource(source, index + 1)))
-                .join("\n\n");
-
-            const inText = sources
-                .map((source, index) =>
-                    plain(getInTextCitation(source, index + 1))
-                )
-                .join(
-                    sources[0]?.style === "ieee" ||
-                    sources[0]?.style === "vancouver"
-                        ? ", "
-                        : "; "
-                );
-
-            const output =
-                `References\n\n${references}\n\nIn-text citation\n${inText}`;
-
-            try {
-                await navigator.clipboard.writeText(output);
-
-                const original = copyBtn.textContent;
-                copyBtn.textContent = "Copied!";
-                copyBtn.classList.add("copied");
-
-                setTimeout(() => {
-                    copyBtn.textContent = original;
-                    copyBtn.classList.remove("copied");
-                }, 1800);
-            } catch {
-                showMessage(
-                    "Copy failed. Please select and copy the text manually.",
-                    true
-                );
+        if (!sources.length) {
+            if (formMessage) {
+                formMessage.textContent =
+                    "Please add at least one source.";
             }
-        });
-    }
 
-    /*
-     * ---------------------------------------------------------
-     * MESSAGES
-     * ---------------------------------------------------------
-     */
+            return;
+        }
 
-    function showMessage(message, error) {
-        if (!formMessage) return;
+        const style =
+            citationStyle?.value ||
+            sources[0].style ||
+            "apa";
 
-        formMessage.textContent = message;
-        formMessage.style.display = "block";
+        sources =
+            sources.map(source => ({
+                ...source,
+                style
+            }));
 
-        if (error) {
-            formMessage.classList.add("error");
-        } else {
-            formMessage.classList.remove("error");
+        let output = "";
+
+        sources.forEach(
+            (source, index) => {
+                const citation =
+                    formatCitation(
+                        source,
+                        index + 1
+                    );
+
+                output +=
+                    `<div class="citation-entry" style="margin-bottom:18px;">${citation}</div>`;
+            }
+        );
+
+        if (citationText) {
+            citationText.innerHTML =
+                output;
+        }
+
+        if (inTextCitation) {
+            inTextCitation.textContent =
+                generateCombinedInText(
+                    sources
+                );
+        }
+
+        if (citationResult) {
+            citationResult.hidden =
+                false;
+
+            setTimeout(() => {
+                citationResult.scrollIntoView(
+                    {
+                        behavior:
+                            "smooth",
+                        block:
+                            "nearest"
+                    }
+                );
+            }, 50);
+        }
+
+        if (copyBtn) {
+            copyBtn.textContent =
+                "Copy Citation";
+
+            copyBtn.classList.remove(
+                "copied"
+            );
+        }
+
+        if (formMessage) {
+            formMessage.textContent =
+                `${sources.length} source${sources.length > 1 ? "s" : ""} ready.`;
         }
     }
 
-    /*
-     * ---------------------------------------------------------
-     * STYLE CHANGE
-     * ---------------------------------------------------------
-     */
+    /* =========================================================
+       COPY
+    ========================================================= */
 
-    if (citationStyle) {
-        citationStyle.addEventListener("change", () => {
-            if (sources.length > 0) {
-                sources = sources.map(source => ({
-                    ...source,
-                    style: citationStyle.value
-                }));
+    async function copyCitation() {
+        if (!citationText) {
+            return;
+        }
 
-                renderSourceList();
-                generateBibliography();
-            }
-        });
+        const text =
+            citationText.innerText.trim();
+
+        if (!text) {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(
+                text
+            );
+        } catch (error) {
+            const textarea =
+                document.createElement(
+                    "textarea"
+                );
+
+            textarea.value =
+                text;
+
+            textarea.style.position =
+                "fixed";
+
+            textarea.style.opacity =
+                "0";
+
+            document.body.appendChild(
+                textarea
+            );
+
+            textarea.focus();
+            textarea.select();
+
+            document.execCommand(
+                "copy"
+            );
+
+            textarea.remove();
+        }
+
+        if (copyBtn) {
+            copyBtn.textContent =
+                "Copied!";
+
+            copyBtn.classList.add(
+                "copied"
+            );
+
+            setTimeout(() => {
+                copyBtn.textContent =
+                    "Copy Citation";
+
+                copyBtn.classList.remove(
+                    "copied"
+                );
+            }, 1800);
+        }
     }
 
-    /*
-     * ---------------------------------------------------------
-     * REGION CHANGE
-     * ---------------------------------------------------------
-     */
+    /* =========================================================
+       EVENTS
+    ========================================================= */
 
-    if (sourceRegion) {
-        sourceRegion.addEventListener("change", () => {
-            populateSourceTypes();
+    document
+        .querySelectorAll(
+            'input[name="citation-context"]'
+        )
+        .forEach(radio => {
+            radio.addEventListener(
+                "change",
+                () => {
+                    updateSourceTypes();
+
+                    if (citationResult) {
+                        citationResult.hidden =
+                            true;
+                    }
+                }
+            );
         });
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * SOURCE TYPE CHANGE
-     * ---------------------------------------------------------
-     */
 
     if (sourceType) {
-        sourceType.addEventListener("change", updateSourceFields);
+        sourceType.addEventListener(
+            "change",
+            () => {
+                updateDynamicFields();
+
+                if (citationResult) {
+                    citationResult.hidden =
+                        true;
+                }
+            }
+        );
     }
 
-    /*
-     * ---------------------------------------------------------
-     * STARTUP
-     * ---------------------------------------------------------
-     */
+    if (citationStyle) {
+        citationStyle.addEventListener(
+            "change",
+            () => {
+                sources =
+                    sources.map(source => ({
+                        ...source,
+                        style:
+                            citationStyle.value
+                    }));
 
-    populateSourceTypes();
-
-    const currentYear = document.getElementById("current-year");
-
-    if (currentYear) {
-        currentYear.textContent = new Date().getFullYear();
+                if (
+                    sources.length
+                ) {
+                    generateBibliography();
+                }
+            }
+        );
     }
+
+    if (generateBtn) {
+        generateBtn.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+
+                const data =
+                    collectCurrentSource();
+
+                const error =
+                    validateSource(data);
+
+                if (error) {
+                    if (formMessage) {
+                        formMessage.textContent =
+                            error;
+                    }
+
+                    if (citationResult) {
+                        citationResult.hidden =
+                            true;
+                    }
+
+                    return;
+                }
+
+                /*
+                 * First source can be generated
+                 * immediately.
+                 */
+                sources = [data];
+
+                renderSourceList();
+
+                generateBibliography();
+            }
+        );
+    }
+
+    if (copyBtn) {
+        copyBtn.addEventListener(
+            "click",
+            event => {
+                event.preventDefault();
+                copyCitation();
+            }
+        );
+    }
+
+    /* =========================================================
+       INITIALISE
+    ========================================================= */
+
+    updateSourceTypes();
+
+    createSourceManager();
+
+    renderSourceList();
 });
-```
