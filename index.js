@@ -2,14 +2,14 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. FRONTEND ROUTE: /home par user interface dikhana
+    // 1. FRONTEND ROUTE: /home par user interface blueprint load karna
     if (request.method === "GET" && (url.pathname === "/home" || url.pathname === "/home.html")) {
       return new Response(getFrontendHTML(), {
         headers: { "Content-Type": "text/html; charset=utf-8" }
       });
     }
 
-    // 2. BACKEND API PIPELINE: Sentiment processing handle karna
+    // 2. BACKEND API PIPELINE: Sentiment parameters calculate karna
     if (request.method === "POST" && url.pathname === "/api/sentiment") {
       const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
@@ -24,28 +24,22 @@ export default {
       try {
         const { stock, news } = await request.json();
         
-        // NEW FIX: Cloudflare central store se secure key fetch karna
+        // Secrets store orchestration standard reading path
         let GEMINI_API_KEY = "";
         try {
           GEMINI_API_KEY = await env.GEMINI_KEY.get(); 
         } catch (e) {
-          // Fallback proxy binding mapping check
           GEMINI_API_KEY = env.GEMINI_KEY || "";
         }
         
         if (!GEMINI_API_KEY) {
-          return new Response(JSON.stringify({ error: "Gemini API key missing in Cloudflare Secrets Store orchestration." }), { status: 500, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: "Gemini API key missing in Cloudflare configurations." }), { status: 500, headers: corsHeaders });
         }
         
         const newsString = news.map((n, i) => `[News ${i+1}] ${n.title}`).join("\n");
-        const prompt = `You are a financial terminal data processor. Analyze these news headlines for the stock "${stock}" over the last 24 hours:\n\n${newsString}\n\nReturn EXACTLY a raw JSON object string with no markdown blocks, no backticks, just valid parseable JSON fitting this interface exactly:
-        {
-           "sentimentScore": <an integer between 0 and 100 where 0 is extremely bearish, 50 is neutral, and 100 is extremely bullish>,
-           "verdict": "<BULLISH / BEARISH / NEUTRAL>",
-           "tldrPoints": ["Point 1 outlining core trend", "Point 2 explaining reason", "Point 3 stating short-term outlook"],
-           "newsImpactScores": [<array of integers between -100 and +100 indicating relative impact of each corresponding news input index>]
-        }`;
+        const prompt = `You are a financial terminal processor. Analyze these news headlines for the stock "${stock}" over the last 24 hours:\n\n${newsString}\n\nReturn EXACTLY a raw JSON object string with no markdown blocks, no backticks, just valid parseable JSON fitting this interface exactly:\n{\n"sentimentScore": 75,\n"verdict": "BULLISH",\n"tldrPoints": ["Point one", "Point two", "Point three"],\n"newsImpactScores": [20, 40, -10]\n}`;
 
+        // FIX 1: Exact Production API Endpoint Insertion
         const apiResponse = await fetch(`https://googleapis.com{GEMINI_API_KEY}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -53,7 +47,9 @@ export default {
         });
 
         const aiData = await apiResponse.json();
-        let rawText = aiData.candidates.content.parts.text;
+        
+        // FIX 2: Safeguarded nested text resolution parsing syntax
+        let rawText = aiData.candidates[0].content.parts[0].text;
         rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
 
         return new Response(rawText, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -66,7 +62,7 @@ export default {
   }
 };
 
-// Pure Frontend Dashboard Engine Blueprint
+// Pure Frontend Dashboard Engine
 function getFrontendHTML() {
   return `
   <!DOCTYPE html>
@@ -132,10 +128,12 @@ function getFrontendHTML() {
               <i class="fa-solid fa-terminal text-6xl mb-4 opacity-30 block"></i><span>Enter a stock name or company name above to view analysis vectors.</span>
           </div>
           <div id="loadingState" class="hidden text-center py-20">
-              <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mb-4"></div>
+              <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500 mb-4"></div>
               <p class="text-lg text-slate-400">Fetching live Indian market news feeds and processing AI vectors...</p>
           </div>
       </main>
+`;
+}
 
       <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-600">
           &copy; 2026 SentimentAI • 100% Serverless Cloudflare Architecture.
@@ -169,10 +167,61 @@ function getFrontendHTML() {
           }
 
           async function fetchLiveNews(query) {
-              const rssUrl = encodeURIComponent(\`https://google.com\${query}+stock+when:24h&hl=en-IN&gl=IN&ceid=IN:en\`);
-              const response = await fetch(\`https://allorigins.win\${rssUrl}\`);
+              const rssUrl = encodeURIComponent(`https://google.com\${query}+stock+when:24h&hl=en-IN&gl=IN&ceid=IN:en`);
+              const response = await fetch(`https://allorigins.win\${rssUrl}`);
               const data = await response.json();
               const parser = new DOMParser();
               const xmlDoc = parser.parseFromString(data.contents, "text/xml");
               const items = xmlDoc.getElementsByTagName("item");
-let articles = [];for (let i = 0; i < Math.min(items.length, 5); i++) {if (items[i]) {const titleNode = items[i].getElementsByTagName("title")[0];const pubDateNode = items[i].getElementsByTagName("pubDate")[0];const linkNode = items[i].getElementsByTagName("link")[0];articles.push({title: titleNode ? titleNode.textContent : "Recent Update",pubDate: pubDateNode ? pubDateNode.textContent : "Just now",link: linkNode ? linkNode.textContent : "#"});}}if(articles.length === 0) {articles = [{ title: `Market tracks ${query} structural updates under close tracking parameters.`, pubDate: "Live Feed", link: "#" }];}return articles;}function renderDashboard(aiData, news) {document.getElementById("loadingState").classList.add("hidden");document.getElementById("resultsDashboard").classList.remove("hidden");document.getElementById("sentimentValue").innerText = `${aiData.sentimentScore}%`;document.getElementById("sentimentLabel").innerText = aiData.verdict;const labelEl = document.getElementById("sentimentLabel");labelEl.className = aiData.sentimentScore > 55 ? "text-2xl font-extrabold text-emerald-400 glow-green mt-2" : aiData.sentimentScore < 45 ? "text-2xl font-extrabold text-red-500 glow-red mt-2" : "text-2xl font-extrabold text-slate-400 mt-2";const summaryContainer = document.getElementById("aiSummary");summaryContainer.innerHTML = "";aiData.tldrPoints.forEach(point => {summaryContainer.innerHTML += `${point}`;});const feedContainer = document.getElementById("newsFeed");feedContainer.innerHTML = "";news.forEach((item, index) => {const score = aiData.newsImpactScores ? aiData.newsImpactScores[index] || 0 : 0;const badgeColor = score > 10 ? "bg-emerald-950/50 text-emerald-400 border-emerald-800" : score < -10 ? "bg-red-950/50 text-red-400 border-red-900" : "bg-slate-800 text-slate-400 border-slate-700";feedContainer.innerHTML += `${item.pubDate.substring(0,16)}Impact: ${score}${item.title}`;});}`;}
+              let articles = [];
+              for (let i = 0; i < Math.min(items.length, 5); i++) {
+                  if (items[i]) {
+                      const titleNode = items[i].getElementsByTagName("title")[0];
+                      const pubDateNode = items[i].getElementsByTagName("pubDate")[0];
+                      const linkNode = items[i].getElementsByTagName("link")[0];
+                      articles.push({
+                          title: titleNode ? titleNode.textContent : "Recent Update",
+                          pubDate: pubDateNode ? pubDateNode.textContent : "Just now",
+                          link: linkNode ? linkNode.textContent : "#"
+                      });
+                  }
+              }
+              if(articles.length === 0) {
+                  articles = [{ title: `Market tracks \${query} structural updates under close tracking parameters.`, pubDate: "Live Feed", link: "#" }];
+              }
+              return articles;
+          }
+
+          function renderDashboard(aiData, news) {
+              document.getElementById("loadingState").classList.add("hidden");
+              document.getElementById("resultsDashboard").classList.remove("hidden");
+              document.getElementById("sentimentValue").innerText = `\${aiData.sentimentScore}%`;
+              document.getElementById("sentimentLabel").innerText = aiData.verdict;
+              
+              const labelEl = document.getElementById("sentimentLabel");
+              labelEl.className = aiData.sentimentScore > 55 ? "text-2xl font-extrabold text-emerald-400 glow-green mt-2" : aiData.sentimentScore < 45 ? "text-2xl font-extrabold text-red-500 glow-red mt-2" : "text-2xl font-extrabold text-slate-400 mt-2";
+
+              const summaryContainer = document.getElementById("aiSummary");
+              summaryContainer.innerHTML = "";
+              aiData.tldrPoints.forEach(point => {
+                  summaryContainer.innerHTML += `<div class="flex items-start space-x-2 border-l-2 border-slate-700 pl-3 py-1"><i class="fa-solid fa-chevron-right text-xs text-emerald-500 mt-1"></i><span>\${point}</span></div>`;
+              });
+
+              const feedContainer = document.getElementById("newsFeed");
+              feedContainer.innerHTML = "";
+              news.forEach((item, index) => {
+                  const score = aiData.newsImpactScores ? aiData.newsImpactScores[index] || 0 : 0;
+                  const badgeColor = score > 10 ? "bg-emerald-950/50 text-emerald-400 border-emerald-800" : score < -10 ? "bg-red-950/50 text-red-400 border-red-900" : "bg-slate-800 text-slate-400 border-slate-700";
+                  feedContainer.innerHTML += `
+                      <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors mb-3">
+                          <div class="flex justify-between items-start mb-2"><span class="text-[10px] text-slate-500">\${item.pubDate.substring(0,16)}</span><span class="text-[10px] font-bold px-2 py-0.5 rounded border \({badgeColor}">Impact: \){score}</span></div>
+                          <a href="\${item.link}" target="_blank" class="text-sm hover:text-emerald-400 text-slate-200 block leading-snug">\${item.title}</a>
+                      </div>`;
+              });
+          }
+      </script>
+  </body>
+  </html>
+  \`;
+}
+
