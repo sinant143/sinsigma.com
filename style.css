@@ -656,14 +656,50 @@ RESPONSIVE
 }
 
 
-/* Keep Start Citing button prominent */
+/* Start Citing button */
 .hero-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     margin-top: 24px;
-    padding: 12px 22px;
+    padding: 13px 24px;
+    background: #111111;
+    color: #ffffff;
+    border: 1px solid #111111;
     border-radius: 8px;
+    font-size: 15px;
     font-weight: 600;
     text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hero-button:hover {
+    background: #2a2a2a;
+    border-color: #2a2a2a;
+    transform: translateY(-1px);
+}
+
+/* Generate Citation button */
+.generate-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 20px;
+    margin-top: 18px;
+    background: #111111;
+    color: #ffffff;
+    border: 1px solid #111111;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.generate-btn:hover {
+    background: #2a2a2a;
+    border-color: #2a2a2a;
+    transform: translateY(-1px);
 }
