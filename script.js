@@ -14,13 +14,12 @@
 ========================================================= */
 
 const styleSelect = document.getElementById("citation-style");
-const citationContext = document.querySelectorAll(
+
+const citationContextInputs = document.querySelectorAll(
     'input[name="citation-context"]'
 );
+
 const sourceTypeSelect = document.getElementById("source-type");
-const selectedContext = document.querySelector(
-    'input[name="citation-context"]:checked'
-)?.value || "international";
 
 const authorInput = document.getElementById("author");
 const yearInput = document.getElementById("year");
@@ -40,6 +39,7 @@ const inTextCitation = document.getElementById("in-text-citation");
 
 const currentYear = document.getElementById("current-year");
 
+
 /* =========================================================
    INITIAL SETUP
 ========================================================= */
@@ -47,6 +47,128 @@ const currentYear = document.getElementById("current-year");
 if (currentYear) {
     currentYear.textContent = new Date().getFullYear();
 }
+
+
+/* =========================================================
+   SOURCE TYPES
+========================================================= */
+
+const internationalSourceTypes = [
+    {
+        value: "website",
+        label: "Website"
+    },
+    {
+        value: "book",
+        label: "Book"
+    },
+    {
+        value: "journal",
+        label: "Journal Article"
+    }
+];
+
+const indiaSourceTypes = [
+    {
+        value: "website",
+        label: "Website"
+    },
+    {
+        value: "book",
+        label: "Book"
+    },
+    {
+        value: "journal",
+        label: "Journal Article"
+    },
+    {
+        value: "government-report",
+        label: "Government Report"
+    },
+    {
+        value: "judgment",
+        label: "Court Judgment"
+    },
+    {
+        value: "legislation",
+        label: "Act / Legislation"
+    },
+    {
+        value: "newspaper",
+        label: "Newspaper Article"
+    }
+];
+
+
+/* =========================================================
+   CONTEXT
+========================================================= */
+
+function getSelectedContext() {
+    const selected = document.querySelector(
+        'input[name="citation-context"]:checked'
+    );
+
+    return selected ? selected.value : "international";
+}
+
+
+function updateSourceTypes() {
+    if (!sourceTypeSelect) {
+        return;
+    }
+
+    const context = getSelectedContext();
+
+    const sourceTypes =
+        context === "india"
+            ? indiaSourceTypes
+            : internationalSourceTypes;
+
+    const currentValue = sourceTypeSelect.value;
+
+    sourceTypeSelect.innerHTML = "";
+
+    sourceTypes.forEach(source => {
+        const option = document.createElement("option");
+
+        option.value = source.value;
+        option.textContent = source.label;
+
+        sourceTypeSelect.appendChild(option);
+    });
+
+    const valueStillExists = sourceTypes.some(
+        source => source.value === currentValue
+    );
+
+    if (valueStillExists) {
+        sourceTypeSelect.value = currentValue;
+    }
+}
+
+
+/* Update source types whenever International / India changes */
+
+citationContextInputs.forEach(input => {
+    input.addEventListener("change", () => {
+        updateSourceTypes();
+
+        if (resultBox) {
+            resultBox.hidden = true;
+        }
+
+        if (formMessage) {
+            formMessage.textContent = "";
+        }
+    });
+});
+
+
+/* Initial source type setup */
+
+updateSourceTypes();
+
 
 /* =========================================================
    HELPERS
@@ -58,6 +180,7 @@ function clean(value) {
         .replace(/\s+/g, " ");
 }
 
+
 function escapeHtml(value) {
     return String(value || "")
         .replace(/&/g, "&amp;")
@@ -67,8 +190,11 @@ function escapeHtml(value) {
         .replace(/'/g, "&#039;");
 }
 
+
 function getLastName(name) {
-    const parts = clean(name).split(/\s+/).filter(Boolean);
+    const parts = clean(name)
+        .split(/\s+/)
+        .filter(Boolean);
 
     if (parts.length === 0) {
         return "";
@@ -77,8 +203,11 @@ function getLastName(name) {
     return parts[parts.length - 1];
 }
 
+
 function getFirstName(name) {
-    const parts = clean(name).split(/\s+/).filter(Boolean);
+    const parts = clean(name)
+        .split(/\s+/)
+        .filter(Boolean);
 
     if (parts.length <= 1) {
         return parts[0] || "";
@@ -87,6 +216,7 @@ function getFirstName(name) {
     return parts.slice(0, -1).join(" ");
 }
 
+
 function getInitials(name) {
     return clean(name)
         .split(/\s+/)
@@ -94,6 +224,7 @@ function getInitials(name) {
         .map(part => part.charAt(0).toUpperCase() + ".")
         .join(" ");
 }
+
 
 function normalizeUrl(url) {
     url = clean(url);
@@ -109,6 +240,7 @@ function normalizeUrl(url) {
     return url;
 }
 
+
 function normalizeDoi(doi) {
     doi = clean(doi)
         .replace(/^https?:\/\/doi\.org\//i, "")
@@ -116,6 +248,7 @@ function normalizeDoi(doi) {
 
     return doi;
 }
+
 
 function doiUrl(doi) {
     const normalized = normalizeDoi(doi);
@@ -127,17 +260,21 @@ function doiUrl(doi) {
     return "https://doi.org/" + normalized;
 }
 
+
 function italic(text) {
     return `<em>${escapeHtml(text)}</em>`;
 }
+
 
 function quoteTitle(text) {
     return `"${escapeHtml(text)}"`;
 }
 
+
 function displayTitle(text) {
     return escapeHtml(text);
 }
+
 
 /* =========================================================
    AUTHOR FORMATTING
@@ -154,6 +291,7 @@ function apaAuthor(author) {
     return `${escapeHtml(lastName)}, ${escapeHtml(getInitials(firstName))}`;
 }
 
+
 function mlaAuthor(author) {
     const lastName = getLastName(author);
     const firstName = getFirstName(author);
@@ -164,6 +302,7 @@ function mlaAuthor(author) {
 
     return `${escapeHtml(lastName)}, ${escapeHtml(firstName)}`;
 }
+
 
 function harvardAuthor(author) {
     const lastName = getLastName(author);
@@ -176,6 +315,7 @@ function harvardAuthor(author) {
     return `${escapeHtml(lastName)}, ${escapeHtml(getInitials(firstName))}`;
 }
 
+
 function chicagoAuthor(author) {
     const lastName = getLastName(author);
     const firstName = getFirstName(author);
@@ -187,6 +327,7 @@ function chicagoAuthor(author) {
     return `${escapeHtml(lastName)}, ${escapeHtml(firstName)}`;
 }
 
+
 function ieeeAuthor(author) {
     const lastName = getLastName(author);
     const firstName = getFirstName(author);
@@ -197,6 +338,7 @@ function ieeeAuthor(author) {
 
     return `${escapeHtml(getInitials(firstName))} ${escapeHtml(lastName)}`;
 }
+
 
 function vancouverAuthor(author) {
     const lastName = getLastName(author);
@@ -210,6 +352,7 @@ function vancouverAuthor(author) {
 
     return `${escapeHtml(lastName)} ${escapeHtml(initials)}`;
 }
+
 
 /* =========================================================
    IN-TEXT CITATIONS
@@ -241,16 +384,20 @@ function makeInTextCitation(style, author, year) {
     }
 }
 
+
 /* =========================================================
    APA 7
 ========================================================= */
 
 function formatAPA(data) {
+
     const author = apaAuthor(data.author);
     const year = escapeHtml(data.year);
 
     if (data.type === "book") {
-        let result = `${author} (${year}). ${italic(data.title)}`;
+
+        let result =
+            `${author} (${year}). ${italic(data.title)}`;
 
         if (data.publication) {
             result += `. ${escapeHtml(data.publication)}`;
@@ -261,8 +408,11 @@ function formatAPA(data) {
         return result;
     }
 
+
     if (data.type === "journal") {
-        let result = `${author} (${year}). ${displayTitle(data.title)}.`;
+
+        let result =
+            `${author} (${year}). ${displayTitle(data.title)}.`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}.`;
@@ -277,7 +427,77 @@ function formatAPA(data) {
         return result;
     }
 
-    let result = `${author} (${year}). ${displayTitle(data.title)}.`;
+
+    if (data.type === "government-report") {
+
+        let result =
+            `${author} (${year}). ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "judgment") {
+
+        let result =
+            `${author} (${year}). ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "legislation") {
+
+        let result =
+            `${escapeHtml(data.title)} (${year}).`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "newspaper") {
+
+        let result =
+            `${author} (${year}). ${displayTitle(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${italic(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    let result =
+        `${author} (${year}). ${displayTitle(data.title)}.`;
 
     if (data.publication) {
         result += ` ${escapeHtml(data.publication)}.`;
@@ -292,15 +512,20 @@ function formatAPA(data) {
     return result;
 }
 
+
 /* =========================================================
    MLA 9
 ========================================================= */
 
 function formatMLA(data) {
+
     const author = mlaAuthor(data.author);
 
+
     if (data.type === "book") {
-        let result = `${author}. ${italic(data.title)}.`;
+
+        let result =
+            `${author}. ${italic(data.title)}.`;
 
         if (data.publication) {
             result += ` ${escapeHtml(data.publication)},`;
@@ -313,8 +538,11 @@ function formatMLA(data) {
         return result;
     }
 
+
     if (data.type === "journal") {
-        let result = `${author}. ${quoteTitle(data.title)}`;
+
+        let result =
+            `${author}. ${quoteTitle(data.title)}`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)},`;
@@ -333,7 +561,95 @@ function formatMLA(data) {
         return result;
     }
 
-    let result = `${author}. ${quoteTitle(data.title)}`;
+
+    if (data.type === "government-report") {
+
+        let result =
+            `${author}. ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)},`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "judgment") {
+
+        let result =
+            `${author}. ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)},`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "legislation") {
+
+        let result =
+            `${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)},`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "newspaper") {
+
+        let result =
+            `${author}. ${quoteTitle(data.title)}`;
+
+        if (data.publication) {
+            result += `. ${italic(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}`;
+        }
+
+        result += ".";
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+
+    let result =
+        `${author}. ${quoteTitle(data.title)}`;
 
     if (data.publication) {
         result += `. ${italic(data.publication)}`;
@@ -352,16 +668,21 @@ function formatMLA(data) {
     return result;
 }
 
+
 /* =========================================================
    HARVARD
 ========================================================= */
 
 function formatHarvard(data) {
+
     const author = harvardAuthor(data.author);
     const year = escapeHtml(data.year);
 
+
     if (data.type === "book") {
-        let result = `${author} (${year}) ${italic(data.title)}.`;
+
+        let result =
+            `${author} (${year}) ${italic(data.title)}.`;
 
         if (data.publication) {
             result += ` ${escapeHtml(data.publication)}.`;
@@ -370,8 +691,11 @@ function formatHarvard(data) {
         return result;
     }
 
+
     if (data.type === "journal") {
-        let result = `${author} (${year}) '${escapeHtml(data.title)}'`;
+
+        let result =
+            `${author} (${year}) '${escapeHtml(data.title)}'`;
 
         if (data.publication) {
             result += `, ${italic(data.publication)}`;
@@ -388,7 +712,77 @@ function formatHarvard(data) {
         return result;
     }
 
-    let result = `${author} (${year}) '${escapeHtml(data.title)}'.`;
+
+    if (data.type === "government-report") {
+
+        let result =
+            `${author} (${year}) ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` Available at: ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "judgment") {
+
+        let result =
+            `${author} (${year}) ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` Available at: ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "legislation") {
+
+        let result =
+            `${italic(data.title)} (${year}).`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` Available at: ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "newspaper") {
+
+        let result =
+            `${author} (${year}) '${escapeHtml(data.title)}'.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.url) {
+            result += ` Available at: ${escapeHtml(normalizeUrl(data.url))}.`;
+        }
+
+        return result;
+    }
+
+
+    let result =
+        `${author} (${year}) '${escapeHtml(data.title)}'.`;
 
     if (data.publication) {
         result += ` ${escapeHtml(data.publication)}.`;
@@ -401,15 +795,20 @@ function formatHarvard(data) {
     return result;
 }
 
+
 /* =========================================================
    CHICAGO
 ========================================================= */
 
 function formatChicago(data) {
+
     const author = chicagoAuthor(data.author);
 
+
     if (data.type === "book") {
-        let result = `${author}. ${italic(data.title)}.`;
+
+        let result =
+            `${author}. ${italic(data.title)}.`;
 
         if (data.publication) {
             result += ` ${escapeHtml(data.publication)}`;
@@ -424,8 +823,11 @@ function formatChicago(data) {
         return result;
     }
 
+
     if (data.type === "journal") {
-        let result = `${author}. ${quoteTitle(data.title)}.`;
+
+        let result =
+            `${author}. ${quoteTitle(data.title)}.`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}`;
@@ -444,7 +846,95 @@ function formatChicago(data) {
         return result;
     }
 
-    let result = `${author}. ${quoteTitle(data.title)}.`;
+
+    if (data.type === "government-report") {
+
+        let result =
+            `${author}. ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "judgment") {
+
+        let result =
+            `${author}. ${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "legislation") {
+
+        let result =
+            `${italic(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "newspaper") {
+
+        let result =
+            `${author}. ${quoteTitle(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}`;
+        }
+
+        result += ".";
+
+        if (data.url) {
+            result += ` ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    let result =
+        `${author}. ${quoteTitle(data.title)}.`;
 
     if (data.publication) {
         result += ` ${escapeHtml(data.publication)}.`;
@@ -461,15 +951,20 @@ function formatChicago(data) {
     return result;
 }
 
+
 /* =========================================================
    IEEE
 ========================================================= */
 
 function formatIEEE(data) {
+
     const author = ieeeAuthor(data.author);
 
+
     if (data.type === "book") {
-        let result = `${author}, ${italic(data.title)}`;
+
+        let result =
+            `${author}, ${italic(data.title)}`;
 
         if (data.publication) {
             result += `, ${escapeHtml(data.publication)}`;
@@ -484,8 +979,11 @@ function formatIEEE(data) {
         return result;
     }
 
+
     if (data.type === "journal") {
-        let result = `${author}, ${quoteTitle(data.title)}`;
+
+        let result =
+            `${author}, ${quoteTitle(data.title)}`;
 
         if (data.publication) {
             result += ` ${italic(data.publication)}`;
@@ -506,7 +1004,59 @@ function formatIEEE(data) {
         return result;
     }
 
-    let result = `${author}, ${quoteTitle(data.title)}`;
+
+    if (
+        data.type === "government-report" ||
+        data.type === "judgment" ||
+        data.type === "newspaper"
+    ) {
+
+        let result =
+            `${author}, ${quoteTitle(data.title)}`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}`;
+        }
+
+        result += ".";
+
+        if (data.url) {
+            result += ` [Online]. Available: ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "legislation") {
+
+        let result =
+            `${quoteTitle(data.title)}`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}`;
+        }
+
+        if (data.year) {
+            result += `, ${escapeHtml(data.year)}`;
+        }
+
+        result += ".";
+
+        if (data.url) {
+            result += ` [Online]. Available: ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    let result =
+        `${author}, ${quoteTitle(data.title)}`;
 
     if (data.publication) {
         result += ` ${escapeHtml(data.publication)}`;
@@ -525,15 +1075,20 @@ function formatIEEE(data) {
     return result;
 }
 
+
 /* =========================================================
    VANCOUVER
 ========================================================= */
 
 function formatVancouver(data) {
+
     const author = vancouverAuthor(data.author);
 
+
     if (data.type === "book") {
-        let result = `${author}. ${escapeHtml(data.title)}.`;
+
+        let result =
+            `${author}. ${escapeHtml(data.title)}.`;
 
         if (data.publication) {
             result += ` ${escapeHtml(data.publication)};`;
@@ -546,8 +1101,11 @@ function formatVancouver(data) {
         return result;
     }
 
+
     if (data.type === "journal") {
-        let result = `${author}. ${escapeHtml(data.title)}.`;
+
+        let result =
+            `${author}. ${escapeHtml(data.title)}.`;
 
         if (data.publication) {
             result += ` ${escapeHtml(data.publication)}.`;
@@ -566,7 +1124,55 @@ function formatVancouver(data) {
         return result;
     }
 
-    let result = `${author}. ${escapeHtml(data.title)}.`;
+
+    if (
+        data.type === "government-report" ||
+        data.type === "judgment" ||
+        data.type === "newspaper"
+    ) {
+
+        let result =
+            `${author}. ${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` Available from: ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    if (data.type === "legislation") {
+
+        let result =
+            `${escapeHtml(data.title)}.`;
+
+        if (data.publication) {
+            result += ` ${escapeHtml(data.publication)}.`;
+        }
+
+        if (data.year) {
+            result += ` ${escapeHtml(data.year)}.`;
+        }
+
+        if (data.url) {
+            result += ` Available from: ${escapeHtml(normalizeUrl(data.url))}`;
+        }
+
+        return result;
+    }
+
+
+    let result =
+        `${author}. ${escapeHtml(data.title)}.`;
 
     if (data.publication) {
         result += ` ${escapeHtml(data.publication)}.`;
@@ -583,12 +1189,15 @@ function formatVancouver(data) {
     return result;
 }
 
+
 /* =========================================================
    MAIN FORMATTER
 ========================================================= */
 
 function generateCitation(data) {
+
     switch (data.style) {
+
         case "mla":
             return formatMLA(data);
 
@@ -610,11 +1219,13 @@ function generateCitation(data) {
     }
 }
 
+
 /* =========================================================
    VALIDATION
 ========================================================= */
 
 function validateForm() {
+
     const author = clean(authorInput.value);
     const year = clean(yearInput.value);
     const title = clean(titleInput.value);
@@ -638,99 +1249,171 @@ function validateForm() {
     return "";
 }
 
+
 /* =========================================================
    GENERATE BUTTON
 ========================================================= */
 
 if (generateButton) {
+
     generateButton.addEventListener("click", () => {
+
         formMessage.textContent = "";
 
         const error = validateForm();
 
         if (error) {
+
             resultBox.hidden = true;
             formMessage.textContent = error;
+
             return;
         }
 
+
+        /* Read context at the moment of generation */
+
+        const selectedContext = getSelectedContext();
+
+
         const data = {
+
+            context: selectedContext,
+
             style: styleSelect.value,
+
             type: sourceTypeSelect.value,
+
             author: clean(authorInput.value),
+
             year: clean(yearInput.value),
+
             title: clean(titleInput.value),
+
             publication: clean(publicationInput.value),
+
             url: clean(urlInput.value),
+
             doi: clean(doiInput.value)
         };
 
+
         const citation = generateCitation(data);
+
 
         citationText.innerHTML = citation;
 
-        inTextCitation.textContent = makeInTextCitation(
-            data.style,
-            data.author,
-            data.year
-        );
+
+        inTextCitation.textContent =
+            makeInTextCitation(
+                data.style,
+                data.author,
+                data.year
+            );
+
 
         resultBox.hidden = false;
+
 
         resultBox.scrollIntoView({
             behavior: "smooth",
             block: "nearest"
         });
+
     });
 }
+
 
 /* =========================================================
    COPY BUTTON
 ========================================================= */
 
 if (copyButton) {
+
     copyButton.addEventListener("click", async () => {
-        const plainText = citationText.innerText.trim();
+
+        const plainText =
+            citationText.innerText.trim();
 
         if (!plainText) {
             return;
         }
 
+
         try {
-            await navigator.clipboard.writeText(plainText);
+
+            await navigator.clipboard.writeText(
+                plainText
+            );
 
             copyButton.textContent = "Copied ✓";
+
             copyButton.classList.add("copied");
 
+
             setTimeout(() => {
+
                 copyButton.textContent = "Copy Citation";
+
                 copyButton.classList.remove("copied");
+
             }, 1800);
 
+
         } catch (error) {
-            const temporaryTextArea = document.createElement("textarea");
 
-            temporaryTextArea.value = plainText;
-            temporaryTextArea.style.position = "fixed";
-            temporaryTextArea.style.opacity = "0";
+            const temporaryTextArea =
+                document.createElement("textarea");
 
-            document.body.appendChild(temporaryTextArea);
+
+            temporaryTextArea.value =
+                plainText;
+
+            temporaryTextArea.style.position =
+                "fixed";
+
+            temporaryTextArea.style.opacity =
+                "0";
+
+
+            document.body.appendChild(
+                temporaryTextArea
+            );
+
 
             temporaryTextArea.select();
+
             document.execCommand("copy");
+
 
             temporaryTextArea.remove();
 
-            copyButton.textContent = "Copied ✓";
-            copyButton.classList.add("copied");
+
+            copyButton.textContent =
+                "Copied ✓";
+
+            copyButton.classList.add(
+                "copied"
+            );
+
 
             setTimeout(() => {
-                copyButton.textContent = "Copy Citation";
-                copyButton.classList.remove("copied");
+
+                copyButton.textContent =
+                    "Copy Citation";
+
+                copyButton.classList.remove(
+                    "copied"
+                );
+
             }, 1800);
+
         }
+
     });
+
 }
+
 
 /* =========================================================
    ENTER KEY SUPPORT
@@ -743,18 +1426,29 @@ if (copyButton) {
     publicationInput,
     urlInput,
     doiInput
+
 ].forEach(input => {
+
     if (!input) {
         return;
     }
 
-    input.addEventListener("keydown", event => {
-        if (event.key === "Enter") {
-            event.preventDefault();
 
-            if (generateButton) {
-                generateButton.click();
+    input.addEventListener(
+        "keydown",
+        event => {
+
+            if (event.key === "Enter") {
+
+                event.preventDefault();
+
+                if (generateButton) {
+                    generateButton.click();
+                }
+
             }
+
         }
-    });
+    );
+
 });
