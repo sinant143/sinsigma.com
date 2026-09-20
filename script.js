@@ -1,4 +1,4 @@
-```javascript
+
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("citation-form");
     const citationStyle = document.getElementById("citation-style");
