@@ -356,7 +356,6 @@ function getFrontendHTML() {
 
     <div class="lg:col-span-2 space-y-8">
 
-
       <!-- SCORE -->
 
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center">
@@ -706,10 +705,10 @@ function renderDashboard(aiData, news) {
       "flex items-start space-x-2 border-l-2 border-slate-700 pl-3 py-1";
 
 
-    div.innerHTML = `
+    div.innerHTML = \`
       <i class="fa-solid fa-chevron-right text-xs text-emerald-500 mt-1"></i>
       <span></span>
-    `;
+    \`;
 
 
     div.querySelector("span").textContent =
