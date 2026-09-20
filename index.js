@@ -18,9 +18,10 @@ export default {
     }
 
     try {
-      // ================================
+      // ==========================================
       // FRONTEND
-      // ================================
+      // ==========================================
+
       if (
         url.pathname === "/" ||
         url.pathname === "/home" ||
@@ -33,6 +34,7 @@ export default {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SinSigma SentimentAI</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -74,12 +76,11 @@ export default {
 </head>
 
 <body>
+
   <div class="box">
     <h1>SinSigma SentimentAI</h1>
 
-    <p>
-      Diagnostic mode
-    </p>
+    <p>News API diagnostic mode</p>
 
     <input
       id="stock"
@@ -96,6 +97,7 @@ export default {
 
 <script>
 async function testNews() {
+
   const stock =
     document.getElementById("stock").value.trim() || "RELIANCE";
 
@@ -106,12 +108,14 @@ async function testNews() {
     "Testing /api/news for " + stock + "...";
 
   try {
+
     const response = await fetch(
       "/api/news?stock=" +
       encodeURIComponent(stock)
     );
 
-    const text = await response.text();
+    const text =
+      await response.text();
 
     result.textContent =
       "HTTP STATUS: " +
@@ -120,6 +124,7 @@ async function testNews() {
       text;
 
   } catch (error) {
+
     result.textContent =
       "FRONTEND ERROR:\\n" +
       error.message;
@@ -138,17 +143,20 @@ async function testNews() {
         );
       }
 
-      // ================================
-      // NEWS API DIAGNOSTIC
-      // ================================
+
+      // ==========================================
+      // NEWS API
+      // ==========================================
+
       if (
         url.pathname === "/api/news" &&
         request.method === "GET"
       ) {
+
         const stock =
           url.searchParams.get("stock") || "RELIANCE";
 
-        const result =
+        const news =
           await fetchLiveNews(stock, env);
 
         return new Response(
@@ -156,7 +164,7 @@ async function testNews() {
             {
               success: true,
               stock,
-              news: result
+              news
             },
             null,
             2
@@ -168,26 +176,31 @@ async function testNews() {
         );
       }
 
-      // ================================
+
+      // ==========================================
       // SENTIMENT
-      // ================================
+      // ==========================================
+
       if (
         url.pathname === "/api/sentiment" &&
         request.method === "POST"
       ) {
+
         return jsonResponse(
           {
             error:
-              "Gemini diagnostic is temporarily disabled. First verify /api/news."
+              "Gemini is temporarily disabled while NEWS_API_KEY is being diagnosed."
           },
           503,
           corsHeaders
         );
       }
 
-      // ================================
+
+      // ==========================================
       // UNKNOWN ROUTE
-      // ================================
+      // ==========================================
+
       return jsonResponse(
         {
           error: "Route not found",
@@ -199,13 +212,19 @@ async function testNews() {
       );
 
     } catch (error) {
-      console.error("WORKER ERROR:", error);
+
+      console.error(
+        "WORKER ERROR:",
+        error
+      );
 
       return jsonResponse(
         {
           success: false,
           diagnostic: true,
-          error: error.message || String(error)
+          error:
+            error.message ||
+            String(error)
         },
         500,
         corsHeaders
@@ -215,68 +234,35 @@ async function testNews() {
 };
 
 
-// =====================================================
-// NEWS API
-// =====================================================
+// =================================================
+// FETCH LIVE NEWS
+// =================================================
 
 async function fetchLiveNews(stock, env) {
 
-  // -----------------------------------------------
-  // STEP 1 — Check binding exists
-  // -----------------------------------------------
+  // ==========================================
+  // STEP 1 — NORMAL CLOUDFLARE SECRET
+  // ==========================================
 
-  if (!env.NEWS_API_KEY) {
-    throw new Error(
-      "DIAGNOSTIC 1: NEWS_API_KEY binding is NOT available at runtime."
-    );
-  }
+  const NEWS_API_KEY =
+    env.NEWS_API_KEY;
 
 
-  // -----------------------------------------------
-  // STEP 2 — Check .get() exists
-  // -----------------------------------------------
-
-  if (
-    typeof env.NEWS_API_KEY.get !== "function"
-  ) {
-    throw new Error(
-      "DIAGNOSTIC 2: NEWS_API_KEY binding exists, but .get() is NOT available."
-    );
-  }
-
-
-  // -----------------------------------------------
-  // STEP 3 — Read secret
-  // -----------------------------------------------
-
-  let NEWS_API_KEY;
-
-  try {
-    NEWS_API_KEY =
-      await env.NEWS_API_KEY.get();
-  } catch (error) {
-
-    throw new Error(
-      "DIAGNOSTIC 3: NEWS_API_KEY binding exists, but reading the secret failed: " +
-      (error.message || String(error))
-    );
-  }
-
-
-  // -----------------------------------------------
-  // STEP 4 — Check returned value
-  // -----------------------------------------------
+  // ==========================================
+  // STEP 2 — CHECK SECRET
+  // ==========================================
 
   if (!NEWS_API_KEY) {
+
     throw new Error(
-      "DIAGNOSTIC 4: NEWS_API_KEY secret was read, but returned an EMPTY value."
+      "NEWS_API_KEY Worker Secret is missing. Go to Cloudflare → Worker → Settings → Variables and Secrets and add NEWS_API_KEY as a Secret."
     );
   }
 
 
-  // -----------------------------------------------
-  // STEP 5 — Call NewsAPI
-  // -----------------------------------------------
+  // ==========================================
+  // STEP 3 — BUILD NEWSAPI URL
+  // ==========================================
 
   const query =
     encodeURIComponent(stock);
@@ -290,44 +276,62 @@ async function fetchLiveNews(stock, env) {
     "&pageSize=5";
 
 
+  // ==========================================
+  // STEP 4 — CALL NEWSAPI
+  // ==========================================
+
   let response;
 
   try {
-    response = await fetch(
-      newsUrl,
-      {
-        method: "GET",
-        headers: {
-          "X-Api-Key": NEWS_API_KEY,
-          "Accept": "application/json"
+
+    response =
+      await fetch(
+        newsUrl,
+        {
+          method: "GET",
+
+          headers: {
+            "X-Api-Key": NEWS_API_KEY,
+            "Accept": "application/json"
+          }
         }
-      }
-    );
+      );
+
   } catch (error) {
 
     throw new Error(
-      "DIAGNOSTIC 5: Could not connect to NewsAPI: " +
-      (error.message || String(error))
+      "Could not connect to NewsAPI: " +
+      (
+        error.message ||
+        String(error)
+      )
     );
   }
 
 
-  // -----------------------------------------------
-  // STEP 6 — Read NewsAPI response
-  // -----------------------------------------------
+  // ==========================================
+  // STEP 5 — READ RESPONSE
+  // ==========================================
 
   const responseText =
     await response.text();
 
 
+  // ==========================================
+  // STEP 6 — PARSE JSON
+  // ==========================================
+
   let data;
 
   try {
+
     data =
       JSON.parse(responseText);
+
   } catch {
+
     throw new Error(
-      "DIAGNOSTIC 6: NewsAPI returned non-JSON response. HTTP " +
+      "NewsAPI returned a non-JSON response. HTTP " +
       response.status +
       ". Response: " +
       responseText.substring(0, 500)
@@ -335,14 +339,14 @@ async function fetchLiveNews(stock, env) {
   }
 
 
-  // -----------------------------------------------
-  // STEP 7 — Check NewsAPI status
-  // -----------------------------------------------
+  // ==========================================
+  // STEP 7 — NEWSAPI ERROR
+  // ==========================================
 
   if (!response.ok) {
 
     throw new Error(
-      "DIAGNOSTIC 7: NewsAPI rejected the request. HTTP " +
+      "NewsAPI rejected the request. HTTP " +
       response.status +
       ". " +
       (
@@ -355,23 +359,24 @@ async function fetchLiveNews(stock, env) {
   }
 
 
-  // -----------------------------------------------
-  // STEP 8 — Check API response
-  // -----------------------------------------------
+  // ==========================================
+  // STEP 8 — CHECK ARTICLES
+  // ==========================================
 
   if (
     !data ||
     !Array.isArray(data.articles)
   ) {
+
     throw new Error(
-      "DIAGNOSTIC 8: NewsAPI response does not contain an articles array."
+      "NewsAPI response does not contain an articles array."
     );
   }
 
 
-  // -----------------------------------------------
-  // STEP 9 — Return clean news
-  // -----------------------------------------------
+  // ==========================================
+  // STEP 9 — RETURN NEWS
+  // ==========================================
 
   return data.articles.map(
     article => ({
@@ -397,21 +402,29 @@ async function fetchLiveNews(stock, env) {
 }
 
 
-// =====================================================
-// JSON RESPONSE HELPER
-// =====================================================
+// =================================================
+// JSON RESPONSE
+// =================================================
 
 function jsonResponse(
   data,
   status = 200,
   extraHeaders = {}
 ) {
+
   return new Response(
-    JSON.stringify(data, null, 2),
+    JSON.stringify(
+      data,
+      null,
+      2
+    ),
     {
       status,
+
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "application/json",
+
         ...extraHeaders
       }
     }
