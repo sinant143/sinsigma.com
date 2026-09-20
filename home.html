@@ -1,432 +1,464 @@
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
+<!DOCTYPE html>
 
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Content-Type": "application/json"
-    };
-
-    // CORS preflight
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders
-      });
-    }
-
-    try {
-      // ==========================================
-      // FRONTEND
-      // ==========================================
-
-      if (
-        url.pathname === "/" ||
-        url.pathname === "/home" ||
-        url.pathname === "/home.html"
-      ) {
-        return new Response(
-          `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SinSigma SentimentAI</title>
+    <meta charset="UTF-8">
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 40px auto;
-      padding: 20px;
-      background: #f5f5f5;
-    }
+```
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    .box {
-      background: white;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.08);
-    }
+<meta name="description"
+      content="SinSigma Citation Generator — create accurate academic citations quickly and easily.">
 
-    input {
-      padding: 12px;
-      width: 250px;
-      font-size: 16px;
-    }
+<meta name="keywords"
+      content="citation generator, APA 7, MLA 9, Harvard, Chicago, academic citation, reference generator">
 
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
+<meta name="author" content="SinSigma">
 
-    pre {
-      white-space: pre-wrap;
-      word-break: break-word;
-      background: #111;
-      color: #0f0;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 20px;
-    }
-  </style>
+<title>SinSigma Citation Generator</title>
+
+<link rel="stylesheet" href="style.css">
+```
+
 </head>
 
 <body>
 
-  <div class="box">
-    <h1>SinSigma SentimentAI</h1>
+```
+<!-- Header -->
+<header class="site-header">
+    <div class="container header-inner">
 
-    <p>News API diagnostic mode</p>
+        <a href="/" class="brand">
+            <span class="brand-mark">Σ</span>
+            <span class="brand-name">SinSigma</span>
+        </a>
 
-    <input
-      id="stock"
-      value="RELIANCE"
-      placeholder="Stock symbol"
-    />
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="#generator">Citation Generator</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#about">About</a>
+        </nav>
 
-    <button onclick="testNews()">
-      Test News API
-    </button>
+    </div>
+</header>
 
-    <pre id="result">Ready...</pre>
-  </div>
 
-<script>
-async function testNews() {
+<!-- Main Content -->
+<main>
 
-  const stock =
-    document.getElementById("stock").value.trim() || "RELIANCE";
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container hero-content">
 
-  const result =
-    document.getElementById("result");
+            <span class="eyebrow">ACADEMIC CITATION TOOL</span>
 
-  result.textContent =
-    "Testing /api/news for " + stock + "...";
+            <h1>
+                Create accurate citations
+                <span>in seconds.</span>
+            </h1>
 
-  try {
+            <p class="hero-description">
+                Generate properly formatted academic citations
+                for your assignments, research papers and projects.
+            </p>
 
-    const response = await fetch(
-      "/api/news?stock=" +
-      encodeURIComponent(stock)
-    );
+            <a href="#generator" class="primary-button">
+                Start Citing
+            </a>
 
-    const text =
-      await response.text();
+        </div>
+    </section>
 
-    result.textContent =
-      "HTTP STATUS: " +
-      response.status +
-      "\\n\\n" +
-      text;
 
-  } catch (error) {
+    <!-- Generator -->
+    <section id="generator" class="generator-section">
 
-    result.textContent =
-      "FRONTEND ERROR:\\n" +
-      error.message;
-  }
-}
-</script>
+        <div class="container">
+
+            <div class="section-heading">
+                <span class="section-label">CITATION GENERATOR</span>
+
+                <h2>
+                    Build your reference
+                </h2>
+
+                <p>
+                    Enter the source information below and choose
+                    your preferred citation style.
+                </p>
+            </div>
+
+
+            <div class="generator-card">
+
+                <!-- Style + Source Type -->
+                <div class="form-row">
+
+                    <div class="form-group">
+
+                        <label for="citation-style">
+                            Citation Style
+                        </label>
+
+                        <select id="citation-style">
+                            <option value="apa">APA 7th Edition</option>
+                            <option value="mla">MLA 9th Edition</option>
+                            <option value="harvard">Harvard</option>
+                            <option value="chicago">Chicago</option>
+                            <option value="ieee">IEEE</option>
+                            <option value="vancouver">Vancouver</option>
+                        </select>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="source-type">
+                            Source Type
+                        </label>
+
+                        <select id="source-type">
+
+                            <option value="website">
+                                Website
+                            </option>
+
+                            <option value="book">
+                                Book
+                            </option>
+
+                            <option value="journal">
+                                Journal Article
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Author -->
+                <div class="form-group">
+
+                    <label for="author">
+                        Author / Writer
+                    </label>
+
+                    <input
+                        type="text"
+                        id="author"
+                        placeholder="e.g. John Smith"
+                        autocomplete="name"
+                    >
+
+                    <small>
+                        Enter the author's full name.
+                    </small>
+
+                </div>
+
+
+                <!-- Year -->
+                <div class="form-group">
+
+                    <label for="year">
+                        Year
+                    </label>
+
+                    <input
+                        type="number"
+                        id="year"
+                        placeholder="e.g. 2026"
+                        min="1000"
+                        max="9999"
+                    >
+
+                </div>
+
+
+                <!-- Title -->
+                <div class="form-group">
+
+                    <label for="title">
+                        Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="title"
+                        placeholder="Enter the title of the source"
+                    >
+
+                </div>
+
+
+                <!-- Website / Journal / Publisher -->
+                <div class="form-group">
+
+                    <label for="publication">
+                        Website / Journal / Publisher
+                    </label>
+
+                    <input
+                        type="text"
+                        id="publication"
+                        placeholder="e.g. BBC News, Nature, Oxford University Press"
+                    >
+
+                </div>
+
+
+                <!-- URL -->
+                <div class="form-group">
+
+                    <label for="url">
+                        URL
+                        <span class="optional">
+                            Optional
+                        </span>
+                    </label>
+
+                    <input
+                        type="url"
+                        id="url"
+                        placeholder="https://example.com/article"
+                    >
+
+                </div>
+
+
+                <!-- DOI -->
+                <div class="form-group">
+
+                    <label for="doi">
+                        DOI
+                        <span class="optional">
+                            Optional
+                        </span>
+                    </label>
+
+                    <input
+                        type="text"
+                        id="doi"
+                        placeholder="e.g. 10.1000/xyz123"
+                    >
+
+                </div>
+
+
+                <!-- Generate -->
+                <button
+                    type="button"
+                    id="generate-btn"
+                    class="generate-button"
+                >
+                    Generate Citation
+                </button>
+
+
+                <!-- Error -->
+                <div
+                    id="form-message"
+                    class="form-message"
+                    role="alert"
+                    aria-live="polite"
+                ></div>
+
+
+                <!-- Result -->
+                <div
+                    id="citation-result"
+                    class="citation-result"
+                    hidden
+                >
+
+                    <div class="result-header">
+
+                        <div>
+                            <span class="result-label">
+                                YOUR CITATION
+                            </span>
+
+                            <h3>
+                                Generated Reference
+                            </h3>
+                        </div>
+
+                        <button
+                            type="button"
+                            id="copy-btn"
+                            class="copy-button"
+                        >
+                            Copy Citation
+                        </button>
+
+                    </div>
+
+
+                    <div
+                        id="citation-text"
+                        class="citation-text"
+                    ></div>
+
+
+                    <div class="in-text-section">
+
+                        <span class="result-label">
+                            IN-TEXT CITATION
+                        </span>
+
+                        <div
+                            id="in-text-citation"
+                            class="in-text-citation"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="info-section">
+
+        <div class="container">
+
+            <div class="section-heading">
+
+                <span class="section-label">
+                    HOW IT WORKS
+                </span>
+
+                <h2>
+                    Three simple steps
+                </h2>
+
+            </div>
+
+
+            <div class="steps-grid">
+
+                <div class="step-card">
+
+                    <span class="step-number">
+                        01
+                    </span>
+
+                    <h3>
+                        Choose your style
+                    </h3>
+
+                    <p>
+                        Select APA, MLA, Harvard, Chicago,
+                        IEEE or Vancouver.
+                    </p>
+
+                </div>
+
+
+                <div class="step-card">
+
+                    <span class="step-number">
+                        02
+                    </span>
+
+                    <h3>
+                        Enter source details
+                    </h3>
+
+                    <p>
+                        Add the author, year, title and
+                        other available information.
+                    </p>
+
+                </div>
+
+
+                <div class="step-card">
+
+                    <span class="step-number">
+                        03
+                    </span>
+
+                    <h3>
+                        Generate & copy
+                    </h3>
+
+                    <p>
+                        Get your formatted citation and
+                        copy it directly into your work.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- About -->
+    <section id="about" class="about-section">
+
+        <div class="container about-content">
+
+            <span class="section-label">
+                ABOUT SINSIGMA
+            </span>
+
+            <h2>
+                Simple tools for better academic work.
+            </h2>
+
+            <p>
+                SinSigma Citation Generator is designed to make
+                academic referencing faster and easier for students,
+                researchers and writers.
+            </p>
+
+            <p>
+                No account is required. Your citation can be
+                generated directly in your browser.
+            </p>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<!-- Footer -->
+<footer class="site-footer">
+
+    <div class="container footer-inner">
+
+        <div>
+            <strong>SinSigma</strong>
+            <span>Academic Citation Tools</span>
+        </div>
+
+        <div>
+            © <span id="current-year">2026</span> SinSigma.
+            All rights reserved.
+        </div>
+
+    </div>
+
+</footer>
+
+
+<script src="script.js"></script>
+```
 
 </body>
-</html>`,
-          {
-            status: 200,
-            headers: {
-              "Content-Type": "text/html; charset=UTF-8"
-            }
-          }
-        );
-      }
-
-
-      // ==========================================
-      // NEWS API
-      // ==========================================
-
-      if (
-        url.pathname === "/api/news" &&
-        request.method === "GET"
-      ) {
-
-        const stock =
-          url.searchParams.get("stock") || "RELIANCE";
-
-        const news =
-          await fetchLiveNews(stock, env);
-
-        return new Response(
-          JSON.stringify(
-            {
-              success: true,
-              stock,
-              news
-            },
-            null,
-            2
-          ),
-          {
-            status: 200,
-            headers: corsHeaders
-          }
-        );
-      }
-
-
-      // ==========================================
-      // SENTIMENT
-      // ==========================================
-
-      if (
-        url.pathname === "/api/sentiment" &&
-        request.method === "POST"
-      ) {
-
-        return jsonResponse(
-          {
-            error:
-              "Gemini is temporarily disabled while NEWS_API_KEY is being diagnosed."
-          },
-          503,
-          corsHeaders
-        );
-      }
-
-
-      // ==========================================
-      // UNKNOWN ROUTE
-      // ==========================================
-
-      return jsonResponse(
-        {
-          error: "Route not found",
-          path: url.pathname,
-          method: request.method
-        },
-        404,
-        corsHeaders
-      );
-
-    } catch (error) {
-
-      console.error(
-        "WORKER ERROR:",
-        error
-      );
-
-      return jsonResponse(
-        {
-          success: false,
-          diagnostic: true,
-          error:
-            error.message ||
-            String(error)
-        },
-        500,
-        corsHeaders
-      );
-    }
-  }
-};
-
-
-// =================================================
-// FETCH LIVE NEWS
-// =================================================
-
-async function fetchLiveNews(stock, env) {
-
-  // ==========================================
-  // STEP 1 — NORMAL CLOUDFLARE SECRET
-  // ==========================================
-
-  const NEWS_API_KEY =
-    env.NEWS_API_KEY;
-
-
-  // ==========================================
-  // STEP 2 — CHECK SECRET
-  // ==========================================
-
-  if (!NEWS_API_KEY) {
-
-    throw new Error(
-      "NEWS_API_KEY Worker Secret is missing. Go to Cloudflare → Worker → Settings → Variables and Secrets and add NEWS_API_KEY as a Secret."
-    );
-  }
-
-
-  // ==========================================
-  // STEP 3 — BUILD NEWSAPI URL
-  // ==========================================
-
-  const query =
-    encodeURIComponent(stock);
-
-  const newsUrl =
-    "https://newsapi.org/v2/everything" +
-    "?q=" +
-    query +
-    "&language=en" +
-    "&sortBy=publishedAt" +
-    "&pageSize=5";
-
-
-  // ==========================================
-  // STEP 4 — CALL NEWSAPI
-  // ==========================================
-
-  let response;
-
-  try {
-
-    response =
-      await fetch(
-        newsUrl,
-        {
-          method: "GET",
-
-          headers: {
-            "X-Api-Key": NEWS_API_KEY,
-            "Accept": "application/json"
-          }
-        }
-      );
-
-  } catch (error) {
-
-    throw new Error(
-      "Could not connect to NewsAPI: " +
-      (
-        error.message ||
-        String(error)
-      )
-    );
-  }
-
-
-  // ==========================================
-  // STEP 5 — READ RESPONSE
-  // ==========================================
-
-  const responseText =
-    await response.text();
-
-
-  // ==========================================
-  // STEP 6 — PARSE JSON
-  // ==========================================
-
-  let data;
-
-  try {
-
-    data =
-      JSON.parse(responseText);
-
-  } catch {
-
-    throw new Error(
-      "NewsAPI returned a non-JSON response. HTTP " +
-      response.status +
-      ". Response: " +
-      responseText.substring(0, 500)
-    );
-  }
-
-
-  // ==========================================
-  // STEP 7 — NEWSAPI ERROR
-  // ==========================================
-
-  if (!response.ok) {
-
-    throw new Error(
-      "NewsAPI rejected the request. HTTP " +
-      response.status +
-      ". " +
-      (
-        data &&
-        data.message
-          ? data.message
-          : responseText
-      )
-    );
-  }
-
-
-  // ==========================================
-  // STEP 8 — CHECK ARTICLES
-  // ==========================================
-
-  if (
-    !data ||
-    !Array.isArray(data.articles)
-  ) {
-
-    throw new Error(
-      "NewsAPI response does not contain an articles array."
-    );
-  }
-
-
-  // ==========================================
-  // STEP 9 — RETURN NEWS
-  // ==========================================
-
-  return data.articles.map(
-    article => ({
-      title:
-        article.title || "",
-
-      description:
-        article.description || "",
-
-      url:
-        article.url || "",
-
-      publishedAt:
-        article.publishedAt || "",
-
-      source:
-        article.source &&
-        article.source.name
-          ? article.source.name
-          : ""
-    })
-  );
-}
-
-
-// =================================================
-// JSON RESPONSE
-// =================================================
-
-function jsonResponse(
-  data,
-  status = 200,
-  extraHeaders = {}
-) {
-
-  return new Response(
-    JSON.stringify(
-      data,
-      null,
-      2
-    ),
-    {
-      status,
-
-      headers: {
-        "Content-Type":
-          "application/json",
-
-        ...extraHeaders
-      }
-    }
-  );
-}
+</html>
