@@ -14,6 +14,9 @@
 ========================================================= */
 
 const styleSelect = document.getElementById("citation-style");
+const citationContext = document.querySelectorAll(
+    'input[name="citation-context"]'
+);
 const sourceTypeSelect = document.getElementById("source-type");
 
 const authorInput = document.getElementById("author");
