@@ -582,37 +582,63 @@ RESPONSIVE
 /* Citation Context */
 .context-options {
     display: flex;
-    gap: 12px;
-    margin-top: 10px;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
 }
 
 .context-option {
     position: relative;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
+    gap: 7px;
+    padding: 7px 13px;
     border: 1px solid #d9dee7;
-    border-radius: 8px;
+    border-radius: 7px;
     background: #fff;
     cursor: pointer;
     font-size: 14px;
+    line-height: 18px;
     transition: all 0.2s ease;
 }
 
-.context-option:hover {
-    border-color: #9aa4b2;
-}
-
 .context-option input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
     margin: 0;
+    border: 1.5px solid #9aa4b2;
+    border-radius: 50%;
+    background: #fff;
     cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
 }
 
-.context-option input:checked + span {
-    font-weight: 600;
+.context-option input:checked {
+    border-color: #111827;
 }
 
+.context-option input:checked::after {
+    content: "";
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    top: 2.5px;
+    left: 2.5px;
+    border-radius: 50%;
+    background: #111827;
+}
+
+.context-option:has(input:checked) {
+    border-color: #111827;
+    background: #f7f8fa;
+}
+
+.context-option span {
+    white-space: nowrap;
+}
 .context-option:has(input:checked) {
     border-color: #111827;
     background: #f5f7fa;
