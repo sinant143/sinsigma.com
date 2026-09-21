@@ -1406,12 +1406,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const style =
             data.style || "apa";
 
-        /*
-         * Legal/government data is source-specific,
-         * but the surrounding style changes according
-         * to the selected citation style.
-         */
-
         if (
             data.source === "indian-kanoon" ||
             data.source === "supreme-court" ||
@@ -1591,9 +1585,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        /*
-         * Numbered styles.
-         */
         if (
             number &&
             (
@@ -1729,6 +1720,456 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         return `(${entries.join("; ")})`;
+    }
+
+    /* =========================================================
+       SOURCE VERIFICATION
+       Client-side validation + DOI metadata verification.
+       No citation data is changed by verification.
+    ========================================================= */
+
+    function getExpectedDomains(data) {
+        const source = data.source;
+        const context = data.context;
+
+        if (context === "india") {
+            const domains = {
+                "indian-kanoon": ["indiankanoon.org"],
+                "supreme-court": ["sci.gov.in", "main.sci.gov.in"],
+                "rbi": ["rbi.org.in"],
+                "sebi": ["sebi.gov.in", "sebi.gov.in"],
+                "pib": ["pib.gov.in"],
+                "legislation": ["indiacode.nic.in", "egazette.nic.in", "egazette.gov.in"],
+                "government-report": [".gov.in", ".nic.in"],
+                "government-ministry": [".gov.in", ".nic.in"],
+                "gazette": ["egazette.nic.in", "egazette.gov.in", ".gov.in"],
+                "high-court": [".gov.in", "hcservices.ecourts.gov.in"]
+            };
+
+            return domains[source] || [];
+        }
+
+        return [];
+    }
+
+    function hostMatches(host, expected) {
+        const normalized = host.toLowerCase().replace(/^www\./, "");
+
+        return expected.some(domain => {
+            const d = domain.toLowerCase().replace(/^www\./, "");
+
+            if (d.startsWith(".")) {
+                return normalized.endsWith(d);
+            }
+
+            return normalized === d || normalized.endsWith(`.${d}`);
+        });
+    }
+
+    function titlesRoughlyMatch(a, b) {
+        const normalize = value =>
+            clean(value)
+                .toLowerCase()
+                .replace(/[^\p{L}\p{N}]+/gu, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+
+        const first = normalize(a);
+        const second = normalize(b);
+
+        if (!first || !second) return false;
+        if (first === second) return true;
+
+        const shorter =
+            first.length <= second.length ? first : second;
+        const longer =
+            first.length > second.length ? first : second;
+
+        return shorter.length >= 12 && longer.includes(shorter);
+    }
+
+    async function verifyDOI(data) {
+        const doi = normalizeDoi(data.doi);
+
+        if (!doi) {
+            return {
+                level: "warning",
+                title: "No DOI provided",
+                message: "Add a DOI to verify the publication metadata."
+            };
+        }
+
+        try {
+            const response = await fetch(
+                `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json"
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                return {
+                    level: "error",
+                    title: "DOI not found",
+                    message: `Crossref could not find this DOI (${response.status}).`
+                };
+            }
+
+            const json = await response.json();
+            const item = json?.message || {};
+
+            const crossrefTitle =
+                Array.isArray(item.title) && item.title.length
+                    ? item.title[0]
+                    : "";
+
+            const crossrefAuthors =
+                Array.isArray(item.author)
+                    ? item.author
+                        .map(author =>
+                            `${author.given || ""} ${author.family || ""}`.trim()
+                        )
+                        .filter(Boolean)
+                    : [];
+
+            const titleMatch = data.title
+                ? titlesRoughlyMatch(data.title, crossrefTitle)
+                : true;
+
+            const authorMatch =
+                !data.authors.length ||
+                data.authors.some(userAuthor => {
+                    const lastName =
+                        getLastName(userAuthor).toLowerCase();
+
+                    return crossrefAuthors.some(crossrefAuthor =>
+                        crossrefAuthor
+                            .toLowerCase()
+                            .includes(lastName)
+                    );
+                });
+
+            if (!titleMatch || !authorMatch) {
+                return {
+                    level: "warning",
+                    title: "DOI found, but details need review",
+                    message:
+                        `Crossref found the DOI. ` +
+                        `${titleMatch ? "Title matches." : "Title does not closely match."} ` +
+                        `${authorMatch ? "Author appears to match." : "Author could not be matched."}`,
+                    metadata: {
+                        title: crossrefTitle,
+                        authors: crossrefAuthors,
+                        year:
+                            item.published?.["date-parts"]?.[0]?.[0] ||
+                            item.issued?.["date-parts"]?.[0]?.[0] ||
+                            ""
+                    }
+                };
+            }
+
+            return {
+                level: "success",
+                title: "Source verified",
+                message: "DOI exists in Crossref and the supplied title/author details match.",
+                metadata: {
+                    title: crossrefTitle,
+                    authors: crossrefAuthors,
+                    year:
+                        item.published?.["date-parts"]?.[0]?.[0] ||
+                        item.issued?.["date-parts"]?.[0]?.[0] ||
+                        ""
+                }
+            };
+        } catch (error) {
+            return {
+                level: "warning",
+                title: "DOI verification unavailable",
+                message:
+                    "Crossref could not be reached from the browser. The citation was not marked as verified."
+            };
+        }
+    }
+
+    async function verifySource(data) {
+        const url = normalizeUrl(data.url);
+
+        if (!url && !data.doi) {
+            return {
+                level: "warning",
+                title: "Nothing to verify",
+                message: "Add a valid source URL or DOI first."
+            };
+        }
+
+        if (data.doi) {
+            return await verifyDOI(data);
+        }
+
+        let parsedUrl;
+
+        try {
+            parsedUrl = new URL(url);
+        } catch (error) {
+            return {
+                level: "error",
+                title: "Invalid URL",
+                message: "Please enter a complete and valid source URL."
+            };
+        }
+
+        if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+            return {
+                level: "error",
+                title: "Invalid URL",
+                message: "Only HTTP and HTTPS source URLs can be verified."
+            };
+        }
+
+        const expectedDomains = getExpectedDomains(data);
+
+        if (expectedDomains.length) {
+            const officialDomain = hostMatches(
+                parsedUrl.hostname,
+                expectedDomains
+            );
+
+            if (!officialDomain) {
+                return {
+                    level: "warning",
+                    title: "Official-domain check failed",
+                    message:
+                        `This URL does not appear to use the expected official domain for ${data.source}. ` +
+                        "Review the source before using the citation."
+                };
+            }
+
+            return {
+                level: "success",
+                title: "Official domain verified",
+                message:
+                    `The URL uses an expected official domain (${parsedUrl.hostname}). ` +
+                    "Page content was not independently verified."
+            };
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: "HEAD",
+                mode: "cors"
+            });
+
+            if (response.ok) {
+                return {
+                    level: "success",
+                    title: "Source URL reachable",
+                    message:
+                        `The source URL responded successfully (${response.status}).`
+                };
+            }
+
+            return {
+                level: "warning",
+                title: "URL needs review",
+                message:
+                    `The source URL responded with status ${response.status}.`
+            };
+        } catch (error) {
+            return {
+                level: "warning",
+                title: "URL could not be independently checked",
+                message:
+                    "The site may block browser verification (CORS or access restrictions). " +
+                    "The URL format is valid, but SinSigma could not confirm the page."
+            };
+        }
+    }
+
+    function ensureVerificationStyles() {
+        if (document.getElementById("verification-inline-styles")) return;
+
+        const style = document.createElement("style");
+        style.id = "verification-inline-styles";
+        style.textContent = `
+            .verify-source-btn {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 13px 20px;
+                margin-top: 10px;
+                background: #fff;
+                color: #111;
+                border: 1px solid #111;
+                border-radius: 8px;
+                font-size: 15px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all .2s ease;
+            }
+
+            .verify-source-btn:hover {
+                background: #f7f7f7;
+                transform: translateY(-1px);
+            }
+
+            .verify-source-btn:disabled {
+                opacity: .65;
+                cursor: wait;
+                transform: none;
+            }
+
+            .verification-result {
+                margin-top: 12px;
+                padding: 12px 14px;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                font-size: 13px;
+                line-height: 1.5;
+                background: #fafafa;
+            }
+
+            .verification-result.success {
+                border-color: #c7ead2;
+                background: #f4fbf6;
+            }
+
+            .verification-result.warning {
+                border-color: #f0dfad;
+                background: #fffaf0;
+            }
+
+            .verification-result.error {
+                border-color: #efcaca;
+                background: #fff6f6;
+            }
+
+            .verification-result strong {
+                display: block;
+                margin-bottom: 3px;
+                font-size: 14px;
+            }
+
+            .source-verify-mini {
+                border: 0;
+                background: transparent;
+                text-decoration: underline;
+                cursor: pointer;
+                font-weight: 600;
+                padding: 4px;
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    function showVerificationResult(result, target) {
+        if (!target) return;
+
+        target.className =
+            `verification-result ${result.level || "warning"}`;
+
+        target.innerHTML =
+            `<strong>${escapeHtml(result.title || "Verification result")}</strong>` +
+            `<span>${escapeHtml(result.message || "")}</span>`;
+
+        if (result.metadata) {
+            const details = [];
+
+            if (result.metadata.title) {
+                details.push(
+                    `Crossref title: ${result.metadata.title}`
+                );
+            }
+
+            if (result.metadata.year) {
+                details.push(
+                    `Year: ${result.metadata.year}`
+                );
+            }
+
+            if (details.length) {
+                target.innerHTML +=
+                    `<div style="margin-top:6px;">${escapeHtml(details.join(" • "))}</div>`;
+            }
+        }
+    }
+
+    function createCurrentVerifyUI() {
+        if (!generateBtn || document.getElementById("verify-source-btn")) {
+            return;
+        }
+
+        ensureVerificationStyles();
+
+        const verifyButton =
+            document.createElement("button");
+
+        verifyButton.type = "button";
+        verifyButton.id = "verify-source-btn";
+        verifyButton.className = "verify-source-btn";
+        verifyButton.textContent = "Verify Source";
+
+        const result =
+            document.createElement("div");
+
+        result.id = "verification-result";
+        result.className = "verification-result";
+        result.hidden = true;
+
+        generateBtn.parentNode.insertBefore(
+            verifyButton,
+            generateBtn
+        );
+
+        generateBtn.parentNode.insertBefore(
+            result,
+            generateBtn
+        );
+
+        verifyButton.addEventListener("click", async () => {
+            const data = collectCurrentSource();
+            const error = validateSource(data);
+
+            if (error) {
+                if (formMessage) {
+                    formMessage.textContent = error;
+                }
+                return;
+            }
+
+            verifyButton.disabled = true;
+            verifyButton.textContent = "Verifying…";
+            result.hidden = false;
+
+            showVerificationResult(
+                {
+                    level: "warning",
+                    title: "Checking source…",
+                    message: "Please wait while SinSigma checks the source."
+                },
+                result
+            );
+
+            const verification =
+                await verifySource(data);
+
+            showVerificationResult(
+                verification,
+                result
+            );
+
+            verifyButton.disabled = false;
+            verifyButton.textContent = "Verify Source";
+
+            if (formMessage) {
+                formMessage.textContent =
+                    verification.title;
+            }
+        });
     }
 
     /* =========================================================
@@ -1947,6 +2388,39 @@ document.addEventListener("DOMContentLoaded", () => {
                 label.textContent =
                     `Source ${index + 1}: ${source.title}`;
 
+                const actions =
+                    document.createElement("div");
+
+                actions.style.display = "flex";
+                actions.style.alignItems = "center";
+                actions.style.gap = "8px";
+
+                const verify =
+                    document.createElement("button");
+
+                verify.type = "button";
+                verify.textContent = "Verify";
+                verify.className = "source-verify-mini";
+
+                verify.addEventListener("click", async () => {
+                    verify.disabled = true;
+                    verify.textContent = "Checking…";
+
+                    const result = await verifySource(source);
+
+                    verify.disabled = false;
+                    verify.textContent = "Verify";
+
+                    if (formMessage) {
+                        formMessage.textContent =
+                            `${result.title}: ${result.message}`;
+                    }
+
+                    source.verification = result;
+                });
+
+                actions.appendChild(verify);
+
                 const remove =
                     document.createElement(
                         "button"
@@ -1993,9 +2467,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     label
                 );
 
-                item.appendChild(
-                    remove
-                );
+                actions.appendChild(remove);
+                item.appendChild(actions);
 
                 list.appendChild(
                     item
@@ -2064,10 +2537,6 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        /*
-         * If the user has typed a source that
-         * hasn't been added yet, include it.
-         */
         if (
             current.title &&
             !sources.some(
@@ -2307,10 +2776,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                /*
-                 * First source can be generated
-                 * immediately.
-                 */
                 sources = [data];
 
                 renderSourceList();
@@ -2334,8 +2799,9 @@ document.addEventListener("DOMContentLoaded", () => {
        INITIALISE
     ========================================================= */
 
+    ensureVerificationStyles();
     updateSourceTypes();
-
+    createCurrentVerifyUI();
     createSourceManager();
 
     renderSourceList();
