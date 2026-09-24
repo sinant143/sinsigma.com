@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description"
+          content="SinSigma Citation Generator — create accurate academic citations quickly and easily.">
+
+    <meta name="keywords"
+          content="citation generator, APA 7, MLA 9, Harvard, Chicago, academic citation, reference generator">
+
+    <meta name="author" content="SinSigma">
+
+   <title>SinSigma | Simple tools for better research</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="site-header">
+    <div class="container header-inner">
+
+        <a href="#" class="brand">
+            <span class="brand-symbol">Σ</span>
+            <span class="brand-name">SinSigma</span>
+        </a>
+
+        <nav class="main-nav">
+            <a href="#generator">Generator</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#about">About</a>
+        </nav>
+
+    </div>
+</header>
+
+
+<main>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="container hero-inner">
+
+            <div class="hero-badge">
+                RESEARCH CITATION TOOL
+            </div>
+
+            <h1>
+                Create accurate citations<br>
+                in seconds.
+            </h1>
+
+            <p>
+                Generate properly formatted academic citations
+                in APA, MLA, Harvard, Chicago, IEEE and Vancouver styles.
+            </p>
+
+            <a href="#generator" class="hero-button">
+                Start Citing
+            </a>
+
+        </div>
+    </section>
+
+
+    <!-- GENERATOR -->
+    <section class="generator-section" id="generator">
+        <div class="container">
+
+            <div class="section-heading">
+                <span class="section-label">CITATION GENERATOR</span>
+                <h2>Create your citation</h2>
+                <p>
+                    Enter your source details and SinSigma will format
+                    your citation automatically.
+                </p>
+            </div>
+
+
+            <div class="generator-card">
+
+                <!-- CITATION CONTEXT -->
+                <div class="form-group">
+                    <label>Citation Context</label>
+
+                    <div class="context-options">
+
+                        <label class="context-option">
+                            <input
+                                type="radio"
+                                name="citation-context"
+                                value="international"
+                                checked
+                            >
+                            <span>International</span>
+                        </label>
+
+                        <label class="context-option">
+                            <input
+                                type="radio"
+                                name="citation-context"
+                                value="india"
+                            >
+                            <span>India</span>
+                        </label>
+
+                    </div>
+                </div>
+
+
+                <!-- CITATION STYLE -->
+                <div class="form-group">
+                    <label for="citation-style">
+                        Citation Style
+                    </label>
+
+                    <select id="citation-style">
+                        <option value="apa">APA 7th Edition</option>
+                        <option value="mla">MLA 9th Edition</option>
+                        <option value="harvard">Harvard</option>
+                        <option value="chicago">Chicago</option>
+                        <option value="ieee">IEEE</option>
+                        <option value="vancouver">Vancouver</option>
+                    </select>
+                </div>
+
+
+                <!-- SOURCE TYPE -->
+                <div class="form-group">
+                    <label for="source-type">
+                        Source Type
+                    </label>
+
+                    <select id="source-type">
+                        <option value="website">Website</option>
+                        <option value="book">Book</option>
+                        <option value="journal">Journal Article</option>
+                    </select>
+                </div>
+
+
+                <div class="form-grid">
+
+                    <!-- AUTHOR -->
+                    <div class="form-group">
+                        <label for="author">
+                            Author / Writer
+                        </label>
+
+                        <input
+                            type="text"
+                            id="author"
+                            placeholder="e.g. John Smith"
+                        >
+                    </div>
+
+
+                    <!-- YEAR -->
+                    <div class="form-group">
+                        <label for="year">
+                            Year
+                        </label>
+
+                        <input
+                            type="text"
+                            id="year"
+                            placeholder="e.g. 2026"
+                        >
+                    </div>
+
+                </div>
+
+
+                <!-- TITLE -->
+                <div class="form-group">
+                    <label for="title">
+                        Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="title"
+                        placeholder="Enter the title of the source"
+                    >
+                </div>
+
+
+                <!-- PUBLICATION -->
+                <div class="form-group">
+                    <label for="publication">
+                        Website / Journal / Publisher
+                    </label>
+
+                    <input
+                        type="text"
+                        id="publication"
+                        placeholder="e.g. BBC, Oxford University Press"
+                    >
+                </div>
+
+
+                <!-- URL -->
+                <div class="form-group">
+                    <label for="url">
+                        URL
+                    </label>
+
+                    <input
+                        type="url"
+                        id="url"
+                        placeholder="https://example.com/article"
+                    >
+                </div>
+
+
+                <!-- DOI -->
+                <div class="form-group">
+                    <label for="doi">
+                        DOI
+                        <span class="optional-label">Optional</span>
+                    </label>
+
+                    <input
+                        type="text"
+                        id="doi"
+                        placeholder="e.g. 10.1000/xyz123"
+                    >
+                </div>
+
+
+                <!-- FORM MESSAGE -->
+                <div
+                    id="form-message"
+                    class="form-message"
+                    aria-live="polite"
+                ></div>
+
+
+                <!-- GENERATE -->
+                <button
+                    type="button"
+                    id="generate-btn"
+                    class="generate-btn"
+                >
+                    Generate Citation
+                </button>
+
+
+                <!-- RESULT -->
+                <div
+                    id="citation-result"
+                    class="citation-result"
+                    hidden
+                >
+
+                    <div class="result-header">
+                        <div>
+                            <span class="result-label">
+                                YOUR CITATION
+                            </span>
+
+                            <h3>Formatted Reference</h3>
+                        </div>
+
+                        <button
+                            type="button"
+                            id="copy-btn"
+                            class="copy-btn"
+                        >
+                            Copy
+                        </button>
+                    </div>
+
+
+                    <div
+                        id="citation-text"
+                        class="citation-text"
+                    ></div>
+
+
+                    <div class="in-text-box">
+
+                        <span class="in-text-label">
+                            IN-TEXT CITATION
+                        </span>
+
+                        <span
+                            id="in-text-citation"
+                            class="in-text-citation"
+                        ></span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+
+    <!-- HOW IT WORKS -->
+    <section
+        class="info-section"
+        id="how-it-works"
+    >
+        <div class="container">
+
+            <div class="section-heading">
+                <span class="section-label">
+                    HOW IT WORKS
+                </span>
+
+                <h2>Three simple steps</h2>
+
+                <p>
+                    Create a properly formatted citation
+                    without complicated formatting rules.
+                </p>
+            </div>
+
+
+            <div class="steps-grid">
+
+                <div class="step-card">
+                    <div class="step-number">01</div>
+
+                    <h3>Choose a style</h3>
+
+                    <p>
+                        Select APA, MLA, Harvard, Chicago,
+                        IEEE or Vancouver.
+                    </p>
+                </div>
+
+
+                <div class="step-card">
+                    <div class="step-number">02</div>
+
+                    <h3>Enter details</h3>
+
+                    <p>
+                        Add the author, year, title and
+                        publication information.
+                    </p>
+                </div>
+
+
+                <div class="step-card">
+                    <div class="step-number">03</div>
+
+                    <h3>Generate</h3>
+
+                    <p>
+                        Get your formatted citation and
+                        copy it instantly.
+                    </p>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+
+    <!-- ABOUT -->
+    <section
+        class="about-section"
+        id="about"
+    >
+        <div class="container about-inner">
+
+            <div>
+                <span class="section-label">
+                    ABOUT SINSIGMA
+                </span>
+
+                <h2>
+                    Simple tools for better research.
+                </h2>
+            </div>
+
+            <div class="about-text">
+                <p>
+                    SinSigma is building simple, practical
+                    technology tools that make everyday
+                    digital work easier.
+                </p>
+
+                <p>
+                    Our citation generator helps students,
+                    researchers and professionals create
+                    consistently formatted references quickly.
+                </p>
+            </div>
+
+        </div>
+    </section>
+
+</main>
+
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="container footer-inner">
+
+        <div>
+            <strong>SinSigma</strong>
+            <span>Technology made simpler.</span>
+        </div>
+
+        <div>
+            © <span id="current-year"></span> Powered by SINANT
+            All rights reserved.
+        </div>
+
+    </div>
+</footer>
+
+
+<script src="script.js"></script>
+
+</body>
+</html>
