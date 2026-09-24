@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serverless Time-Series Forecaster</title>
+    <!-- Tailwind CSS for UI -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- Chart.js for Graphics -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- PapaParse for Client-Side CSV Parsing -->
+    <script src="https://cloudflare.com"></script>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <!-- Header -->
+        <div class="border-b border-gray-100 pb-4 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">🔮 <span>Zero-DB Time-Series Forecaster</span></h1>
+            <p class="text-sm text-gray-500 mt-1">Apna historical data CSV file me upload karein ya sample data use karein. Poori forecasting aapke browser me secure hoti hai.</p>
+        </div>
+
+        <!-- Main Grid Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Left Controls Panel -->
+            <div class="space-y-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">1. Data Input (CSV File)</label>
+                    <input type="file" id="csvFile" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                    <div class="mt-2 flex gap-2">
+                        <button onclick="loadSampleData()" class="text-xs text-blue-600 hover:underline font-medium">Load Sample Sales Data</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">2. Forecast Horizon</label>
+                    <p class="text-xs text-gray-400 mb-1">Aage ke kitne time periods (days/months) ka forecast chahiye?</p>
+                    <input type="number" id="forecastPeriods" value="6" min="1" max="24" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                </div>
+
+                <button onclick="processAndForecast()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow transition duration-200">
+                    Generate Forecast & Graphics
+                </button>
+            </div>
+
+            <!-- Right Graphics/Chart Panel -->
+            <div class="md:col-span-2 border border-gray-200 rounded-lg p-4 flex flex-col justify-between">
+                <div class="h-80 w-full relative">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+                
+                <!-- Insights / Statistics Summary Below Chart -->
+                <div id="statsSummary" class="hidden mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-blue-50 p-3 rounded-md">
+                        <span class="text-gray-500 block text-xs">Historical Average</span>
+                        <span id="histAvg" class="font-bold text-lg text-blue-800">-</span>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded-md">
+                        <span class="text-gray-500 block text-xs">Next Predicted Value</span>
+                        <span id="nextPred" class="font-bold text-lg text-green-800">-</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let myChart = null;
+        let parsedLabels = [];
+        let parsedValues = [];
+
+        // Sample Data Handler for Testing
+        function loadSampleData() {
+            parsedLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            parsedValues =;
+            alert("Sample sales data loaded successfully! Click 'Generate Forecast' to see results.");
+        }
+
+        // CSV File Reader
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                skipEmptyLines: true,
+                complete: function(results) {
+                    const data = results.data;
+                    if(data.length < 2) {
+                        alert("CSV me kam se kam 2 rows (Headers + Data) honi chahiye!");
+                        return;
+                    }
+                    
+                    parsedLabels = [];
+                    parsedValues = [];
+                    
+                    // Pehli row ko skip karke headers ke baad ka data extract karna
+                    for(let i = 1; i < data.length; i++) {
+                        if(data[i][0] && data[i][1]) {
+                            parsedLabels.push(data[i][0].trim());
+                            parsedValues.push(parseFloat(data[i][1].trim()));
+                        }
+                    }
+                    alert(`${parsedValues.length} data points successfully upload ho gaye hain!`);
+                }
+            });
+        });
+
+        // Core Mathematical Forecasting Engine (Linear Regression Method)
+        function processAndForecast() {
+            if (parsedValues.length === 0) {
+                alert("Kripya pehle koi CSV file upload karein ya Sample Data load karein!");
+                return;
+            }
+
+            const periodsToForecast = parseInt(document.getElementById('forecastPeriods').value) || 6;
+            
+            // Linear Regression (y = mx + c) math implementation
+            const n = parsedValues.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            
+            for (let i = 0; i < n; i++) {
+                sumX += i;
+                sumY += parsedValues[i];
+                sumXY += i * parsedValues[i];
+                sumXX += i * i;
+            }
+            
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            // Generate Future Forecast Points
+            let forecastLabels = [...parsedLabels];
+            let historicalDataset = [...parsedValues];
+            let forecastDataset = new Array(n).fill(null); // Historical points par forecast line null rahegi
+            
+            // Last historical point ko forecast line se connect karne ke liye fill karein
+            forecastDataset[n-1] = parsedValues[n-1]; 
+
+            const lastLabel = parsedLabels[parsedLabels.length - 1];
+            
+            for (let i = 0; i < periodsToForecast; i++) {
+                const nextX = n + i;
+                const nextY = slope * nextX + intercept;
+                
+                forecastLabels.push(`F-${i + 1}`);
+                forecastDataset.push(Math.round(nextY * 100) / 100);
+            }
+
+            // Stats Update
+            const avg = parsedValues.reduce((a, b) => a + b, 0) / n;
+            document.getElementById('histAvg').innerText = avg.toFixed(2);
+            document.getElementById('nextPred').innerText = forecastDataset[n].toFixed(2);
+            document.getElementById('statsSummary').classList.remove('hidden');
+
+            // Render Graphic Charts
+            renderChart(forecastLabels, historicalDataset, forecastDataset);
+        }
+
+        // Graphics Rendering using Chart.js
+        function renderChart(labels, historical, forecast) {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            if (myChart) {
+                myChart.destroy(); // Purane chart canvas ko wipe out karna naye data ke liye
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Historical Data',
+                            data: historical,
+                            borderColor: '#2563eb', // Blue Line
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Forecasted Trend',
+                            data: forecast,
+                            borderColor: '#16a34a', // Green Line
+                            borderDash:, // Dashed line for future prediction
+                            backgroundColor: 'rgba(22, 163, 74, 0.05)',
+                            borderWidth: 3,
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: '#f3f4f6' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
