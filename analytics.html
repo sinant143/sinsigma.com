@@ -1,58 +1,2930 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANALYTICS</title>
-    <!-- Tailwind CSS UI ke liye -->
-    <script src="https://jsdelivr.net"></script>
-</head>
-<body class="bg-gray-50 p-6 font-sans">
-    <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">📊 Client-Side Research Stats Analyzer</h2>
-        <p class="text-sm text-gray-500 mb-4">Numbers ko comma (,) se separate karke enter karein. Koi data server par nahi jata.</p>
-        
-        <textarea id="dataInput" class="w-full p-3 border rounded mb-4 h-28" placeholder="E.g., 12, 15, 24, 14, 25, 34, 15, 28, 19"></textarea>
-        <button onclick="calculateStats()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium">Analyze Data</button>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="description" content="Statistical Analysis Studio - browser based SPSS-style statistical analysis">
+<title>Statistical Analysis Studio</title>
 
-        <div id="results" class="mt-6 hidden space-y-2 border-t pt-4">
-            <h3 class="text-lg font-semibold text-gray-700">Results:</h3>
-            <p><strong>Mean (Average):</strong> <span id="meanOut">-</span></p>
-            <p><strong>Median (Middle Value):</strong> <span id="medianOut">-</span></p>
-            <p><strong>Standard Deviation (SD):</strong> <span id="sdOut">-</span></p>
+<!-- ============================================================
+     OPEN SOURCE CDN LIBRARIES
+     ============================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.5.3/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.8/dist/simple-statistics.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<style>
+:root{
+    --bg:#f4f6f8;
+    --panel:#ffffff;
+    --panel2:#f8fafc;
+    --text:#17202a;
+    --muted:#667085;
+    --border:#d9dee7;
+    --primary:#111827;
+    --primary2:#374151;
+    --accent:#2563eb;
+    --accent2:#1d4ed8;
+    --danger:#dc2626;
+    --success:#15803d;
+    --warning:#b45309;
+    --shadow:0 4px 18px rgba(15,23,42,.07);
+    --radius:10px;
+    --sidebar:255px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{
+    width:var(--sidebar);
+    background:#101418;
+    color:#fff;
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+}
+.brand{
+    height:70px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:0 18px;
+    border-bottom:1px solid rgba(255,255,255,.1);
+}
+.brand-mark{
+    width:38px;height:38px;border:1px solid #fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;font-weight:700;border-radius:7px;
+}
+.brand-title{font-size:16px;font-weight:700}
+.brand-sub{font-size:10px;color:#aeb7c2;margin-top:2px}
+.nav{padding:12px 9px;overflow:auto}
+.nav-section{
+    color:#77818d;
+    text-transform:uppercase;
+    font-size:10px;
+    letter-spacing:.08em;
+    padding:13px 11px 6px;
+}
+.nav button{
+    width:100%;
+    border:0;
+    background:transparent;
+    color:#cbd2da;
+    padding:10px 12px;
+    text-align:left;
+    border-radius:7px;
+    margin:1px 0;
+    font-size:13px;
+}
+.nav button:hover,.nav button.active{background:#242b33;color:#fff}
+.sidebar-footer{
+    margin-top:auto;
+    padding:13px;
+    color:#89939f;
+    font-size:10px;
+    border-top:1px solid rgba(255,255,255,.1);
+}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{
+    height:64px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 20px;
+    flex-shrink:0;
+}
+.top-title{font-weight:700;font-size:17px}
+.top-actions{display:flex;gap:8px;align-items:center}
+.content{padding:18px;overflow:auto;flex:1}
+.view{display:none}
+.view.active{display:block}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(12,1fr);
+    gap:14px;
+}
+.card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+}
+.card-head{
+    padding:13px 15px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+.card-title{font-size:14px;font-weight:700}
+.card-body{padding:15px}
+.span-12{grid-column:span 12}
+.span-8{grid-column:span 8}
+.span-6{grid-column:span 6}
+.span-4{grid-column:span 4}
+.span-3{grid-column:span 3}
+.btn{
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text);
+    padding:8px 12px;
+    border-radius:7px;
+    font-size:12px;
+    font-weight:600;
+}
+.btn:hover{background:#f2f4f7}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primary:hover{background:#000}
+.btn.blue{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:var(--danger)}
+.btn.small{padding:5px 8px;font-size:11px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:700;color:#475467}
+input,select,textarea{
+    border:1px solid var(--border);
+    background:#fff;
+    border-radius:6px;
+    padding:8px 9px;
+    outline:none;
+    color:var(--text);
+    min-width:0;
+}
+input:focus,select:focus,textarea:focus{border-color:#94a3b8;box-shadow:0 0 0 2px rgba(37,99,235,.08)}
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+    gap:12px;
+}
+.kpi{
+    padding:14px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--panel2);
+}
+.kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kpi-value{font-size:23px;font-weight:750;margin-top:4px}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:7px}
+table{border-collapse:collapse;width:100%;font-size:11px;background:#fff}
+th,td{border-bottom:1px solid #e5e7eb;border-right:1px solid #eef0f3;padding:7px 8px;white-space:nowrap;text-align:right}
+th{background:#f3f5f7;font-weight:700;color:#344054;position:sticky;top:0;z-index:2}
+th:first-child,td:first-child{text-align:left}
+tbody tr:hover{background:#f8fafc}
+.data-table th{position:sticky;top:0}
+.data-table td.editable{cursor:text}
+.data-table td.editable:focus{outline:2px solid var(--accent);outline-offset:-2px}
+.variable-table th:first-child{position:sticky;left:0;z-index:4}
+.variable-table td:first-child{position:sticky;left:0;background:#fff;z-index:1}
+.badge{
+    display:inline-flex;align-items:center;
+    padding:3px 7px;border-radius:999px;
+    font-size:10px;font-weight:700;
+}
+.badge.scale{background:#e8f0ff;color:#1d4ed8}
+.badge.nominal{background:#f1f5f9;color:#475569}
+.badge.ordinal{background:#fff7ed;color:#9a3412}
+.badge.missing{background:#fee2e2;color:#991b1b}
+.output{
+    min-height:100px;
+}
+.output-title{
+    font-size:14px;font-weight:750;margin-bottom:9px;
+}
+.note{
+    font-size:11px;color:var(--muted);
+    line-height:1.55;
+}
+.alert{
+    padding:10px 12px;border-radius:7px;font-size:11px;
+    margin-bottom:10px;
+}
+.alert.info{background:#eff6ff;color:#1e40af}
+.alert.warn{background:#fffbeb;color:#92400e}
+.alert.error{background:#fef2f2;color:#991b1b}
+.alert.success{background:#f0fdf4;color:#166534}
+.empty{
+    min-height:180px;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:12px;border:1px dashed var(--border);
+    border-radius:8px;
+}
+.progress{
+    height:5px;background:#e5e7eb;border-radius:10px;overflow:hidden;
+}
+.progress > div{height:100%;background:var(--accent);width:0}
+.chart{width:100%;min-height:360px}
+.result-table{margin-top:8px}
+.result-table td.sig{font-weight:700}
+.sig-yes{color:#15803d}
+.sig-no{color:#64748b}
+.section-space{margin-top:14px}
+.hidden{display:none!important}
+hr{border:0;border-top:1px solid var(--border);margin:14px 0}
+pre{
+    background:#0f172a;color:#e2e8f0;padding:13px;
+    border-radius:8px;overflow:auto;font-size:11px;
+}
+@media(max-width:950px){
+    :root{--sidebar:205px}
+    .span-8,.span-6,.span-4,.span-3{grid-column:span 12}
+}
+@media(max-width:700px){
+    .sidebar{display:none}
+    .content{padding:10px}
+    .topbar{padding:0 12px}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<!-- ============================================================
+     SIDEBAR
+     ============================================================ -->
+<aside class="sidebar">
+    <div class="brand">
+        <div class="brand-mark">Σ</div>
+        <div>
+            <div class="brand-title">Statistical Studio</div>
+            <div class="brand-sub">SPSS-style browser analysis</div>
         </div>
     </div>
 
-    <script>
-        function calculateStats() {
-            const input = document.getElementById('dataInput').value;
-            // String ko numbers ke array me convert karna
-            const numbers = input.split(',').map(num => parseFloat(num.trim())).filter(num => !isNaN(num));
+    <nav class="nav">
+        <div class="nav-section">Workspace</div>
+        <button class="active" data-view="home">⌂ Dashboard</button>
+        <button data-view="data">▦ Data View</button>
+        <button data-view="variables">⚙ Variable View</button>
 
-            if (numbers.length === 0) {
-                alert("Kripya valid numbers enter karein!");
+        <div class="nav-section">Analyze</div>
+        <button data-view="descriptives">Σ Descriptives</button>
+        <button data-view="frequencies">≡ Frequencies</button>
+        <button data-view="crosstabs">⊞ Crosstabs</button>
+        <button data-view="ttests">t T-Tests</button>
+        <button data-view="anova">F ANOVA</button>
+        <button data-view="correlation">ρ Correlation</button>
+        <button data-view="regression">↗ Regression</button>
+        <button data-view="nonparam">≈ Non-parametric</button>
+        <button data-view="normality">∿ Normality</button>
+
+        <div class="nav-section">Visualize</div>
+        <button data-view="charts">▥ Charts</button>
+        <button data-view="output">▤ Output Viewer</button>
+    </nav>
+
+    <div class="sidebar-footer">
+        Client-side only · No database<br>
+        Data remains in your browser
+    </div>
+</aside>
+
+<!-- ============================================================
+     MAIN
+     ============================================================ -->
+<main class="main">
+
+<header class="topbar">
+    <div>
+        <div class="top-title" id="pageTitle">Dashboard</div>
+    </div>
+    <div class="top-actions">
+        <button class="btn small" onclick="loadDemo()">Load Demo</button>
+        <button class="btn small" onclick="clearAllData()">Clear</button>
+        <button class="btn primary small" onclick="document.getElementById('fileInput').click()">Import Data</button>
+        <input id="fileInput" type="file" accept=".csv,.txt,.xlsx,.xls" class="hidden">
+    </div>
+</header>
+
+<div class="content">
+
+<!-- ============================================================
+     DASHBOARD
+     ============================================================ -->
+<section class="view active" id="view-home">
+<div class="grid">
+
+    <div class="card span-12">
+        <div class="card-body">
+            <h2 style="margin:0 0 5px">Statistical Analysis Studio</h2>
+            <p class="note">
+                A browser-based statistical analysis environment inspired by
+                SPSS workflows. Import CSV/Excel data or start with the demo dataset.
+            </p>
+
+            <div class="toolbar section-space">
+                <button class="btn primary" onclick="document.getElementById('fileInput').click()">Import CSV / Excel</button>
+                <button class="btn" onclick="loadDemo()">Use Demo Dataset</button>
+                <button class="btn" onclick="go('data')">Open Data View</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card span-3">
+        <div class="card-body kpi">
+            <div class="kpi-label">Cases</div>
+            <div class="kpi-value" id="kpiRows">0</div>
+            <div class="kpi-sub">Rows / observations</div>
+        </div>
+    </div>
+
+    <div class="card span-3">
+        <div class="card-body kpi">
+            <div class="kpi-label">Variables</div>
+            <div class="kpi-value" id="kpiCols">0</div>
+            <div class="kpi-sub">Columns</div>
+        </div>
+    </div>
+
+    <div class="card span-3">
+        <div class="card-body kpi">
+            <div class="kpi-label">Numeric</div>
+            <div class="kpi-value" id="kpiNumeric">0</div>
+            <div class="kpi-sub">Scale variables</div>
+        </div>
+    </div>
+
+    <div class="card span-3">
+        <div class="card-body kpi">
+            <div class="kpi-label">Missing</div>
+            <div class="kpi-value" id="kpiMissing">0</div>
+            <div class="kpi-sub">Blank / NA cells</div>
+        </div>
+    </div>
+
+    <div class="card span-6">
+        <div class="card-head">
+            <div class="card-title">Analysis Modules</div>
+        </div>
+        <div class="card-body">
+            <div class="form-grid">
+                <div class="kpi"><div class="kpi-label">Descriptives</div><div class="kpi-sub">Mean, SD, variance, percentiles, skewness, kurtosis</div></div>
+                <div class="kpi"><div class="kpi-label">Hypothesis Tests</div><div class="kpi-sub">t-tests, ANOVA, Chi-square, non-parametric tests</div></div>
+                <div class="kpi"><div class="kpi-label">Association</div><div class="kpi-sub">Pearson, Spearman, crosstabs</div></div>
+                <div class="kpi"><div class="kpi-label">Prediction</div><div class="kpi-sub">Simple and multiple linear regression</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card span-6">
+        <div class="card-head">
+            <div class="card-title">Browser Architecture</div>
+        </div>
+        <div class="card-body">
+            <div class="note">
+                <b>CSV:</b> Papa Parse<br>
+                <b>Excel:</b> SheetJS<br>
+                <b>Statistics:</b> Simple Statistics + local numerical routines<br>
+                <b>Visualization:</b> Plotly.js<br>
+                <b>Storage:</b> browser memory only<br>
+                <b>Backend:</b> none
+            </div>
+        </div>
+    </div>
+
+</div>
+</section>
+
+<!-- ============================================================
+     DATA VIEW
+     ============================================================ -->
+<section class="view" id="view-data">
+<div class="card">
+    <div class="card-head">
+        <div class="card-title">Data View</div>
+        <div class="toolbar">
+            <input id="dataSearch" placeholder="Search values..." oninput="renderDataTable()">
+            <button class="btn small" onclick="addRow()">+ Row</button>
+            <button class="btn small" onclick="addColumn()">+ Column</button>
+            <button class="btn small" onclick="deleteSelectedRows()">Delete Rows</button>
+            <button class="btn small" onclick="exportCSV()">Export CSV</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="toolbar" style="margin-bottom:10px">
+            <label class="note">Show
+                <select id="pageSize" onchange="renderDataTable()">
+                    <option>25</option>
+                    <option>50</option>
+                    <option>100</option>
+                    <option>250</option>
+                </select>
+                cases
+            </label>
+            <span class="note" id="dataInfo"></span>
+        </div>
+        <div id="dataTableWrap" class="table-wrap"></div>
+        <div class="toolbar" style="margin-top:10px;justify-content:center">
+            <button class="btn small" onclick="changePage(-1)">‹ Previous</button>
+            <span id="pageInfo" class="note"></span>
+            <button class="btn small" onclick="changePage(1)">Next ›</button>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ============================================================
+     VARIABLE VIEW
+     ============================================================ -->
+<section class="view" id="view-variables">
+<div class="card">
+    <div class="card-head">
+        <div class="card-title">Variable View</div>
+        <button class="btn small" onclick="addColumn()">+ Add Variable</button>
+    </div>
+    <div class="card-body">
+        <div class="table-wrap">
+            <table class="variable-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Label</th>
+                        <th>Type</th>
+                        <th>Measure</th>
+                        <th>Missing</th>
+                        <th>Width</th>
+                        <th>Decimals</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="variableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ============================================================
+     DESCRIPTIVES
+     ============================================================ -->
+<section class="view" id="view-descriptives">
+<div class="card">
+    <div class="card-head"><div class="card-title">Descriptive Statistics</div></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="field">
+                <label>Variables</label>
+                <select id="descVars" multiple size="7"></select>
+            </div>
+            <div>
+                <label class="note">Statistics</label>
+                <div class="toolbar" style="margin-top:7px;display:block">
+                    <label><input type="checkbox" id="dMean" checked> Mean</label><br>
+                    <label><input type="checkbox" id="dMedian" checked> Median</label><br>
+                    <label><input type="checkbox" id="dMode" checked> Mode</label><br>
+                    <label><input type="checkbox" id="dSD" checked> Std. Deviation</label><br>
+                    <label><input type="checkbox" id="dVar" checked> Variance</label><br>
+                    <label><input type="checkbox" id="dSE" checked> Std. Error</label><br>
+                    <label><input type="checkbox" id="dMin" checked> Minimum</label><br>
+                    <label><input type="checkbox" id="dMax" checked> Maximum</label><br>
+                    <label><input type="checkbox" id="dRange" checked> Range</label><br>
+                    <label><input type="checkbox" id="dSkew" checked> Skewness</label><br>
+                    <label><input type="checkbox" id="dKurt" checked> Kurtosis</label>
+                </div>
+            </div>
+            <div>
+                <label class="note">Percentiles</label>
+                <div class="toolbar" style="margin-top:7px;display:block">
+                    <label><input type="checkbox" id="dP25" checked> 25th</label><br>
+                    <label><input type="checkbox" id="dP50" checked> 50th</label><br>
+                    <label><input type="checkbox" id="dP75" checked> 75th</label><br>
+                    <label><input type="checkbox" id="dP90"> 90th</label><br>
+                    <label><input type="checkbox" id="dP95"> 95th</label>
+                </div>
+            </div>
+        </div>
+        <button class="btn primary section-space" onclick="runDescriptives()">Run Descriptives</button>
+    </div>
+</div>
+<div id="descOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     FREQUENCIES
+     ============================================================ -->
+<section class="view" id="view-frequencies">
+<div class="card">
+    <div class="card-head"><div class="card-title">Frequencies</div></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="field">
+                <label>Variable</label>
+                <select id="freqVar"></select>
+            </div>
+            <div class="field">
+                <label>Chart</label>
+                <select id="freqChart">
+                    <option value="bar">Bar Chart</option>
+                    <option value="pie">Pie Chart</option>
+                    <option value="histogram">Histogram</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn primary section-space" onclick="runFrequencies()">Run Frequencies</button>
+    </div>
+</div>
+<div id="freqOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     CROSSTABS
+     ============================================================ -->
+<section class="view" id="view-crosstabs">
+<div class="card">
+    <div class="card-head"><div class="card-title">Crosstabs / Contingency Tables</div></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="field"><label>Row Variable</label><select id="crossRow"></select></div>
+            <div class="field"><label>Column Variable</label><select id="crossCol"></select></div>
+            <div class="field">
+                <label>Cell Display</label>
+                <select id="crossPct">
+                    <option value="count">Counts</option>
+                    <option value="row">Row %</option>
+                    <option value="column">Column %</option>
+                    <option value="total">Total %</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn primary section-space" onclick="runCrosstab()">Run Crosstab</button>
+    </div>
+</div>
+<div id="crossOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     T TESTS
+     ============================================================ -->
+<section class="view" id="view-ttests">
+<div class="card">
+    <div class="card-head"><div class="card-title">T-Tests</div></div>
+    <div class="card-body">
+        <div class="field">
+            <label>Test Type</label>
+            <select id="ttType" onchange="updateTTestUI()">
+                <option value="one">One-Sample T-Test</option>
+                <option value="independent">Independent-Samples T-Test</option>
+                <option value="paired">Paired-Samples T-Test</option>
+            </select>
+        </div>
+
+        <div id="ttOne" class="form-grid section-space">
+            <div class="field"><label>Test Variable</label><select id="ttOneVar"></select></div>
+            <div class="field"><label>Test Value</label><input id="ttValue" type="number" value="0"></div>
+        </div>
+
+        <div id="ttIndependent" class="form-grid section-space hidden">
+            <div class="field"><label>Dependent Variable</label><select id="ttIndVar"></select></div>
+            <div class="field"><label>Grouping Variable</label><select id="ttGroup"></select></div>
+            <div class="field"><label>Group 1</label><input id="ttG1"></div>
+            <div class="field"><label>Group 2</label><input id="ttG2"></div>
+        </div>
+
+        <div id="ttPaired" class="form-grid section-space hidden">
+            <div class="field"><label>Variable 1</label><select id="ttP1"></select></div>
+            <div class="field"><label>Variable 2</label><select id="ttP2"></select></div>
+        </div>
+
+        <button class="btn primary section-space" onclick="runTTest()">Run T-Test</button>
+    </div>
+</div>
+<div id="ttOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     ANOVA
+     ============================================================ -->
+<section class="view" id="view-anova">
+<div class="card">
+    <div class="card-head"><div class="card-title">One-Way ANOVA</div></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="field"><label>Dependent Variable</label><select id="anovaDV"></select></div>
+            <div class="field"><label>Factor / Group Variable</label><select id="anovaGroup"></select></div>
+            <div class="field">
+                <label>Post-hoc</label>
+                <select id="anovaPost">
+                    <option value="none">None</option>
+                    <option value="tukey">Pairwise Comparisons</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn primary section-space" onclick="runANOVA()">Run ANOVA</button>
+    </div>
+</div>
+<div id="anovaOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     CORRELATION
+     ============================================================ -->
+<section class="view" id="view-correlation">
+<div class="card">
+    <div class="card-head"><div class="card-title">Bivariate Correlation</div></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="field"><label>Variables</label><select id="corrVars" multiple size="8"></select></div>
+            <div class="field">
+                <label>Method</label>
+                <select id="corrMethod">
+                    <option value="pearson">Pearson</option>
+                    <option value="spearman">Spearman</option>
+                </select>
+                <label style="margin-top:10px"><input type="checkbox" id="corrP" checked> Show p-values</label>
+                <label><input type="checkbox" id="corrN" checked> Show N</label>
+            </div>
+        </div>
+        <button class="btn primary section-space" onclick="runCorrelation()">Run Correlation</button>
+    </div>
+</div>
+<div id="corrOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     REGRESSION
+     ============================================================ -->
+<section class="view" id="view-regression">
+<div class="card">
+    <div class="card-head"><div class="card-title">Linear Regression</div></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="field"><label>Dependent Variable (Y)</label><select id="regDV"></select></div>
+            <div class="field"><label>Independent Variables (X)</label><select id="regIV" multiple size="8"></select></div>
+        </div>
+        <button class="btn primary section-space" onclick="runRegression()">Run Regression</button>
+    </div>
+</div>
+<div id="regOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     NON-PARAMETRIC
+     ============================================================ -->
+<section class="view" id="view-nonparam">
+<div class="card">
+    <div class="card-head"><div class="card-title">Non-Parametric Tests</div></div>
+    <div class="card-body">
+        <div class="field">
+            <label>Test</label>
+            <select id="npType" onchange="updateNPUI()">
+                <option value="mann">Mann–Whitney U</option>
+                <option value="wilcoxon">Wilcoxon Signed-Rank</option>
+                <option value="kruskal">Kruskal–Wallis</option>
+            </select>
+        </div>
+
+        <div id="npMann" class="form-grid section-space">
+            <div class="field"><label>Dependent Variable</label><select id="npMannDV"></select></div>
+            <div class="field"><label>Grouping Variable</label><select id="npMannGroup"></select></div>
+            <div class="field"><label>Group 1</label><input id="npG1"></div>
+            <div class="field"><label>Group 2</label><input id="npG2"></div>
+        </div>
+
+        <div id="npWilcoxon" class="form-grid section-space hidden">
+            <div class="field"><label>Variable 1</label><select id="npW1"></select></div>
+            <div class="field"><label>Variable 2</label><select id="npW2"></select></div>
+        </div>
+
+        <div id="npKruskal" class="form-grid section-space hidden">
+            <div class="field"><label>Dependent Variable</label><select id="npKDV"></select></div>
+            <div class="field"><label>Grouping Variable</label><select id="npKGroup"></select></div>
+        </div>
+
+        <button class="btn primary section-space" onclick="runNonParam()">Run Test</button>
+    </div>
+</div>
+<div id="npOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     NORMALITY
+     ============================================================ -->
+<section class="view" id="view-normality">
+<div class="card">
+    <div class="card-head"><div class="card-title">Normality & Distribution Diagnostics</div></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="field"><label>Variable</label><select id="normVar"></select></div>
+            <div class="field">
+                <label>Plot</label>
+                <select id="normPlot">
+                    <option value="qq">Q-Q Plot</option>
+                    <option value="hist">Histogram</option>
+                    <option value="box">Box Plot</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn primary section-space" onclick="runNormality()">Analyze</button>
+    </div>
+</div>
+<div id="normOutput" class="section-space"></div>
+</section>
+
+<!-- ============================================================
+     CHARTS
+     ============================================================ -->
+<section class="view" id="view-charts">
+<div class="card">
+    <div class="card-head"><div class="card-title">Statistical Charts</div></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="field">
+                <label>Chart Type</label>
+                <select id="chartType" onchange="updateChartUI()">
+                    <option value="histogram">Histogram</option>
+                    <option value="box">Box Plot</option>
+                    <option value="scatter">Scatter Plot</option>
+                    <option value="bar">Bar Chart</option>
+                    <option value="pie">Pie Chart</option>
+                    <option value="qq">Q-Q Plot</option>
+                </select>
+            </div>
+            <div class="field"><label>Variable X</label><select id="chartX"></select></div>
+            <div class="field"><label>Variable Y</label><select id="chartY"></select></div>
+            <div class="field"><label>Group Variable (optional)</label><select id="chartGroup"></select></div>
+        </div>
+
+        <label style="display:block;margin-top:10px">
+            <input type="checkbox" id="trendline"> Add linear trendline
+        </label>
+
+        <button class="btn primary section-space" onclick="runChart()">Create Chart</button>
+    </div>
+</div>
+<div class="card section-space">
+    <div class="card-body">
+        <div id="mainChart" class="chart"></div>
+    </div>
+</div>
+</section>
+
+<!-- ============================================================
+     OUTPUT VIEWER
+     ============================================================ -->
+<section class="view" id="view-output">
+<div class="card">
+    <div class="card-head">
+        <div class="card-title">Output Viewer</div>
+        <div class="toolbar">
+            <button class="btn small" onclick="printOutput()">Print</button>
+            <button class="btn small" onclick="exportOutput()">Export HTML</button>
+            <button class="btn small danger" onclick="clearOutput()">Clear Output</button>
+        </div>
+    </div>
+    <div class="card-body" id="outputViewer">
+        <div class="empty">Analysis output will appear here.</div>
+    </div>
+</div>
+</section>
+
+</div>
+</main>
+</div>
+
+<script>
+/* ==============================================================
+   APPLICATION STATE
+   ============================================================== */
+
+const APP = {
+    rows: [],
+    vars: [],
+    output: [],
+    page: 1,
+    pageSize: 25,
+    filter: ""
+};
+
+const MISSING = new Set(["", "na", "n/a", "null", "nil", "nan", ".", "-", "--", "missing"]);
+
+const $ = id => document.getElementById(id);
+
+function esc(v){
+    return String(v ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;");
+}
+
+function fmt(x,d=4){
+    if(x===null || x===undefined || !Number.isFinite(Number(x))) return "";
+    const n=Number(x);
+    if(Math.abs(n)>=100000 || (Math.abs(n)>0 && Math.abs(n)<0.0001))
+        return n.toExponential(3);
+    return n.toLocaleString(undefined,{
+        maximumFractionDigits:d,
+        minimumFractionDigits:0
+    });
+}
+
+function pFmt(p){
+    if(p===null || !Number.isFinite(p)) return "";
+    return p<.001 ? "< .001" : p.toFixed(3).replace(/^0/,"");
+}
+
+function now(){
+    return new Date().toLocaleString();
+}
+
+/* ==============================================================
+   NAVIGATION
+   ============================================================== */
+
+const titles={
+    home:"Dashboard",
+    data:"Data View",
+    variables:"Variable View",
+    descriptives:"Descriptive Statistics",
+    frequencies:"Frequencies",
+    crosstabs:"Crosstabs",
+    ttests:"T-Tests",
+    anova:"One-Way ANOVA",
+    correlation:"Correlation",
+    regression:"Linear Regression",
+    nonparam:"Non-Parametric Tests",
+    normality:"Normality Diagnostics",
+    charts:"Charts",
+    output:"Output Viewer"
+};
+
+document.querySelectorAll(".nav button").forEach(btn=>{
+    btn.addEventListener("click",()=>go(btn.dataset.view));
+});
+
+function go(view){
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    $("view-"+view).classList.add("active");
+
+    document.querySelectorAll(".nav button").forEach(b=>{
+        b.classList.toggle("active",b.dataset.view===view);
+    });
+
+    $("pageTitle").textContent=titles[view]||view;
+    populateSelectors();
+    if(view==="data") renderDataTable();
+    if(view==="variables") renderVariableTable();
+    if(view==="output") renderOutput();
+}
+
+/* ==============================================================
+   DATA TYPE / VARIABLE MANAGEMENT
+   ============================================================== */
+
+function isMissing(v){
+    if(v===null || v===undefined) return true;
+    return MISSING.has(String(v).trim().toLowerCase());
+}
+
+function numericValue(v){
+    if(isMissing(v)) return null;
+    const s=String(v).trim().replace(/,/g,"");
+    if(s==="") return null;
+    const n=Number(s);
+    return Number.isFinite(n) ? n : null;
+}
+
+function detectType(name){
+    let values=APP.rows.map(r=>r[name]).filter(v=>!isMissing(v));
+    if(!values.length) return "string";
+    const numeric=values.filter(v=>numericValue(v)!==null).length;
+    return numeric/values.length >= .9 ? "numeric" : "string";
+}
+
+function inferMeasure(name){
+    const variable=APP.vars.find(v=>v.name===name);
+    if(variable?.type==="numeric"){
+        const unique=new Set(APP.rows.map(r=>r[name]).filter(v=>!isMissing(v)).map(Number)).size;
+        return unique<=10 ? "ordinal" : "scale";
+    }
+    return "nominal";
+}
+
+function normalizeName(name,i){
+    let n=String(name||`VAR${i+1}`)
+        .trim()
+        .replace(/[^\w]+/g,"_")
+        .replace(/^(\d)/,"V_$1");
+
+    if(!n) n=`VAR${i+1}`;
+
+    let base=n, k=2;
+    while(APP.vars.some(v=>v.name===n && v.index!==i)){
+        n=base+"_"+k++;
+    }
+    return n;
+}
+
+function setData(records){
+    if(!Array.isArray(records) || !records.length){
+        alert("No data found.");
+        return;
+    }
+
+    const keys=[];
+    records.forEach(r=>{
+        Object.keys(r||{}).forEach(k=>{
+            if(!keys.includes(k)) keys.push(k);
+        });
+    });
+
+    const normalized=keys.map((k,i)=>normalizeName(k,i));
+
+    APP.rows=records.map(r=>{
+        const o={};
+        keys.forEach((k,i)=>o[normalized[i]]=r[k] ?? "");
+        return o;
+    });
+
+    APP.vars=normalized.map((name,i)=>({
+        index:i,
+        name,
+        label:keys[i],
+        type:detectType(name),
+        measure:inferMeasure(name),
+        missing:"",
+        width:12,
+        decimals:2
+    }));
+
+    APP.page=1;
+    APP.filter="";
+    $("dataSearch").value="";
+    updateDashboard();
+    populateSelectors();
+    renderDataTable();
+    renderVariableTable();
+}
+
+function addRow(){
+    const r={};
+    APP.vars.forEach(v=>r[v.name]="");
+    APP.rows.push(r);
+    updateDashboard();
+    renderDataTable();
+}
+
+function addColumn(){
+    let name=prompt("Variable name:",`VAR${APP.vars.length+1}`);
+    if(!name) return;
+
+    name=normalizeName(name,APP.vars.length);
+
+    APP.rows.forEach(r=>r[name]="");
+
+    APP.vars.push({
+        index:APP.vars.length,
+        name,
+        label:name,
+        type:"numeric",
+        measure:"scale",
+        missing:"",
+        width:12,
+        decimals:2
+    });
+
+    updateDashboard();
+    populateSelectors();
+    renderDataTable();
+    renderVariableTable();
+}
+
+function deleteColumn(index){
+    const v=APP.vars[index];
+    if(!v) return;
+    if(!confirm(`Delete variable "${v.name}"?`)) return;
+
+    APP.rows.forEach(r=>delete r[v.name]);
+    APP.vars.splice(index,1);
+    APP.vars.forEach((v,i)=>v.index=i);
+
+    updateDashboard();
+    populateSelectors();
+    renderDataTable();
+    renderVariableTable();
+}
+
+function updateVariable(index,key,value){
+    const v=APP.vars[index];
+    if(!v) return;
+
+    if(key==="name"){
+        const old=v.name;
+        const nn=normalizeName(value,index);
+        if(!nn) return;
+
+        APP.rows.forEach(r=>{
+            r[nn]=r[old];
+            delete r[old];
+        });
+
+        v.name=nn;
+    }else{
+        v[key]=value;
+    }
+
+    populateSelectors();
+    updateDashboard();
+}
+
+/* ==============================================================
+   DATA TABLE
+   ============================================================== */
+
+function filteredRows(){
+    const q=APP.filter.trim().toLowerCase();
+    if(!q) return APP.rows;
+
+    return APP.rows.filter(r=>
+        APP.vars.some(v=>String(r[v.name]??"").toLowerCase().includes(q))
+    );
+}
+
+function renderDataTable(){
+    const rows=filteredRows();
+    APP.pageSize=Number($("pageSize").value||25);
+
+    const pages=Math.max(1,Math.ceil(rows.length/APP.pageSize));
+    if(APP.page>pages) APP.page=pages;
+
+    const start=(APP.page-1)*APP.pageSize;
+    const shown=rows.slice(start,start+APP.pageSize);
+
+    if(!APP.vars.length){
+        $("dataTableWrap").innerHTML='<div class="empty">Import data or load the demo dataset.</div>';
+        $("pageInfo").textContent="";
+        return;
+    }
+
+    let html='<table class="data-table"><thead><tr><th>#</th>';
+
+    APP.vars.forEach(v=>{
+        html+=`<th>${esc(v.name)}<br><span style="font-weight:400;font-size:9px">${esc(v.label)}</span></th>`;
+    });
+
+    html+="</tr></thead><tbody>";
+
+    shown.forEach((r,localIndex)=>{
+        const originalIndex=APP.rows.indexOf(r);
+
+        html+=`<tr><td>${originalIndex+1}</td>`;
+
+        APP.vars.forEach(v=>{
+            html+=`<td class="editable"
+                contenteditable="true"
+                data-row="${originalIndex}"
+                data-var="${esc(v.name)}"
+                onblur="editCell(this)">${esc(r[v.name])}</td>`;
+        });
+
+        html+="</tr>";
+    });
+
+    html+="</tbody></table>";
+
+    $("dataTableWrap").innerHTML=html;
+    $("pageInfo").textContent=`Page ${APP.page} / ${pages}`;
+    $("dataInfo").textContent=`${rows.length.toLocaleString()} visible of ${APP.rows.length.toLocaleString()} cases`;
+}
+
+function editCell(cell){
+    const row=Number(cell.dataset.row);
+    const variable=cell.dataset.var;
+    if(APP.rows[row]) APP.rows[row][variable]=cell.textContent.trim();
+    updateDashboard();
+}
+
+function changePage(delta){
+    APP.page+=delta;
+    renderDataTable();
+}
+
+function deleteSelectedRows(){
+    const input=prompt(
+        "Enter row numbers to delete, comma separated.\nExample: 1,2,7"
+    );
+    if(!input) return;
+
+    const nums=input.split(",")
+        .map(x=>Number(x.trim())-1)
+        .filter(x=>Number.isInteger(x)&&x>=0&&x<APP.rows.length)
+        .sort((a,b)=>b-a);
+
+    nums.forEach(i=>APP.rows.splice(i,1));
+    APP.page=1;
+    updateDashboard();
+    renderDataTable();
+}
+
+/* ==============================================================
+   VARIABLE TABLE
+   ============================================================== */
+
+function renderVariableTable(){
+    const body=$("variableBody");
+
+    if(!APP.vars.length){
+        body.innerHTML='<tr><td colspan="8" style="text-align:center">No variables</td></tr>';
+        return;
+    }
+
+    body.innerHTML=APP.vars.map((v,i)=>`
+        <tr>
+            <td>
+                <input value="${esc(v.name)}"
+                    onchange="updateVariable(${i},'name',this.value)">
+            </td>
+            <td>
+                <input value="${esc(v.label)}"
+                    onchange="updateVariable(${i},'label',this.value)">
+            </td>
+            <td>
+                <select onchange="updateVariable(${i},'type',this.value)">
+                    <option value="numeric" ${v.type==="numeric"?"selected":""}>Numeric</option>
+                    <option value="string" ${v.type==="string"?"selected":""}>String</option>
+                </select>
+            </td>
+            <td>
+                <select onchange="updateVariable(${i},'measure',this.value)">
+                    <option value="scale" ${v.measure==="scale"?"selected":""}>Scale</option>
+                    <option value="ordinal" ${v.measure==="ordinal"?"selected":""}>Ordinal</option>
+                    <option value="nominal" ${v.measure==="nominal"?"selected":""}>Nominal</option>
+                </select>
+            </td>
+            <td>
+                <input value="${esc(v.missing)}"
+                    onchange="updateVariable(${i},'missing',this.value)"
+                    placeholder="e.g. 999">
+            </td>
+            <td>
+                <input type="number" min="1" value="${v.width}"
+                    onchange="updateVariable(${i},'width',this.value)">
+            </td>
+            <td>
+                <input type="number" min="0" max="8" value="${v.decimals}"
+                    onchange="updateVariable(${i},'decimals',this.value)">
+            </td>
+            <td>
+                <button class="btn small danger" onclick="deleteColumn(${i})">Delete</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
+/* ==============================================================
+   SELECTOR POPULATION
+   ============================================================== */
+
+function numericVars(){
+    return APP.vars.filter(v=>v.type==="numeric");
+}
+
+function allVars(){
+    return APP.vars;
+}
+
+function fillSelect(id,vars=APP.vars,multiple=false){
+    const el=$(id);
+    if(!el) return;
+
+    const old=[...el.selectedOptions].map(o=>o.value);
+
+    el.innerHTML=vars.map(v=>
+        `<option value="${esc(v.name)}">${esc(v.name)} — ${esc(v.label)}</option>`
+    ).join("");
+
+    if(old.length){
+        [...el.options].forEach(o=>o.selected=old.includes(o.value));
+    }else if(!multiple && el.options.length){
+        el.selectedIndex=0;
+    }
+}
+
+function populateSelectors(){
+    const nv=numericVars();
+
+    [
+        "ttOneVar","ttIndVar","ttP1","ttP2",
+        "anovaDV","regDV","npMannDV","npW1","npW2","npKDV",
+        "normVar","chartX","chartY"
+    ].forEach(id=>fillSelect(id,nv));
+
+    [
+        "freqVar","crossRow","crossCol","ttGroup",
+        "anovaGroup","npMannGroup","npKGroup","chartGroup"
+    ].forEach(id=>fillSelect(id,APP.vars));
+
+    fillSelect("descVars",nv,true);
+    fillSelect("corrVars",nv,true);
+    fillSelect("regIV",nv,true);
+
+    // Group inputs can use actual values
+    updateGroupExamples();
+}
+
+function updateGroupExamples(){
+    const groupIds=["ttGroup","npMannGroup"];
+
+    groupIds.forEach(id=>{
+        const el=$(id);
+        if(!el) return;
+        const v=el.value;
+        const values=[...new Set(APP.rows
+            .map(r=>r[v])
+            .filter(x=>!isMissing(x))
+            .map(String))].slice(0,20);
+
+        const target=id==="ttGroup" ? ["ttG1","ttG2"] : ["npG1","npG2"];
+
+        target.forEach((tid,i)=>{
+            const t=$(tid);
+            if(t && values[i]!==undefined && !t.value) t.value=values[i];
+        });
+    });
+}
+
+document.addEventListener("change",e=>{
+    if(["ttGroup","npMannGroup"].includes(e.target.id)){
+        updateGroupExamples();
+    }
+});
+
+/* ==============================================================
+   DASHBOARD
+   ============================================================== */
+
+function updateDashboard(){
+    $("kpiRows").textContent=APP.rows.length.toLocaleString();
+    $("kpiCols").textContent=APP.vars.length.toLocaleString();
+
+    const num=numericVars().length;
+    $("kpiNumeric").textContent=num.toLocaleString();
+
+    let missing=0;
+    APP.rows.forEach(r=>{
+        APP.vars.forEach(v=>{
+            if(isMissing(r[v.name])) missing++;
+        });
+    });
+
+    $("kpiMissing").textContent=missing.toLocaleString();
+}
+
+/* ==============================================================
+   IMPORT
+   ============================================================== */
+
+$("fileInput").addEventListener("change",async e=>{
+    const file=e.target.files[0];
+    if(!file) return;
+
+    try{
+        const ext=file.name.split(".").pop().toLowerCase();
+
+        if(ext==="csv" || ext==="txt"){
+            Papa.parse(file,{
+                header:true,
+                skipEmptyLines:true,
+                dynamicTyping:false,
+                complete:results=>{
+                    setData(results.data);
+                    go("data");
+                },
+                error:err=>alert(err.message)
+            });
+        }else{
+            const buffer=await file.arrayBuffer();
+            const workbook=XLSX.read(buffer,{type:"array"});
+            const sheet=workbook.Sheets[workbook.SheetNames[0]];
+            const data=XLSX.utils.sheet_to_json(sheet,{defval:""});
+            setData(data);
+            go("data");
+        }
+    }catch(err){
+        console.error(err);
+        alert("Could not import file: "+err.message);
+    }
+
+    e.target.value="";
+});
+
+function loadDemo(){
+    const data=[];
+    const groups=["Control","Treatment A","Treatment B"];
+
+    for(let i=1;i<=90;i++){
+        const g=groups[(i-1)%3];
+        const base=g==="Control"?62:g==="Treatment A"?70:75;
+        const age=20+(i*7)%35;
+        const study=2+(i*3)%12;
+        const score=Math.round((base+(i%9)-4+Math.sin(i)*3)*10)/10;
+        const income=Math.round(25000+age*1100+study*3200+(i%11)*1700);
+        data.push({
+            ID:i,
+            Group:g,
+            Age:age,
+            StudyHours:study,
+            Score:score,
+            Income:income,
+            Satisfaction:Math.min(10,Math.max(1,Math.round((score/10+(i%4)-2)*10)/10))
+        });
+    }
+
+    setData(data);
+    go("data");
+}
+
+/* ==============================================================
+   BASIC STATISTICS
+   ============================================================== */
+
+function cleanNumeric(name,rows=APP.rows){
+    const v=APP.vars.find(x=>x.name===name);
+    return rows
+        .map(r=>numericValue(r[name]))
+        .filter(x=>x!==null)
+        .filter(x=>!(v?.missing!=="" && String(x)===String(v.missing)));
+}
+
+function sum(a){return a.reduce((s,x)=>s+x,0)}
+
+function mean(a){
+    return a.length ? sum(a)/a.length : NaN;
+}
+
+function variance(a,sample=true){
+    if(a.length<(sample?2:1)) return NaN;
+    const m=mean(a);
+    const ss=sum(a.map(x=>(x-m)**2));
+    return ss/(a.length-(sample?1:0));
+}
+
+function sd(a){return Math.sqrt(variance(a,true))}
+
+function median(a){
+    if(!a.length) return NaN;
+    const b=[...a].sort((x,y)=>x-y);
+    const n=b.length;
+    return n%2 ? b[(n-1)/2] : (b[n/2-1]+b[n/2])/2;
+}
+
+function quantile(a,q){
+    if(!a.length) return NaN;
+    const b=[...a].sort((x,y)=>x-y);
+    const pos=(b.length-1)*q;
+    const lo=Math.floor(pos);
+    const hi=Math.ceil(pos);
+    return lo===hi ? b[lo] : b[lo]+(b[hi]-b[lo])*(pos-lo);
+}
+
+function mode(a){
+    if(!a.length) return NaN;
+    const m=new Map();
+    a.forEach(x=>m.set(x,(m.get(x)||0)+1));
+    let best=null,count=0;
+    m.forEach((c,x)=>{
+        if(c>count){count=c;best=x}
+    });
+    return best;
+}
+
+function skewness(a){
+    if(a.length<3) return NaN;
+    const m=mean(a), s=sd(a), n=a.length;
+    return n/((n-1)*(n-2))*sum(a.map(x=>((x-m)/s)**3));
+}
+
+function kurtosis(a){
+    if(a.length<4) return NaN;
+    const m=mean(a), s=sd(a), n=a.length;
+    const term1=n*(n+1)/((n-1)*(n-2)*(n-3));
+    const term2=sum(a.map(x=>((x-m)/s)**4));
+    const term3=3*(n-1)**2/((n-2)*(n-3));
+    return term1*term2-term3;
+}
+
+function covariance(a,b){
+    const n=Math.min(a.length,b.length);
+    if(n<2) return NaN;
+    const ma=mean(a),mb=mean(b);
+    return sum(a.slice(0,n).map((x,i)=>(x-ma)*(b[i]-mb)))/(n-1);
+}
+
+function pearson(a,b){
+    const n=Math.min(a.length,b.length);
+    if(n<2) return NaN;
+    const aa=a.slice(0,n),bb=b.slice(0,n);
+    const ma=mean(aa),mb=mean(bb);
+    const num=sum(aa.map((x,i)=>(x-ma)*(bb[i]-mb)));
+    const den=Math.sqrt(
+        sum(aa.map(x=>(x-ma)**2))*
+        sum(bb.map(x=>(x-mb)**2))
+    );
+    return den ? num/den : NaN;
+}
+
+function ranks(a){
+    const indexed=a.map((v,i)=>({v,i})).sort((x,y)=>x.v-y.v);
+    const r=Array(a.length);
+    let i=0;
+    while(i<indexed.length){
+        let j=i;
+        while(j+1<indexed.length && indexed[j+1].v===indexed[i].v) j++;
+        const rank=(i+j+2)/2;
+        for(let k=i;k<=j;k++) r[indexed[k].i]=rank;
+        i=j+1;
+    }
+    return r;
+}
+
+function spearman(a,b){
+    return pearson(ranks(a),ranks(b));
+}
+
+function pairwise(nameA,nameB,rows=APP.rows){
+    const a=[],b=[];
+    rows.forEach(r=>{
+        const x=numericValue(r[nameA]),y=numericValue(r[nameB]);
+        if(x!==null && y!==null){a.push(x);b.push(y)}
+    });
+    return {a,b};
+}
+
+/* ==============================================================
+   DISTRIBUTION FUNCTIONS
+   Numerical approximations for t / F / chi-square.
+   ============================================================== */
+
+function logGamma(z){
+    const cof=[
+        676.5203681218851,-1259.1392167224028,
+        771.32342877765313,-176.61502916214059,
+        12.507343278686905,-0.13857109526572012,
+        9.9843695780195716e-6,1.5056327351493116e-7
+    ];
+    if(z<0.5)
+        return Math.log(Math.PI)-Math.log(Math.sin(Math.PI*z))-logGamma(1-z);
+
+    z-=1;
+    let x=0.99999999999980993;
+    for(let i=0;i<cof.length;i++) x+=cof[i]/(z+i+1);
+
+    const t=z+cof.length-.5;
+    return .5*Math.log(2*Math.PI)+(z+.5)*Math.log(t)-t+Math.log(x);
+}
+
+function beta(a,b){
+    return Math.exp(logGamma(a)+logGamma(b)-logGamma(a+b));
+}
+
+function betacf(a,b,x){
+    const MAX=200,EPS=3e-8,FPMIN=1e-30;
+    let qab=a+b,qap=a+1,qam=a-1;
+    let c=1;
+    let d=1-qab*x/qap;
+    if(Math.abs(d)<FPMIN)d=FPMIN;
+    d=1/d;
+    let h=d;
+
+    for(let m=1;m<=MAX;m++){
+        let m2=2*m;
+        let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+        d=1+aa*d;
+        if(Math.abs(d)<FPMIN)d=FPMIN;
+        c=1+aa/c;
+        if(Math.abs(c)<FPMIN)c=FPMIN;
+        d=1/d;
+        h*=d*c;
+
+        aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+        d=1+aa*d;
+        if(Math.abs(d)<FPMIN)d=FPMIN;
+        c=1+aa/c;
+        if(Math.abs(c)<FPMIN)c=FPMIN;
+        d=1/d;
+        const del=d*c;
+        h*=del;
+        if(Math.abs(del-1)<EPS) break;
+    }
+    return h;
+}
+
+function regIncompleteBeta(x,a,b){
+    if(x<=0)return 0;
+    if(x>=1)return 1;
+
+    const bt=Math.exp(
+        logGamma(a+b)-logGamma(a)-logGamma(b)+
+        a*Math.log(x)+b*Math.log(1-x)
+    );
+
+    if(x<(a+1)/(a+b+2))
+        return bt*betacf(a,b,x)/a;
+
+    return 1-bt*betacf(b,a,1-x)/b;
+}
+
+function studentTCDF(t,df){
+    if(df<=0)return NaN;
+    if(t===0)return .5;
+
+    const x=df/(df+t*t);
+    const ib=regIncompleteBeta(x,df/2,.5);
+
+    return t>0 ? 1-.5*ib : .5*ib;
+}
+
+function tTwoTail(t,df){
+    return Math.max(0,Math.min(1,2*(1-studentTCDF(Math.abs(t),df))));
+}
+
+function fCDF(x,d1,d2){
+    if(x<=0)return 0;
+    const z=(d1*x)/(d1*x+d2);
+    return regIncompleteBeta(z,d1/2,d2/2);
+}
+
+function fPValue(F,d1,d2){
+    return Math.max(0,Math.min(1,1-fCDF(F,d1,d2)));
+}
+
+function chiSquareCDF(x,k){
+    if(x<=0)return 0;
+
+    // Regularized lower incomplete gamma.
+    const a=k/2;
+    const ITMAX=200,EPS=1e-10,FPMIN=1e-30;
+
+    if(x/2 < a+1){
+        let sum=1/a;
+        let term=sum;
+        for(let n=1;n<=ITMAX;n++){
+            term*=x/2/(a+n);
+            sum+=term;
+            if(Math.abs(term)<Math.abs(sum)*EPS)break;
+        }
+        return sum*Math.exp(-x/2+a*Math.log(x/2)-logGamma(a));
+    }
+
+    let b=x/2+1-a;
+    let c=1/FPMIN;
+    let d=1/b;
+    let h=d;
+
+    for(let i=1;i<=ITMAX;i++){
+        const an=-i*(i-a);
+        b+=2;
+        d=an*d+b;
+        if(Math.abs(d)<FPMIN)d=FPMIN;
+        c=b+an/c;
+        if(Math.abs(c)<FPMIN)c=FPMIN;
+        d=1/d;
+        const del=d*c;
+        h*=del;
+        if(Math.abs(del-1)<EPS)break;
+    }
+
+    const q=Math.exp(-x/2+a*Math.log(x/2)-logGamma(a))*h;
+    return 1-q;
+}
+
+function chiSquareP(x,df){
+    return Math.max(0,Math.min(1,1-chiSquareCDF(x,df)));
+}
+
+function normalCDF(x){
+    return .5*(1+erf(x/Math.sqrt(2)));
+}
+
+function erf(x){
+    const sign=x<0?-1:1;
+    x=Math.abs(x);
+    const a1=.254829592,a2=-.284496736,a3=1.421413741;
+    const a4=-1.453152027,a5=1.061405429,p=.3275911;
+    const t=1/(1+p*x);
+    const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+}
+
+/* ==============================================================
+   OUTPUT
+   ============================================================== */
+
+function addOutput(title,html){
+    APP.output.push({
+        title,
+        html,
+        time:now()
+    });
+    renderOutput();
+}
+
+function renderOutput(){
+    const out=$("outputViewer");
+
+    if(!APP.output.length){
+        out.innerHTML='<div class="empty">Analysis output will appear here.</div>';
+        return;
+    }
+
+    out.innerHTML=APP.output.map((o,i)=>`
+        <div class="card" style="box-shadow:none;margin-bottom:14px">
+            <div class="card-head">
+                <div class="card-title">${esc(o.title)}</div>
+                <span class="note">${esc(o.time)}</span>
+            </div>
+            <div class="card-body">${o.html}</div>
+        </div>
+    `).join("");
+}
+
+function outputCard(title,html){
+    return `<div class="card">
+        <div class="card-head"><div class="card-title">${esc(title)}</div></div>
+        <div class="card-body">${html}</div>
+    </div>`;
+}
+
+function clearOutput(){
+    APP.output=[];
+    renderOutput();
+}
+
+function printOutput(){
+    const w=window.open("","_blank");
+    w.document.write(`
+        <html><head><title>Statistical Output</title>
+        <style>
+        body{font-family:Arial;padding:25px;color:#111}
+        table{border-collapse:collapse;width:100%;margin:12px 0}
+        th,td{border:1px solid #ccc;padding:7px}
+        th{background:#eee}
+        </style></head>
+        <body>${$("outputViewer").innerHTML}</body></html>
+    `);
+    w.document.close();
+    w.focus();
+    setTimeout(()=>w.print(),500);
+}
+
+function exportOutput(){
+    const html=`
+    <!doctype html>
+    <html><head><meta charset="utf-8">
+    <title>Statistical Analysis Output</title>
+    <style>
+    body{font-family:Arial,sans-serif;padding:30px;color:#111}
+    table{border-collapse:collapse;width:100%;margin:15px 0}
+    th,td{border:1px solid #ccc;padding:7px}
+    th{background:#eee}
+    </style></head>
+    <body>
+    <h1>Statistical Analysis Output</h1>
+    <p>Generated ${esc(now())}</p>
+    ${$("outputViewer").innerHTML}
+    </body></html>`;
+
+    downloadBlob(new Blob([html],{type:"text/html"}),"statistical-output.html");
+}
+
+/* ==============================================================
+   DESCRIPTIVES
+   ============================================================== */
+
+function runDescriptives(){
+    const names=[...$("descVars").selectedOptions].map(o=>o.value);
+
+    if(!names.length){
+        alert("Select at least one variable.");
+        return;
+    }
+
+    const rows=names.map(name=>{
+        const a=cleanNumeric(name);
+        const result={
+            Variable:name,
+            N:a.length,
+            Missing:APP.rows.length-a.length
+        };
+
+        if($("dMean").checked) result.Mean=mean(a);
+        if($("dMedian").checked) result.Median=median(a);
+        if($("dMode").checked) result.Mode=mode(a);
+        if($("dSD").checked) result["Std. Deviation"]=sd(a);
+        if($("dVar").checked) result.Variance=variance(a);
+        if($("dSE").checked) result["Std. Error"]=sd(a)/Math.sqrt(a.length);
+        if($("dMin").checked) result.Minimum=Math.min(...a);
+        if($("dMax").checked) result.Maximum=Math.max(...a);
+        if($("dRange").checked) result.Range=Math.max(...a)-Math.min(...a);
+        if($("dSkew").checked) result.Skewness=skewness(a);
+        if($("dKurt").checked) result.Kurtosis=kurtosis(a);
+        if($("dP25").checked) result.P25=quantile(a,.25);
+        if($("dP50").checked) result.P50=quantile(a,.50);
+        if($("dP75").checked) result.P75=quantile(a,.75);
+        if($("dP90").checked) result.P90=quantile(a,.90);
+        if($("dP95").checked) result.P95=quantile(a,.95);
+
+        return result;
+    });
+
+    const cols=Object.keys(rows[0]);
+
+    const html=`
+        <div class="note">Valid observations and missing values are calculated using pairwise variable availability.</div>
+        <div class="table-wrap section-space">
+        <table class="result-table">
+        <thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead>
+        <tbody>
+        ${rows.map(r=>`<tr>${cols.map(c=>`
+            <td>${typeof r[c]==="number"?fmt(r[c]):esc(r[c])}</td>
+        `).join("")}</tr>`).join("")}
+        </tbody>
+        </table>
+        </div>`;
+
+    $("descOutput").innerHTML=html;
+    addOutput("Descriptive Statistics",html);
+}
+
+/* ==============================================================
+   FREQUENCIES
+   ============================================================== */
+
+function runFrequencies(){
+    const name=$("freqVar").value;
+    if(!name)return;
+
+    const vals=APP.rows.map(r=>r[name]).filter(v=>!isMissing(v)).map(String);
+    const counts=new Map();
+
+    vals.forEach(v=>counts.set(v,(counts.get(v)||0)+1));
+
+    const entries=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+    const total=vals.length;
+
+    let cumulative=0;
+
+    const html=`
+        <div class="note">Valid N = ${total}; Missing = ${APP.rows.length-total}</div>
+        <div class="table-wrap section-space">
+        <table>
+        <thead><tr>
+            <th>Value</th><th>Frequency</th><th>Percent</th><th>Valid %</th><th>Cumulative %</th>
+        </tr></thead>
+        <tbody>
+        ${entries.map(([v,c])=>{
+            cumulative+=c;
+            return `<tr>
+                <td>${esc(v)}</td>
+                <td>${c}</td>
+                <td>${fmt(c/APP.rows.length*100,2)}</td>
+                <td>${fmt(c/total*100,2)}</td>
+                <td>${fmt(cumulative/total*100,2)}</td>
+            </tr>`;
+        }).join("")}
+        </tbody>
+        </table></div>
+        <div id="freqChartOut" class="chart"></div>
+    `;
+
+    $("freqOutput").innerHTML=html;
+
+    const labels=entries.map(x=>x[0]);
+    const data=entries.map(x=>x[1]);
+
+    const type=$("freqChart").value;
+
+    let trace;
+    if(type==="pie"){
+        trace={type:"pie",labels,values:data};
+    }else if(type==="histogram"){
+        trace={type:"histogram",x:vals.map(Number).filter(Number.isFinite)};
+    }else{
+        trace={type:"bar",x:labels,y:data};
+    }
+
+    Plotly.newPlot("freqChartOut",[trace],{
+        title:`Frequency: ${name}`,
+        margin:{t:50,l:55,r:20,b:70},
+        responsive:true
+    });
+
+    addOutput("Frequencies — "+name,html);
+}
+
+/* ==============================================================
+   CROSSTABS
+   ============================================================== */
+
+function runCrosstab(){
+    const row=$("crossRow").value;
+    const col=$("crossCol").value;
+    const display=$("crossPct").value;
+
+    if(!row || !col || row===col){
+        alert("Select two different variables.");
+        return;
+    }
+
+    const rvals=[...new Set(APP.rows.map(r=>String(r[row])).filter(v=>!isMissing(v)))];
+    const cvals=[...new Set(APP.rows.map(r=>String(r[col])).filter(v=>!isMissing(v)))];
+
+    const matrix=rvals.map(rv=>
+        cvals.map(cv=>
+            APP.rows.filter(r=>String(r[row])===rv && String(r[col])===cv).length
+        )
+    );
+
+    const rowTotals=matrix.map(r=>sum(r));
+    const colTotals=cvals.map((_,j)=>sum(matrix.map(r=>r[j])));
+    const total=sum(rowTotals);
+
+    function cell(i,j){
+        const n=matrix[i][j];
+        if(display==="row") return `${fmt(rowTotals[i]?n/rowTotals[i]*100:0,2)}%`;
+        if(display==="column") return `${fmt(colTotals[j]?n/colTotals[j]*100:0,2)}%`;
+        if(display==="total") return `${fmt(total?n/total*100:0,2)}%`;
+        return String(n);
+    }
+
+    let html=`<div class="table-wrap"><table><thead><tr><th>${esc(row)} \\ ${esc(col)}</th>`;
+    cvals.forEach(v=>html+=`<th>${esc(v)}</th>`);
+    html+="<th>Total</th></tr></thead><tbody>";
+
+    rvals.forEach((rv,i)=>{
+        html+=`<tr><th>${esc(rv)}</th>`;
+        cvals.forEach((_,j)=>html+=`<td>${cell(i,j)}</td>`);
+        html+=`<td>${rowTotals[i]}</td></tr>`;
+    });
+
+    html+=`<tr><th>Total</th>`;
+    colTotals.forEach(v=>html+=`<td>${v}</td>`);
+    html+=`<td>${total}</td></tr></tbody></table></div>`;
+
+    // Chi-square
+    let chi=0;
+    for(let i=0;i<rvals.length;i++){
+        for(let j=0;j<cvals.length;j++){
+            const expected=(rowTotals[i]*colTotals[j])/total;
+            if(expected>0) chi+=(matrix[i][j]-expected)**2/expected;
+        }
+    }
+
+    const df=(rvals.length-1)*(cvals.length-1);
+    const p=chiSquareP(chi,df);
+
+    html+=`
+        <div class="section-space">
+            <div class="output-title">Chi-Square Tests</div>
+            <div class="table-wrap">
+            <table>
+                <thead><tr><th>Test</th><th>Value</th><th>df</th><th>p</th></tr></thead>
+                <tbody><tr>
+                    <td>Pearson Chi-Square</td>
+                    <td>${fmt(chi)}</td>
+                    <td>${df}</td>
+                    <td class="${p<.05?'sig-yes':'sig-no'}">${pFmt(p)}</td>
+                </tr></tbody>
+            </table>
+            </div>
+        </div>`;
+
+    $("crossOutput").innerHTML=html;
+    addOutput(`Crosstab — ${row} × ${col}`,html);
+}
+
+/* ==============================================================
+   T TESTS
+   ============================================================== */
+
+function updateTTestUI(){
+    const type=$("ttType").value;
+    $("ttOne").classList.toggle("hidden",type!=="one");
+    $("ttIndependent").classList.toggle("hidden",type!=="independent");
+    $("ttPaired").classList.toggle("hidden",type!=="paired");
+}
+
+function runTTest(){
+    const type=$("ttType").value;
+
+    if(type==="one") runOneSample();
+    if(type==="independent") runIndependentT();
+    if(type==="paired") runPairedT();
+}
+
+function runOneSample(){
+    const name=$("ttOneVar").value;
+    const mu=Number($("ttValue").value);
+    const a=cleanNumeric(name);
+
+    if(a.length<2)return alert("Not enough valid observations.");
+
+    const m=mean(a),s=sd(a),n=a.length;
+    const se=s/Math.sqrt(n);
+    const t=(m-mu)/se;
+    const df=n-1;
+    const p=tTwoTail(t,df);
+    const ci=1.96*se;
+
+    const html=`
+        <div class="table-wrap"><table>
+        <thead><tr><th>Variable</th><th>N</th><th>Mean</th><th>SD</th><th>Test Value</th><th>t</th><th>df</th><th>p</th><th>95% CI</th></tr></thead>
+        <tbody><tr>
+        <td>${esc(name)}</td><td>${n}</td><td>${fmt(m)}</td><td>${fmt(s)}</td>
+        <td>${fmt(mu)}</td><td>${fmt(t)}</td><td>${df}</td>
+        <td class="${p<.05?'sig-yes':'sig-no'}">${pFmt(p)}</td>
+        <td>[${fmt(m-ci)}, ${fmt(m+ci)}]</td>
+        </tr></tbody></table></div>`;
+
+    $("ttOutput").innerHTML=html;
+    addOutput("One-Sample T-Test",html);
+}
+
+function runIndependentT(){
+    const dv=$("ttIndVar").value;
+    const group=$("ttGroup").value;
+    const g1=$("ttG1").value;
+    const g2=$("ttG2").value;
+
+    const a=[],b=[];
+
+    APP.rows.forEach(r=>{
+        const x=numericValue(r[dv]);
+        if(x===null)return;
+
+        if(String(r[group])===String(g1))a.push(x);
+        if(String(r[group])===String(g2))b.push(x);
+    });
+
+    if(a.length<2 || b.length<2)return alert("Both groups need at least 2 valid observations.");
+
+    const ma=mean(a),mb=mean(b);
+    const va=variance(a),vb=variance(b);
+    const se=Math.sqrt(va/a.length+vb/b.length);
+    const t=(ma-mb)/se;
+
+    const df=((va/a.length+vb/b.length)**2)/
+        (((va/a.length)**2)/(a.length-1)+((vb/b.length)**2)/(b.length-1));
+
+    const p=tTwoTail(t,df);
+
+    const html=`
+    <div class="table-wrap"><table>
+    <thead><tr>
+        <th>Dependent Variable</th><th>Group</th><th>N</th><th>Mean</th><th>SD</th>
+    </tr></thead>
+    <tbody>
+        <tr><td>${esc(dv)}</td><td>${esc(g1)}</td><td>${a.length}</td><td>${fmt(ma)}</td><td>${fmt(sd(a))}</td></tr>
+        <tr><td>${esc(dv)}</td><td>${esc(g2)}</td><td>${b.length}</td><td>${fmt(mb)}</td><td>${fmt(sd(b))}</td></tr>
+    </tbody></table></div>
+
+    <div class="section-space table-wrap"><table>
+    <thead><tr><th>Test</th><th>Mean Difference</th><th>t</th><th>df</th><th>p</th></tr></thead>
+    <tbody><tr>
+        <td>Welch independent samples</td>
+        <td>${fmt(ma-mb)}</td><td>${fmt(t)}</td><td>${fmt(df)}</td>
+        <td class="${p<.05?'sig-yes':'sig-no'}">${pFmt(p)}</td>
+    </tr></tbody></table></div>`;
+
+    $("ttOutput").innerHTML=html;
+    addOutput("Independent-Samples T-Test",html);
+}
+
+function runPairedT(){
+    const aName=$("ttP1").value,bName=$("ttP2").value;
+    const {a,b}=pairwise(aName,bName);
+
+    if(a.length<2)return alert("Not enough paired observations.");
+
+    const d=a.map((x,i)=>x-b[i]);
+    const m=mean(d),s=sd(d),n=d.length;
+    const se=s/Math.sqrt(n);
+    const t=m/se;
+    const df=n-1;
+    const p=tTwoTail(t,df);
+    const ci=1.96*se;
+
+    const html=`
+    <div class="table-wrap"><table>
+    <thead><tr><th>Pair</th><th>N</th><th>Mean Difference</th><th>SD Difference</th><th>t</th><th>df</th><th>p</th><th>95% CI</th></tr></thead>
+    <tbody><tr>
+        <td>${esc(aName)} − ${esc(bName)}</td>
+        <td>${n}</td><td>${fmt(m)}</td><td>${fmt(s)}</td>
+        <td>${fmt(t)}</td><td>${df}</td>
+        <td class="${p<.05?'sig-yes':'sig-no'}">${pFmt(p)}</td>
+        <td>[${fmt(m-ci)}, ${fmt(m+ci)}]</td>
+    </tr></tbody></table></div>`;
+
+    $("ttOutput").innerHTML=html;
+    addOutput("Paired-Samples T-Test",html);
+}
+
+/* ==============================================================
+   ANOVA
+   ============================================================== */
+
+function runANOVA(){
+    const dv=$("anovaDV").value;
+    const group=$("anovaGroup").value;
+
+    const groups={};
+
+    APP.rows.forEach(r=>{
+        const y=numericValue(r[dv]);
+        const g=r[group];
+        if(y===null || isMissing(g))return;
+        const key=String(g);
+        if(!groups[key])groups[key]=[];
+        groups[key].push(y);
+    });
+
+    const names=Object.keys(groups).filter(k=>groups[k].length);
+    if(names.length<2)return alert("ANOVA requires at least two groups.");
+
+    const all=names.flatMap(k=>groups[k]);
+    const grand=mean(all);
+    const k=names.length;
+    const N=all.length;
+
+    let ssBetween=0,ssWithin=0;
+
+    names.forEach(g=>{
+        const a=groups[g],m=mean(a);
+        ssBetween+=a.length*(m-grand)**2;
+        ssWithin+=sum(a.map(x=>(x-m)**2));
+    });
+
+    const dfBetween=k-1;
+    const dfWithin=N-k;
+    const msBetween=ssBetween/dfBetween;
+    const msWithin=ssWithin/dfWithin;
+    const F=msBetween/msWithin;
+    const p=fPValue(F,dfBetween,dfWithin);
+
+    let html=`
+    <div class="table-wrap"><table>
+    <thead><tr><th>Group</th><th>N</th><th>Mean</th><th>SD</th></tr></thead>
+    <tbody>
+    ${names.map(g=>`<tr>
+        <td>${esc(g)}</td><td>${groups[g].length}</td>
+        <td>${fmt(mean(groups[g]))}</td><td>${fmt(sd(groups[g]))}</td>
+    </tr>`).join("")}
+    </tbody></table></div>
+
+    <div class="section-space table-wrap"><table>
+    <thead><tr><th>Source</th><th>SS</th><th>df</th><th>MS</th><th>F</th><th>p</th></tr></thead>
+    <tbody>
+    <tr>
+        <td>Between Groups</td><td>${fmt(ssBetween)}</td><td>${dfBetween}</td>
+        <td>${fmt(msBetween)}</td><td>${fmt(F)}</td>
+        <td class="${p<.05?'sig-yes':'sig-no'}">${pFmt(p)}</td>
+    </tr>
+    <tr>
+        <td>Within Groups</td><td>${fmt(ssWithin)}</td><td>${dfWithin}</td>
+        <td>${fmt(msWithin)}</td><td></td><td></td>
+    </tr>
+    <tr>
+        <td>Total</td><td>${fmt(ssBetween+ssWithin)}</td><td>${N-1}</td>
+        <td></td><td></td><td></td>
+    </tr>
+    </tbody></table></div>`;
+
+    if($("anovaPost").value==="tukey"){
+        html+=`<div class="section-space"><div class="output-title">Pairwise Mean Comparisons</div>`;
+        html+=`<div class="table-wrap"><table><thead>
+        <tr><th>Group 1</th><th>Group 2</th><th>Mean Difference</th><th>SE</th><th>t</th><th>p approx.</th></tr>
+        </thead><tbody>`;
+
+        for(let i=0;i<names.length;i++){
+            for(let j=i+1;j<names.length;j++){
+                const a=groups[names[i]],b=groups[names[j]];
+                const diff=mean(a)-mean(b);
+                const se=Math.sqrt(msWithin*(1/a.length+1/b.length));
+                const t=Math.abs(diff/se);
+                const pp=tTwoTail(t,dfWithin);
+
+                html+=`<tr>
+                    <td>${esc(names[i])}</td><td>${esc(names[j])}</td>
+                    <td>${fmt(diff)}</td><td>${fmt(se)}</td>
+                    <td>${fmt(t)}</td><td>${pFmt(pp)}</td>
+                </tr>`;
+            }
+        }
+
+        html+=`</tbody></table></div>
+        <div class="note section-space">
+        Pairwise p-values are t-distribution approximations using the ANOVA within-group error term.
+        They are not a full studentized-range implementation.
+        </div></div>`;
+    }
+
+    $("anovaOutput").innerHTML=html;
+    addOutput("One-Way ANOVA",html);
+}
+
+/* ==============================================================
+   CORRELATION
+   ============================================================== */
+
+function runCorrelation(){
+    const names=[...$("corrVars").selectedOptions].map(o=>o.value);
+    if(names.length<2)return alert("Select at least two variables.");
+
+    const method=$("corrMethod").value;
+
+    let html=`<div class="table-wrap"><table><thead><tr><th>Variable</th>`;
+    names.forEach(n=>html+=`<th>${esc(n)}</th>`);
+    html+="</tr></thead><tbody>";
+
+    names.forEach(aName=>{
+        html+=`<tr><th>${esc(aName)}</th>`;
+        names.forEach(bName=>{
+            if(aName===bName){
+                html+=`<td>1.000</td>`;
                 return;
             }
 
-            // 1. Mean Calculation
-            const sum = numbers.reduce((a, b) => a + b, 0);
-            const mean = sum / numbers.length;
+            const {a,b}=pairwise(aName,bName);
+            const r=method==="pearson"?pearson(a,b):spearman(a,b);
+            const n=a.length;
 
-            // 2. Median Calculation
-            const sorted = [...numbers].sort((a, b) => a - b);
-            const mid = Math.floor(sorted.length / 2);
-            const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+            let p="";
+            if(n>=3 && Number.isFinite(r)){
+                const t=r*Math.sqrt((n-2)/(1-r*r));
+                p=pFmt(tTwoTail(t,n-2));
+            }
 
-            // 3. Standard Deviation Calculation
-            const variance = numbers.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / numbers.length;
-            const stdDev = Math.sqrt(variance);
+            html+=`<td>
+                <b>${fmt(r,3)}</b>
+                ${$("corrP").checked?`<br><span class="note">p ${p}</span>`:""}
+                ${$("corrN").checked?`<br><span class="note">N ${n}</span>`:""}
+            </td>`;
+        });
+        html+="</tr>";
+    });
 
-            // UI Update
-            document.getElementById('meanOut').innerText = mean.toFixed(4);
-            document.getElementById('medianOut').innerText = median.toFixed(4);
-            document.getElementById('sdOut').innerText = stdDev.toFixed(4);
-            document.getElementById('results').classList.remove('hidden');
+    html+="</tbody></table></div>";
+
+    $("corrOutput").innerHTML=html;
+    addOutput(`${method==="pearson"?"Pearson":"Spearman"} Correlation`,html);
+}
+
+/* ==============================================================
+   MATRIX UTILITIES FOR REGRESSION
+   ============================================================== */
+
+function matrixTranspose(A){
+    return A[0].map((_,j)=>A.map(row=>row[j]));
+}
+
+function matrixMultiply(A,B){
+    const result=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
+    for(let i=0;i<A.length;i++)
+        for(let k=0;k<B.length;k++)
+            for(let j=0;j<B[0].length;j++)
+                result[i][j]+=A[i][k]*B[k][j];
+    return result;
+}
+
+function matrixInverse(A){
+    const n=A.length;
+    const M=A.map((row,i)=>
+        [...row,...Array.from({length:n},(_,j)=>i===j?1:0)]
+    );
+
+    for(let i=0;i<n;i++){
+        let pivot=i;
+        for(let r=i+1;r<n;r++)
+            if(Math.abs(M[r][i])>Math.abs(M[pivot][i]))pivot=r;
+
+        if(Math.abs(M[pivot][i])<1e-12)throw new Error("Singular matrix.");
+
+        [M[i],M[pivot]]=[M[pivot],M[i]];
+
+        const p=M[i][i];
+        for(let j=0;j<2*n;j++)M[i][j]/=p;
+
+        for(let r=0;r<n;r++){
+            if(r===i)continue;
+            const f=M[r][i];
+            for(let j=0;j<2*n;j++)M[r][j]-=f*M[i][j];
         }
-    </script>
+    }
+
+    return M.map(row=>row.slice(n));
+}
+
+/* ==============================================================
+   REGRESSION
+   ============================================================== */
+
+function runRegression(){
+    const dv=$("regDV").value;
+    const iv=[...$("regIV").selectedOptions].map(o=>o.value);
+
+    if(!dv || !iv.length)return alert("Select dependent and independent variables.");
+    if(iv.includes(dv))return alert("Dependent variable cannot also be an independent variable.");
+
+    const X=[],Y=[];
+
+    APP.rows.forEach(r=>{
+        const y=numericValue(r[dv]);
+        const xs=iv.map(v=>numericValue(r[v]));
+
+        if(y!==null && xs.every(x=>x!==null)){
+            X.push([1,...xs]);
+            Y.push(y);
+        }
+    });
+
+    const n=Y.length;
+    const p=iv.length+1;
+
+    if(n<=p)return alert("Not enough complete observations for this model.");
+
+    try{
+        const XT=matrixTranspose(X);
+        const XTX=matrixMultiply(XT,X);
+        const inv=matrixInverse(XTX);
+        const XTY=matrixMultiply(XT,Y.map(y=>[y]));
+        const beta=matrixMultiply(inv,XTY).map(x=>x[0]);
+
+        const fitted=X.map(row=>sum(row.map((x,i)=>x*beta[i])));
+        const residual=Y.map((y,i)=>y-fitted[i]);
+
+        const ybar=mean(Y);
+        const SSE=sum(residual.map(e=>e*e));
+        const SST=sum(Y.map(y=>(y-ybar)**2));
+        const SSR=SST-SSE;
+        const R2=1-SSE/SST;
+        const adjR2=1-(1-R2)*(n-1)/(n-p);
+        const dfError=n-p;
+        const mse=SSE/dfError;
+        const seModel=Math.sqrt(mse);
+        const F=(SSR/(p-1))/mse;
+        const modelP=fPValue(F,p-1,dfError);
+
+        const seBeta=beta.map((_,i)=>Math.sqrt(Math.max(0,mse*inv[i][i])));
+
+        let html=`
+        <div class="grid">
+            <div class="kpi span-3"><div class="kpi-label">R</div><div class="kpi-value">${fmt(Math.sqrt(Math.max(0,R2)),3)}</div></div>
+            <div class="kpi span-3"><div class="kpi-label">R²</div><div class="kpi-value">${fmt(R2,3)}</div></div>
+            <div class="kpi span-3"><div class="kpi-label">Adjusted R²</div><div class="kpi-value">${fmt(adjR2,3)}</div></div>
+            <div class="kpi span-3"><div class="kpi-label">Std. Error</div><div class="kpi-value">${fmt(seModel)}</div></div>
+        </div>
+
+        <div class="section-space table-wrap">
+        <table><thead><tr><th>Model</th><th>R</th><th>R²</th><th>Adjusted R²</th><th>Std. Error</th></tr></thead>
+        <tbody><tr><td>1</td><td>${fmt(Math.sqrt(Math.max(0,R2)),3)}</td><td>${fmt(R2,3)}</td><td>${fmt(adjR2,3)}</td><td>${fmt(seModel)}</td></tr></tbody></table>
+        </div>
+
+        <div class="section-space table-wrap">
+        <table><thead><tr><th>Source</th><th>SS</th><th>df</th><th>MS</th><th>F</th><th>p</th></tr></thead>
+        <tbody>
+        <tr><td>Regression</td><td>${fmt(SSR)}</td><td>${p-1}</td><td>${fmt(SSR/(p-1))}</td><td>${fmt(F)}</td><td>${pFmt(modelP)}</td></tr>
+        <tr><td>Residual</td><td>${fmt(SSE)}</td><td>${dfError}</td><td>${fmt(mse)}</td><td></td><td></td></tr>
+        <tr><td>Total</td><td>${fmt(SST)}</td><td>${n-1}</td><td></td><td></td><td></td></tr>
+        </tbody></table></div>
+
+        <div class="section-space table-wrap">
+        <table><thead><tr><th>Predictor</th><th>B</th><th>Std. Error</th><th>t</th><th>p</th></tr></thead>
+        <tbody>`;
+
+        ["Constant",...iv].forEach((name,i)=>{
+            const t=beta[i]/seBeta[i];
+            const pp=tTwoTail(t,dfError);
+
+            html+=`<tr>
+                <td>${esc(name)}</td>
+                <td>${fmt(beta[i])}</td>
+                <td>${fmt(seBeta[i])}</td>
+                <td>${fmt(t)}</td>
+                <td class="${pp<.05?'sig-yes':'sig-no'}">${pFmt(pp)}</td>
+            </tr>`;
+        });
+
+        html+=`</tbody></table></div>
+
+        <div id="regChart" class="chart section-space"></div>`;
+
+        $("regOutput").innerHTML=html;
+
+        // Observed vs predicted chart
+        Plotly.newPlot("regChart",[
+            {
+                x:fitted,y:Y,
+                mode:"markers",
+                type:"scatter",
+                name:"Observed"
+            },
+            {
+                x:[Math.min(...fitted),Math.max(...fitted)],
+                y:[Math.min(...fitted),Math.max(...fitted)],
+                mode:"lines",
+                type:"scatter",
+                name:"Perfect fit"
+            }
+        ],{
+            title:"Observed vs Predicted",
+            xaxis:{title:"Predicted"},
+            yaxis:{title:"Observed"},
+            margin:{t:50,l:60,r:20,b:60},
+            responsive:true
+        });
+
+        addOutput("Linear Regression",html);
+
+    }catch(err){
+        console.error(err);
+        alert("Regression could not be calculated: "+err.message);
+    }
+}
+
+/* ==============================================================
+   NON PARAMETRIC
+   ============================================================== */
+
+function updateNPUI(){
+    const type=$("npType").value;
+
+    $("npMann").classList.toggle("hidden",type!=="mann");
+    $("npWilcoxon").classList.toggle("hidden",type!=="wilcoxon");
+    $("npKruskal").classList.toggle("hidden",type!=="kruskal");
+}
+
+function rankCombined(a,b){
+    const combined=[
+        ...a.map((v,i)=>({v,group:0,i})),
+        ...b.map((v,i)=>({v,group:1,i}))
+    ].sort((x,y)=>x.v-y.v);
+
+    let i=0;
+    while(i<combined.length){
+        let j=i;
+        while(j+1<combined.length && combined[j+1].v===combined[i].v)j++;
+        const r=(i+j+2)/2;
+        for(let k=i;k<=j;k++)combined[k].rank=r;
+        i=j+1;
+    }
+
+    return combined;
+}
+
+function mannWhitney(a,b){
+    const n1=a.length,n2=b.length;
+    const combined=rankCombined(a,b);
+
+    const R1=sum(combined.filter(x=>x.group===0).map(x=>x.rank));
+    const U1=R1-n1*(n1+1)/2;
+    const U2=n1*n2-U1;
+    const U=Math.min(U1,U2);
+
+    const meanU=n1*n2/2;
+    const sdU=Math.sqrt(n1*n2*(n1+n2+1)/12);
+    const z=(U-meanU)/sdU;
+    const p=2*(1-normalCDF(Math.abs(z)));
+
+    return {U,z,p,R1};
+}
+
+function wilcoxon(a,b){
+    const diffs=[];
+
+    for(let i=0;i<a.length;i++){
+        const d=a[i]-b[i];
+        if(d!==0)diffs.push(d);
+    }
+
+    const abs=diffs.map(Math.abs);
+    const r=ranks(abs);
+
+    let Wplus=0,Wminus=0;
+    diffs.forEach((d,i)=>{
+        if(d>0)Wplus+=r[i];
+        else Wminus+=r[i];
+    });
+
+    const W=Math.min(Wplus,Wminus);
+    const n=diffs.length;
+    const meanW=n*(n+1)/4;
+    const sdW=Math.sqrt(n*(n+1)*(2*n+1)/24);
+    const z=(W-meanW)/sdW;
+    const p=2*(1-normalCDF(Math.abs(z)));
+
+    return {W,Wplus,Wminus,z,p,n};
+}
+
+function kruskal(groups){
+    const all=[];
+    Object.entries(groups).forEach(([g,a])=>{
+        a.forEach(v=>all.push({v,g}));
+    });
+
+    all.sort((a,b)=>a.v-b.v);
+
+    let i=0;
+    while(i<all.length){
+        let j=i;
+        while(j+1<all.length && all[j+1].v===all[i].v)j++;
+        const r=(i+j+2)/2;
+        for(let k=i;k<=j;k++)all[k].rank=r;
+        i=j+1;
+    }
+
+    const N=all.length;
+    let H=0;
+
+    Object.keys(groups).forEach(g=>{
+        const a=all.filter(x=>x.g===g);
+        const R=sum(a.map(x=>x.rank));
+        H+=R*R/a.length;
+    });
+
+    H=12/(N*(N+1))*H-3*(N+1);
+    const df=Object.keys(groups).length-1;
+    const p=chiSquareP(H,df);
+
+    return {H,df,p};
+}
+
+function runNonParam(){
+    const type=$("npType").value;
+
+    if(type==="mann"){
+        const dv=$("npMannDV").value;
+        const group=$("npMannGroup").value;
+        const g1=$("npG1").value;
+        const g2=$("npG2").value;
+
+        const a=[],b=[];
+        APP.rows.forEach(r=>{
+            const x=numericValue(r[dv]);
+            if(x===null)return;
+            if(String(r[group])===String(g1))a.push(x);
+            if(String(r[group])===String(g2))b.push(x);
+        });
+
+        if(a.length<2||b.length<2)return alert("Both groups need at least 2 observations.");
+
+        const z=mannWhitney(a,b);
+
+        const html=`
+        <div class="table-wrap"><table>
+        <thead><tr><th>Test</th><th>Group 1 N</th><th>Group 2 N</th><th>U</th><th>Z</th><th>p</th></tr></thead>
+        <tbody><tr>
+            <td>Mann–Whitney U</td><td>${a.length}</td><td>${b.length}</td>
+            <td>${fmt(z.U)}</td><td>${fmt(z.z)}</td>
+            <td class="${z.p<.05?'sig-yes':'sig-no'}">${pFmt(z.p)}</td>
+        </tr></tbody></table></div>`;
+
+        $("npOutput").innerHTML=html;
+        addOutput("Mann–Whitney U Test",html);
+    }
+
+    if(type==="wilcoxon"){
+        const aName=$("npW1").value,bName=$("npW2").value;
+        const {a,b}=pairwise(aName,bName);
+
+        if(a.length<2)return alert("Not enough paired observations.");
+
+        const w=wilcoxon(a,b);
+
+        const html=`
+        <div class="table-wrap"><table>
+        <thead><tr><th>Pair</th><th>N</th><th>W</th><th>Z</th><th>p</th></tr></thead>
+        <tbody><tr>
+            <td>${esc(aName)} − ${esc(bName)}</td><td>${w.n}</td>
+            <td>${fmt(w.W)}</td><td>${fmt(w.z)}</td>
+            <td class="${w.p<.05?'sig-yes':'sig-no'}">${pFmt(w.p)}</td>
+        </tr></tbody></table></div>`;
+
+        $("npOutput").innerHTML=html;
+        addOutput("Wilcoxon Signed-Rank Test",html);
+    }
+
+    if(type==="kruskal"){
+        const dv=$("npKDV").value;
+        const group=$("npKGroup").value;
+        const groups={};
+
+        APP.rows.forEach(r=>{
+            const y=numericValue(r[dv]);
+            if(y===null||isMissing(r[group]))return;
+
+            const g=String(r[group]);
+            if(!groups[g])groups[g]=[];
+            groups[g].push(y);
+        });
+
+        const valid=Object.fromEntries(
+            Object.entries(groups).filter(([_,a])=>a.length)
+        );
+
+        if(Object.keys(valid).length<2)return alert("At least two groups are required.");
+
+        const k=kruskal(valid);
+
+        const html=`
+        <div class="table-wrap"><table>
+        <thead><tr><th>Group</th><th>N</th><th>Median</th><th>Mean</th></tr></thead>
+        <tbody>
+        ${Object.entries(valid).map(([g,a])=>`
+            <tr><td>${esc(g)}</td><td>${a.length}</td>
+            <td>${fmt(median(a))}</td><td>${fmt(mean(a))}</td></tr>
+        `).join("")}
+        </tbody></table></div>
+
+        <div class="section-space table-wrap"><table>
+        <thead><tr><th>Test</th><th>H</th><th>df</th><th>p</th></tr></thead>
+        <tbody><tr>
+            <td>Kruskal–Wallis</td><td>${fmt(k.H)}</td><td>${k.df}</td>
+            <td class="${k.p<.05?'sig-yes':'sig-no'}">${pFmt(k.p)}</td>
+        </tr></tbody></table></div>`;
+
+        $("npOutput").innerHTML=html;
+        addOutput("Kruskal–Wallis Test",html);
+    }
+}
+
+/* ==============================================================
+   NORMALITY
+   ============================================================== */
+
+function runNormality(){
+    const name=$("normVar").value;
+    const a=cleanNumeric(name);
+
+    if(a.length<3)return alert("At least 3 observations are required.");
+
+    const m=mean(a),s=sd(a);
+
+    const html=`
+    <div class="grid">
+        <div class="kpi span-3"><div class="kpi-label">N</div><div class="kpi-value">${a.length}</div></div>
+        <div class="kpi span-3"><div class="kpi-label">Mean</div><div class="kpi-value">${fmt(m)}</div></div>
+        <div class="kpi span-3"><div class="kpi-label">SD</div><div class="kpi-value">${fmt(s)}</div></div>
+        <div class="kpi span-3"><div class="kpi-label">Skewness</div><div class="kpi-value">${fmt(skewness(a))}</div></div>
+    </div>
+    <div id="normalityChart" class="chart section-space"></div>
+    <div class="note">
+        Q-Q plots and skewness/kurtosis are distribution diagnostics.
+        A Q-Q plot close to a straight line indicates closer agreement with a normal reference.
+        This browser implementation does not claim to reproduce SPSS's exact proprietary
+        normality-test algorithms.
+    </div>`;
+
+    $("normOutput").innerHTML=html;
+
+    const type=$("normPlot").value;
+
+    if(type==="hist"){
+        Plotly.newPlot("normalityChart",[{
+            x:a,type:"histogram"
+        }],{
+            title:`Histogram — ${name}`,
+            xaxis:{title:name},
+            yaxis:{title:"Frequency"},
+            margin:{t:50,l:60,r:20,b:60},
+            responsive:true
+        });
+    }else if(type==="box"){
+        Plotly.newPlot("normalityChart",[{
+            y:a,type:"box",name:name,boxpoints:"outliers"
+        }],{
+            title:`Box Plot — ${name}`,
+            margin:{t:50,l:60,r:20,b:40},
+            responsive:true
+        });
+    }else{
+        const sorted=[...a].sort((x,y)=>x-y);
+        const theoretical=sorted.map((_,i)=>{
+            const p=(i+.5)/sorted.length;
+            return inverseNormal(p);
+        });
+
+        Plotly.newPlot("normalityChart",[{
+            x:theoretical,
+            y:sorted,
+            mode:"markers",
+            type:"scatter",
+            name:"Observed"
+        },{
+            x:[Math.min(...theoretical),Math.max(...theoretical)],
+            y:[m+s*Math.min(...theoretical),m+s*Math.max(...theoretical)],
+            mode:"lines",
+            type:"scatter",
+            name:"Reference"
+        }],{
+            title:`Normal Q-Q Plot — ${name}`,
+            xaxis:{title:"Theoretical Quantiles"},
+            yaxis:{title:"Observed Values"},
+            margin:{t:50,l:65,r:20,b:60},
+            responsive:true
+        });
+    }
+
+    addOutput("Normality Diagnostics — "+name,html);
+}
+
+function inverseNormal(p){
+    // Acklam rational approximation
+    const a=[
+        -39.6968302866538,220.946098424521,
+        -275.928510446969,138.357751867269,
+        -30.6647980661472,2.50662827745924
+    ];
+    const b=[
+        -54.4760987982241,161.585836858041,
+        -155.698979859887,66.8013118877197,
+        -13.2806815528857
+    ];
+    const c=[
+        -0.00778489400243029,-0.322396458041136,
+        -2.40075827716184,-2.54973253934373,
+        4.37466414146497,2.93816398269878
+    ];
+    const d=[
+        0.00778469570904146,0.32246712907004,
+        2.445134137143,3.75440866190742
+    ];
+
+    const plow=.02425,phigh=1-plow;
+    let q,r;
+
+    if(p<plow){
+        q=Math.sqrt(-2*Math.log(p));
+        return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/
+               ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    }
+
+    if(p>phigh){
+        q=Math.sqrt(-2*Math.log(1-p));
+        return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/
+               ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    }
+
+    q=p-.5;
+    r=q*q;
+
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/
+           (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+}
+
+/* ==============================================================
+   CHARTS
+   ============================================================== */
+
+function updateChartUI(){}
+
+function runChart(){
+    const type=$("chartType").value;
+    const xName=$("chartX").value;
+    const yName=$("chartY").value;
+    const group=$("chartGroup").value;
+
+    if(!xName)return alert("Select a variable.");
+
+    let traces=[];
+
+    if(type==="histogram"){
+        const a=cleanNumeric(xName);
+        traces=[{
+            x:a,type:"histogram",name:xName
+        }];
+
+        Plotly.newPlot("mainChart",traces,{
+            title:`Histogram — ${xName}`,
+            xaxis:{title:xName},
+            yaxis:{title:"Frequency"},
+            margin:{t:55,l:60,r:20,b:60},
+            responsive:true
+        });
+        return;
+    }
+
+    if(type==="box"){
+        if(group){
+            const groups=[...new Set(APP.rows.map(r=>r[group]).filter(v=>!isMissing(v)).map(String))];
+
+            groups.forEach(g=>{
+                const y=APP.rows
+                    .filter(r=>String(r[group])===g)
+                    .map(r=>numericValue(r[xName]))
+                    .filter(x=>x!==null);
+
+                traces.push({
+                    y,type:"box",name:g,boxpoints:"outliers"
+                });
+            });
+        }else{
+            traces=[{
+                y:cleanNumeric(xName),
+                type:"box",
+                name:xName,
+                boxpoints:"outliers"
+            }];
+        }
+
+        Plotly.newPlot("mainChart",traces,{
+            title:`Box Plot — ${xName}`,
+            margin:{t:55,l:60,r:20,b:50},
+            responsive:true
+        });
+        return;
+    }
+
+    if(type==="scatter"){
+        if(!yName)return alert("Select Y variable.");
+
+        if(group){
+            const groups=[...new Set(APP.rows.map(r=>r[group]).filter(v=>!isMissing(v)).map(String))];
+
+            groups.forEach(g=>{
+                const points=APP.rows.filter(r=>String(r[group])===g)
+                    .map(r=>({
+                        x:numericValue(r[xName]),
+                        y:numericValue(r[yName])
+                    }))
+                    .filter(p=>p.x!==null&&p.y!==null);
+
+                traces.push({
+                    x:points.map(p=>p.x),
+                    y:points.map(p=>p.y),
+                    mode:"markers",
+                    type:"scatter",
+                    name:g
+                });
+            });
+        }else{
+            const points=APP.rows.map(r=>({
+                x:numericValue(r[xName]),
+                y:numericValue(r[yName])
+            })).filter(p=>p.x!==null&&p.y!==null);
+
+            traces.push({
+                x:points.map(p=>p.x),
+                y:points.map(p=>p.y),
+                mode:"markers",
+                type:"scatter",
+                name:"Data"
+            });
+
+            if($("trendline").checked){
+                const xx=points.map(p=>p.x);
+                const yy=points.map(p=>p.y);
+                const b1=covariance(xx,yy)/variance(xx);
+                const b0=mean(yy)-b1*mean(xx);
+                const min=Math.min(...xx),max=Math.max(...xx);
+
+                traces.push({
+                    x:[min,max],
+                    y:[b0+b1*min,b0+b1*max],
+                    mode:"lines",
+                    type:"scatter",
+                    name:"Trendline"
+                });
+            }
+        }
+
+        Plotly.newPlot("mainChart",traces,{
+            title:`Scatter Plot — ${xName} × ${yName}`,
+            xaxis:{title:xName},
+            yaxis:{title:yName},
+            margin:{t:55,l:60,r:20,b:60},
+            responsive:true
+        });
+        return;
+    }
+
+    const vals=APP.rows.map(r=>r[xName]).filter(v=>!isMissing(v)).map(String);
+    const map=new Map();
+    vals.forEach(v=>map.set(v,(map.get(v)||0)+1));
+
+    const labels=[...map.keys()];
+    const counts=[...map.values()];
+
+    if(type==="pie"){
+        traces=[{
+            type:"pie",
+            labels,
+            values:counts
+        }];
+    }else{
+        traces=[{
+            type:"bar",
+            x:labels,
+            y:counts
+        }];
+    }
+
+    Plotly.newPlot("mainChart",traces,{
+        title:`${type==="pie"?"Pie":"Bar"} Chart — ${xName}`,
+        margin:{t:55,l:60,r:20,b:75},
+        responsive:true
+    });
+}
+
+/* ==============================================================
+   EXPORT CSV
+   ============================================================== */
+
+function exportCSV(){
+    if(!APP.rows.length)return alert("No data to export.");
+
+    const csv=Papa.unparse(APP.rows);
+    downloadBlob(new Blob([csv],{type:"text/csv;charset=utf-8"}),"data-export.csv");
+}
+
+function downloadBlob(blob,name){
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ==============================================================
+   CLEAR
+   ============================================================== */
+
+function clearAllData(){
+    if(!confirm("Clear the current dataset and all analysis output?"))return;
+
+    APP.rows=[];
+    APP.vars=[];
+    APP.output=[];
+    APP.page=1;
+
+    updateDashboard();
+    populateSelectors();
+    renderDataTable();
+    renderVariableTable();
+    renderOutput();
+}
+
+/* ==============================================================
+   SEARCH
+   ============================================================== */
+
+$("dataSearch").addEventListener("input",e=>{
+    APP.filter=e.target.value;
+    APP.page=1;
+    renderDataTable();
+});
+
+/* ==============================================================
+   INITIALIZATION
+   ============================================================== */
+
+function init(){
+    updateDashboard();
+    populateSelectors();
+    updateTTestUI();
+    updateNPUI();
+    renderVariableTable();
+    renderDataTable();
+}
+
+init();
+
+/* ==============================================================
+   KEYBOARD SHORTCUTS
+   ============================================================== */
+
+document.addEventListener("keydown",e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="o"){
+        e.preventDefault();
+        $("fileInput").click();
+    }
+
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="s"){
+        e.preventDefault();
+        exportCSV();
+    }
+});
+
+/* ==============================================================
+   OPTIONAL SIMPLE-STATISTICS AVAILABILITY CHECK
+   ============================================================== */
+
+window.addEventListener("load",()=>{
+    if(typeof ss!=="undefined"){
+        console.info("Simple Statistics loaded:",ss);
+    }else{
+        console.warn("Simple Statistics CDN was not available. Local routines remain available.");
+    }
+});
+</script>
 </body>
 </html>
