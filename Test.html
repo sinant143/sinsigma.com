@@ -2515,142 +2515,158 @@ function matrixVector(A,v){
 function normalizeRows(rows){
 
     if(!Array.isArray(rows) || !rows.length){
-        throw new Error("No data found.");
+        throw new Error("No data found. The file appears to be empty.");
     }
 
-    let headers=Object.keys(rows[0]);
+    // Normalize array/object input without relying on object-key order.
+    const first=rows.find(r=>r && typeof r==="object");
+    if(!first){
+        throw new Error("No valid records were found in the dataset.");
+    }
 
-    headers=headers.map((h,i)=>{
-        let name=String(h ?? "").trim();
+    let headers=Object.keys(first).map((h,i)=>{
+        const name=String(h ?? "").replace(/^\uFEFF/,"").trim();
         return name || `Variable_${i+1}`;
     });
 
-    const data=rows.map(row=>{
-
-        const obj={};
-
-        headers.forEach((h,i)=>{
-
-            const originalKeys=Object.keys(row);
-            const key=originalKeys[i];
-
-            obj[h]=row[key] ?? "";
-
-        });
-
-        return obj;
+    // Make duplicate/blank headers safe for downstream selectors and tables.
+    const used=new Map();
+    headers=headers.map((h,i)=>{
+        const base=h || `Variable_${i+1}`;
+        const count=(used.get(base)||0)+1;
+        used.set(base,count);
+        return count===1 ? base : `${base}_${count}`;
     });
 
+    const originalHeaders=Object.keys(first);
+    const data=rows
+        .filter(row=>row && typeof row==="object")
+        .map(row=>{
+            const obj={};
+            originalHeaders.forEach((key,i)=>{
+                obj[headers[i]]=row[key] ?? "";
+            });
+            return obj;
+        })
+        .filter(row=>Object.values(row).some(v=>String(v??"").trim()!==""));
+
+    if(!data.length) throw new Error("No non-empty data rows were found.");
+
     STATE.data=data;
-
+    STATE.results=[];
     inferVariables();
-
     renderAll();
 
     toast(`Imported ${data.length.toLocaleString()} rows × ${headers.length} variables`);
-
     goPage("home");
 }
 
-function parseCSVText(text){
+function parseCSVText(text, delimiter){
 
-    const result=Papa.parse(text,{
-        header:true,
-        skipEmptyLines:true,
-        dynamicTyping:false
-    });
-
-    if(result.errors?.length){
-        console.warn(result.errors);
+    if(typeof text!=="string" || !text.trim()){
+        throw new Error("The selected file is empty.");
     }
 
-    normalizeRows(result.data);
+    // Papa Parse is preferred, but the app also has a native fallback so
+    // uploads still work if a CDN library is temporarily unavailable.
+    if(window.Papa && typeof Papa.parse==="function"){
+        const result=Papa.parse(text,{
+            header:true,
+            skipEmptyLines:"greedy",
+            dynamicTyping:false,
+            delimiter:delimiter || "",
+            transformHeader:h=>String(h??"").replace(/^\uFEFF/,"").trim()
+        });
+        if(result.errors?.length){
+            const fatal=result.errors.find(e=>e.code==="UndetectableDelimiter" || e.code==="TooFewFields");
+            if(fatal) throw new Error(`CSV parsing error: ${fatal.message}`);
+            console.warn(result.errors);
+        }
+        normalizeRows(result.data);
+        return;
+    }
+
+    // Minimal RFC4180-style fallback parser for CSV/TSV.
+    const sep=delimiter || (text.split(/\r?\n/,1)[0].includes("\t") ? "\t" : ",");
+    const rows=[]; let row=[]; let cell=""; let quoted=false;
+    for(let i=0;i<text.length;i++){
+        const c=text[i], n=text[i+1];
+        if(c==='"'){
+            if(quoted && n==='"'){ cell+='"'; i++; }
+            else quoted=!quoted;
+        }else if(c===sep && !quoted){ row.push(cell); cell=""; }
+        else if((c==='\n'||c==='\r') && !quoted){
+            if(c==='\r' && n==='\n') i++;
+            row.push(cell); cell="";
+            if(row.some(v=>String(v).trim()!=="")){ rows.push(row); }
+            row=[];
+        }else cell+=c;
+    }
+    if(cell!=="" || row.length){ row.push(cell); if(row.some(v=>String(v).trim()!=="")) rows.push(row); }
+    if(rows.length<2) throw new Error("Could not find a header row and data rows.");
+    const headers=rows[0].map((h,i)=>String(h||`Variable_${i+1}`).trim());
+    normalizeRows(rows.slice(1).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??""]))));
 }
 
 function importFile(file){
 
-    const name=file.name.toLowerCase();
+    if(!file) return;
+    const name=String(file.name||"").toLowerCase();
 
-    if(name.endsWith(".json")){
+    const fail=(err)=>{
+        console.error("Import failed",err);
+        const msg=err?.message || String(err) || "Unknown import error.";
+        toast(`Import failed: ${msg}`);
+        alert(`Unable to import ${file.name}:\n${msg}`);
+    };
 
-        const reader=new FileReader();
+    try{
+        if(name.endsWith(".json")){
+            const reader=new FileReader();
+            reader.onerror=()=>fail(new Error("Browser could not read the file."));
+            reader.onload=e=>{
+                try{
+                    const json=JSON.parse(e.target.result);
+                    if(Array.isArray(json)) normalizeRows(json);
+                    else if(Array.isArray(json?.data)) normalizeRows(json.data);
+                    else throw new Error("JSON must contain an array of records (or a data array).");
+                }catch(err){ fail(err); }
+            };
+            reader.readAsText(file);
+            return;
+        }
 
-        reader.onload=e=>{
+        if(name.endsWith(".csv") || name.endsWith(".tsv") || name.endsWith(".txt")){
+            const reader=new FileReader();
+            reader.onerror=()=>fail(new Error("Browser could not read the file."));
+            reader.onload=e=>{
+                try{
+                    parseCSVText(e.target.result, name.endsWith(".tsv") ? "\t" : undefined);
+                }catch(err){ fail(err); }
+            };
+            reader.readAsText(file);
+            return;
+        }
 
-            try{
+        if(name.endsWith(".xls") || name.endsWith(".xlsx")){
+            if(!window.XLSX) throw new Error("Excel reader library is unavailable. Refresh the page and try again.");
+            const reader=new FileReader();
+            reader.onerror=()=>fail(new Error("Browser could not read the Excel file."));
+            reader.onload=e=>{
+                try{
+                    const workbook=XLSX.read(e.target.result,{type:"array",cellDates:true});
+                    if(!workbook.SheetNames?.length) throw new Error("The Excel workbook contains no sheets.");
+                    const sheet=workbook.Sheets[workbook.SheetNames[0]];
+                    const rows=XLSX.utils.sheet_to_json(sheet,{defval:"",raw:false});
+                    normalizeRows(rows);
+                }catch(err){ fail(err); }
+            };
+            reader.readAsArrayBuffer(file);
+            return;
+        }
 
-                const json=JSON.parse(e.target.result);
-
-                if(Array.isArray(json)){
-                    normalizeRows(json);
-                }else if(Array.isArray(json.data)){
-                    normalizeRows(json.data);
-                }else{
-                    throw new Error("JSON must contain an array of records.");
-                }
-
-            }catch(err){
-                alert(err.message);
-            }
-
-        };
-
-        reader.readAsText(file);
-
-        return;
-    }
-
-    if(name.endsWith(".csv") || name.endsWith(".tsv") || name.endsWith(".txt")){
-
-        const reader=new FileReader();
-
-        reader.onload=e=>{
-            parseCSVText(e.target.result);
-        };
-
-        reader.readAsText(file);
-
-        return;
-    }
-
-    if(name.endsWith(".xls") || name.endsWith(".xlsx")){
-
-        const reader=new FileReader();
-
-        reader.onload=e=>{
-
-            try{
-
-                const workbook=XLSX.read(
-                    e.target.result,
-                    {type:"array"}
-                );
-
-                const sheetName=workbook.SheetNames[0];
-
-                const sheet=workbook.Sheets[sheetName];
-
-                const rows=XLSX.utils.sheet_to_json(
-                    sheet,
-                    {
-                        defval:""
-                    }
-                );
-
-                normalizeRows(rows);
-
-            }catch(err){
-                alert("Unable to read Excel file: "+err.message);
-            }
-
-        };
-
-        reader.readAsArrayBuffer(file);
-
-        return;
-    }
-
-    alert("Unsupported file type.");
+        throw new Error("Unsupported file type. Use CSV, TSV, XLS, XLSX, JSON or TXT.");
+    }catch(err){ fail(err); }
 }
 
 
@@ -3156,7 +3172,8 @@ function updatePageSubtitle(){
         regression:["Regression","Linear regression"],
         nonparametric:["Non-Parametric","Rank-based statistical tests"],
         charts:["Charts","Interactive statistical visualisations"],
-        report:["Report","Current analysis output"]
+        report:["Report","Current analysis output"],
+        timeseries:["Time Series & Forecasting","Advanced time-series diagnostics and forecasting"]
     };
 
     const x=titles[STATE.currentPage]||titles.home;
