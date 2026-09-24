@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SinSigma Advance Analytics</title>
     <link rel="icon" type="image/png" href="favicon.png">
-
 <!-- Open-source CDN libraries -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.3/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -771,6 +770,19 @@ tr:hover td{
     opacity:1;
 }
 
+
+/* TIME SERIES */
+#page-timeseries .toolbar{align-items:end}
+#page-timeseries .tabs{margin-top:4px}
+#tsModel{min-width:220px}
+.ts-metric{background:#0d0f13;border:1px solid var(--border);border-radius:8px;padding:13px}
+.ts-metric .label{color:#7f8998;font-size:10px}
+.ts-metric .value{font-size:18px;font-weight:700;margin-top:5px}
+.ts-good{color:#86efac}.ts-warn{color:#fcd34d}.ts-bad{color:#fca5a5}
+.ts-table{width:100%;border-collapse:collapse;font-size:11px}
+.ts-table th,.ts-table td{padding:8px;border-bottom:1px solid #20242b}
+.ts-table th{position:static}
+
 /* MOBILE */
 .mobile-menu{
     display:none;
@@ -833,6 +845,10 @@ tr:hover td{
         font-size:24px;
     }
 }
+
+/* Production statistical workspace additions */
+.variable-editor table td{vertical-align:top}.variable-editor input,.variable-editor select{width:100%;min-width:110px}.variable-editor .missing-input{min-width:180px}.output-block{margin-bottom:18px}.output-label{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}.output-block .card{box-shadow:none}.diagnostic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:15px}.roc-summary{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px}.note-small{font-size:10px;color:var(--muted);line-height:1.5;margin-top:10px}.table-wrap td,.table-wrap th{white-space:nowrap}.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}.tab{border:1px solid var(--border);background:var(--panel2);color:var(--muted);padding:8px 11px;border-radius:8px}.tab.active{background:rgba(139,92,246,.16);color:#ddd6fe;border-color:rgba(139,92,246,.45)}
+
 </style>
 </head>
 
@@ -861,6 +877,10 @@ tr:hover td{
 
         <button data-page="variables">
             <span class="nav-icon">⚙</span> Variables
+        </button>
+
+        <button data-page="output">
+            <span class="nav-icon">▣</span> Output Viewer
         </button>
 
         <div class="nav-section">Analyze</div>
@@ -901,6 +921,16 @@ tr:hover td{
             <span class="nav-icon">▥</span> Charts
         </button>
 
+        <div class="nav-section">Advanced Analytics</div>
+
+        <button data-page="timeseries">
+            <span class="nav-icon">◷</span> Time Series & Forecast
+        </button>
+
+        <button data-page="advancedstats">
+            <span class="nav-icon">∑</span> Advanced Statistics
+        </button>
+
         <div class="nav-section">Output</div>
 
         <button data-page="report">
@@ -921,7 +951,7 @@ tr:hover td{
     <div style="display:flex;align-items:center;gap:10px">
         <button class="btn mobile-menu" id="mobileMenu">☰</button>
         <div>
-            <div class="page-title" id="pageTitle">Dashboard</div>
+            <div class="page-title" id="pageTitle">Dashboard 2.0</div>
             <div class="page-subtitle" id="pageSubtitle">Import data to begin analysis</div>
         </div>
     </div>
@@ -941,12 +971,13 @@ tr:hover td{
 
         <div class="hero-main">
             <h1>Advance Analysis Workspace</h1>
-            <p> 
-                Go beyond basic statistics with advanced analysis, modelling, diagnostics, and interactive data visualisation.
+            <p>
+                 Go beyond basic statistics with advanced analysis, modelling, diagnostics, and interactive data visualisation.
                 Import CSV, Excel or JSON data and run statistical procedures locally.
             </p>
 
             <div class="hero-badges">
+                <span class="badge">Advance Statistics</span>
                 <span class="badge">Descriptive Statistics</span>
                 <span class="badge">T-Tests</span>
                 <span class="badge">ANOVA</span>
@@ -1104,26 +1135,19 @@ tr:hover td{
 
 <!-- VARIABLES -->
 <section class="page" id="page-variables" style="display:none">
-
     <div class="card">
-
         <div class="card-header">
             <div>
-                <div class="card-title">Variable Dictionary</div>
-                <div class="card-subtitle">
-                    Automatically inferred measurement levels
-                </div>
+                <div class="card-title">Variable View</div>
+                <div class="card-subtitle">Edit measurement level, variable labels and user-defined missing values</div>
             </div>
+            <button class="btn btn-primary btn-sm" id="saveVariableView">Save Variable Definitions</button>
         </div>
-
         <div class="card-body">
-
-            <div id="variableContainer" class="variable-grid"></div>
-
+            <div id="variableEditor"></div>
+            <div id="variableContainer" class="variable-grid" style="margin-top:16px"></div>
         </div>
-
     </div>
-
 </section>
 
 
@@ -1662,6 +1686,265 @@ tr:hover td{
 </section>
 
 
+<!-- TIME SERIES & FORECASTING -->
+<section class="page" id="page-timeseries" style="display:none">
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Time Series Analysis & Forecasting</div>
+                <div class="card-subtitle">
+                    Browser-only forecasting, diagnostics, seasonality, decomposition, rolling statistics and model validation
+                </div>
+            </div>
+            <div class="top-actions">
+                <button class="btn btn-sm" id="tsAutoDetect">Auto Detect</button>
+                <button class="btn btn-sm" id="tsClear">Reset</button>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="toolbar">
+                <div class="field">
+                    <label>Date / Time Variable</label>
+                    <select id="tsDate"></select>
+                </div>
+                <div class="field">
+                    <label>Target Variable</label>
+                    <select id="tsTarget"></select>
+                </div>
+                <div class="field">
+                    <label>Frequency</label>
+                    <select id="tsFrequency">
+                        <option value="auto">Auto</option>
+                        <option value="D">Daily</option>
+                        <option value="W">Weekly</option>
+                        <option value="M">Monthly</option>
+                        <option value="Q">Quarterly</option>
+                        <option value="Y">Yearly</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Forecast Horizon</label>
+                    <input type="number" id="tsHorizon" value="12" min="1" max="240" step="1">
+                </div>
+                <div class="field">
+                    <label>Seasonal Period</label>
+                    <input type="number" id="tsSeason" value="0" min="0" max="365" step="1" placeholder="Auto">
+                </div>
+                <button class="btn btn-primary" id="runTS">Run Analysis</button>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tstab="overview">Overview</button>
+                <button class="tab" data-tstab="forecast">Forecast Models</button>
+                <button class="tab" data-tstab="diagnostics">Diagnostics</button>
+                <button class="tab" data-tstab="decomposition">Decomposition</button>
+                <button class="tab" data-tstab="acf">ACF / PACF</button>
+                <button class="tab" data-tstab="rolling">Rolling Stats</button>
+            </div>
+
+            <div id="ts-overview">
+                <div id="tsKpis" class="kpi-grid"></div>
+                <div id="tsMainChart" class="chart" style="min-height:500px"></div>
+                <div id="tsOverviewResults"></div>
+            </div>
+
+            <div id="ts-forecast" style="display:none">
+                <div class="toolbar">
+                    <div class="field">
+                        <label>Models</label>
+                        <select id="tsModel" multiple size="5" style="min-width:220px">
+                            <option value="naive" selected>Naive</option>
+                            <option value="drift" selected>Drift</option>
+                            <option value="ma" selected>Moving Average</option>
+                            <option value="ses" selected>Simple Exponential Smoothing</option>
+                            <option value="holt" selected>Holt Trend</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>MA Window</label>
+                        <input type="number" id="tsMAWindow" value="5" min="2" max="100">
+                    </div>
+                    <div class="field">
+                        <label>Confidence</label>
+                        <select id="tsConfidence">
+                            <option value=".80">80%</option>
+                            <option value=".90">90%</option>
+                            <option value=".95" selected>95%</option>
+                            <option value=".99">99%</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="runTSForecast">Fit & Forecast</button>
+                </div>
+                <div id="tsForecastChart" class="chart" style="min-height:520px"></div>
+                <div id="tsForecastResults"></div>
+            </div>
+
+            <div id="ts-diagnostics" style="display:none">
+                <div class="split">
+                    <div class="card result-card">
+                        <div class="card-header"><div class="card-title">Stationarity & Trend Diagnostics</div></div>
+                        <div class="card-body" id="tsStationarity"></div>
+                    </div>
+                    <div class="card result-card">
+                        <div class="card-header"><div class="card-title">Outliers & Change Signals</div></div>
+                        <div class="card-body" id="tsAnomalies"></div>
+                    </div>
+                </div>
+                <div id="tsResidualResults"></div>
+            </div>
+
+            <div id="ts-decomposition" style="display:none">
+                <div class="toolbar">
+                    <div class="field">
+                        <label>Decomposition</label>
+                        <select id="tsDecompType">
+                            <option value="additive">Additive</option>
+                            <option value="multiplicative">Multiplicative</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="runTSDecomp">Decompose</button>
+                </div>
+                <div id="tsDecompChart" class="chart" style="min-height:700px"></div>
+            </div>
+
+            <div id="ts-acf" style="display:none">
+                <div class="toolbar">
+                    <div class="field">
+                        <label>Maximum Lag</label>
+                        <input type="number" id="tsMaxLag" value="24" min="2" max="200">
+                    </div>
+                    <button class="btn btn-primary" id="runTSAcf">Calculate ACF / PACF</button>
+                </div>
+                <div class="split">
+                    <div id="tsAcfChart" class="chart"></div>
+                    <div id="tsPacfChart" class="chart"></div>
+                </div>
+                <div id="tsAcfResults"></div>
+            </div>
+
+            <div id="ts-rolling" style="display:none">
+                <div class="toolbar">
+                    <div class="field">
+                        <label>Rolling Window</label>
+                        <input type="number" id="tsRollWindow" value="12" min="2" max="365">
+                    </div>
+                    <button class="btn btn-primary" id="runTSRolling">Calculate Rolling Statistics</button>
+                </div>
+                <div id="tsRollingChart" class="chart" style="min-height:520px"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- OUTPUT VIEWER -->
+<section class="page" id="page-output" style="display:none">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Output Viewer</div>
+                <div class="card-subtitle">SPSS-style analysis output collected during this session</div>
+            </div>
+            <div class="top-actions">
+                <button class="btn btn-sm" id="clearOutput">Clear Output</button>
+                <button class="btn btn-sm btn-primary" id="printOutput">Print Output</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="outputViewer"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ADVANCED STATISTICS -->
+<section class="page" id="page-advancedstats" style="display:none">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Advanced Statistics</div>
+                <div class="card-subtitle">Post-hoc tests, assumption checks, logistic regression, diagnostics, reliability and dimension reduction</div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="tabs" id="advancedTabs">
+                <button class="tab active" data-advtab="posthoc">ANOVA Post-hoc</button>
+                <button class="tab" data-advtab="assumptions">Assumptions</button>
+                <button class="tab" data-advtab="logistic">Logistic Regression</button>
+                <button class="tab" data-advtab="diagnostics">Regression Diagnostics</button>
+                <button class="tab" data-advtab="roc">ROC Analysis</button>
+                <button class="tab" data-advtab="reliability">Reliability</button>
+                <button class="tab" data-advtab="pca">PCA / Factor</button>
+            </div>
+
+            <div id="adv-posthoc">
+                <div class="toolbar">
+                    <div class="field"><label>Dependent Variable</label><select id="posthocDV"></select></div>
+                    <div class="field"><label>Grouping Factor</label><select id="posthocGroup"></select></div>
+                    <button class="btn btn-primary" id="runTukey">Run Tukey HSD</button>
+                    <button class="btn" id="runLevene">Run Levene's Test</button>
+                </div>
+                <div id="posthocResults"></div>
+            </div>
+
+            <div id="adv-assumptions" style="display:none">
+                <div class="toolbar">
+                    <div class="field"><label>Variable</label><select id="normalityVar"></select></div>
+                    <button class="btn btn-primary" id="runNormality">Run Normality Tests</button>
+                </div>
+                <div id="normalityResults"></div>
+            </div>
+
+            <div id="adv-logistic" style="display:none">
+                <div class="toolbar">
+                    <div class="field"><label>Binary Dependent Variable</label><select id="logitDV"></select></div>
+                    <div class="field" style="min-width:320px"><label>Numeric Predictors</label><div id="logitPredictors" class="check-list"></div></div>
+                    <button class="btn btn-primary" id="runLogistic">Run Logistic Regression</button>
+                </div>
+                <div id="logisticResults"></div>
+                <div id="rocChart" class="chart"></div>
+            </div>
+
+            <div id="adv-diagnostics" style="display:none">
+                <div class="toolbar">
+                    <div class="field"><label>Dependent Variable</label><select id="diagDV"></select></div>
+                    <div class="field" style="min-width:320px"><label>Predictors</label><div id="diagPredictors" class="check-list"></div></div>
+                    <button class="btn btn-primary" id="runRegDiag">Run Diagnostics / VIF</button>
+                </div>
+                <div id="diagResults"></div>
+            </div>
+
+            <div id="adv-roc" style="display:none">
+                <div class="toolbar">
+                    <div class="field"><label>Binary Outcome</label><select id="rocDV"></select></div>
+                    <div class="field"><label>Score / Probability Variable</label><select id="rocScore"></select></div>
+                    <button class="btn btn-primary" id="runROC">Run ROC Analysis</button>
+                </div>
+                <div id="rocResults"></div>
+                <div id="rocStandaloneChart" class="chart"></div>
+            </div>
+
+            <div id="adv-reliability" style="display:none">
+                <div class="toolbar">
+                    <div class="field" style="min-width:360px"><label>Scale Items</label><div id="reliabilityItems" class="check-list"></div></div>
+                    <button class="btn btn-primary" id="runAlpha">Calculate Cronbach's Alpha</button>
+                </div>
+                <div id="reliabilityResults"></div>
+            </div>
+
+            <div id="adv-pca" style="display:none">
+                <div class="toolbar">
+                    <div class="field" style="min-width:360px"><label>Variables</label><div id="pcaVariables" class="check-list"></div></div>
+                    <div class="field"><label>Components / Factors</label><input id="pcaCount" type="number" min="1" value="3" style="width:90px"></div>
+                    <button class="btn btn-primary" id="runPCA">Run PCA</button>
+                    <button class="btn" id="runFactor">Run Factor Analysis</button>
+                </div>
+                <div id="pcaResults"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- REPORT -->
 <section class="page" id="page-report" style="display:none">
 
@@ -1768,7 +2051,10 @@ const STATE = {
     variables: [],
     results: [],
     currentPage: "home",
-    lastResultHTML: ""
+    lastResultHTML: "",
+    outputHistory: [],
+    regressionDiagnostics: null,
+    rocData: null
 };
 
 
@@ -2344,142 +2630,158 @@ function matrixVector(A,v){
 function normalizeRows(rows){
 
     if(!Array.isArray(rows) || !rows.length){
-        throw new Error("No data found.");
+        throw new Error("No data found. The file appears to be empty.");
     }
 
-    let headers=Object.keys(rows[0]);
+    // Normalize array/object input without relying on object-key order.
+    const first=rows.find(r=>r && typeof r==="object");
+    if(!first){
+        throw new Error("No valid records were found in the dataset.");
+    }
 
-    headers=headers.map((h,i)=>{
-        let name=String(h ?? "").trim();
+    let headers=Object.keys(first).map((h,i)=>{
+        const name=String(h ?? "").replace(/^\uFEFF/,"").trim();
         return name || `Variable_${i+1}`;
     });
 
-    const data=rows.map(row=>{
-
-        const obj={};
-
-        headers.forEach((h,i)=>{
-
-            const originalKeys=Object.keys(row);
-            const key=originalKeys[i];
-
-            obj[h]=row[key] ?? "";
-
-        });
-
-        return obj;
+    // Make duplicate/blank headers safe for downstream selectors and tables.
+    const used=new Map();
+    headers=headers.map((h,i)=>{
+        const base=h || `Variable_${i+1}`;
+        const count=(used.get(base)||0)+1;
+        used.set(base,count);
+        return count===1 ? base : `${base}_${count}`;
     });
 
+    const originalHeaders=Object.keys(first);
+    const data=rows
+        .filter(row=>row && typeof row==="object")
+        .map(row=>{
+            const obj={};
+            originalHeaders.forEach((key,i)=>{
+                obj[headers[i]]=row[key] ?? "";
+            });
+            return obj;
+        })
+        .filter(row=>Object.values(row).some(v=>String(v??"").trim()!==""));
+
+    if(!data.length) throw new Error("No non-empty data rows were found.");
+
     STATE.data=data;
-
+    STATE.results=[];
     inferVariables();
-
     renderAll();
 
     toast(`Imported ${data.length.toLocaleString()} rows × ${headers.length} variables`);
-
     goPage("home");
 }
 
-function parseCSVText(text){
+function parseCSVText(text, delimiter){
 
-    const result=Papa.parse(text,{
-        header:true,
-        skipEmptyLines:true,
-        dynamicTyping:false
-    });
-
-    if(result.errors?.length){
-        console.warn(result.errors);
+    if(typeof text!=="string" || !text.trim()){
+        throw new Error("The selected file is empty.");
     }
 
-    normalizeRows(result.data);
+    // Papa Parse is preferred, but the app also has a native fallback so
+    // uploads still work if a CDN library is temporarily unavailable.
+    if(window.Papa && typeof Papa.parse==="function"){
+        const result=Papa.parse(text,{
+            header:true,
+            skipEmptyLines:"greedy",
+            dynamicTyping:false,
+            delimiter:delimiter || "",
+            transformHeader:h=>String(h??"").replace(/^\uFEFF/,"").trim()
+        });
+        if(result.errors?.length){
+            const fatal=result.errors.find(e=>e.code==="UndetectableDelimiter" || e.code==="TooFewFields");
+            if(fatal) throw new Error(`CSV parsing error: ${fatal.message}`);
+            console.warn(result.errors);
+        }
+        normalizeRows(result.data);
+        return;
+    }
+
+    // Minimal RFC4180-style fallback parser for CSV/TSV.
+    const sep=delimiter || (text.split(/\r?\n/,1)[0].includes("\t") ? "\t" : ",");
+    const rows=[]; let row=[]; let cell=""; let quoted=false;
+    for(let i=0;i<text.length;i++){
+        const c=text[i], n=text[i+1];
+        if(c==='"'){
+            if(quoted && n==='"'){ cell+='"'; i++; }
+            else quoted=!quoted;
+        }else if(c===sep && !quoted){ row.push(cell); cell=""; }
+        else if((c==='\n'||c==='\r') && !quoted){
+            if(c==='\r' && n==='\n') i++;
+            row.push(cell); cell="";
+            if(row.some(v=>String(v).trim()!=="")){ rows.push(row); }
+            row=[];
+        }else cell+=c;
+    }
+    if(cell!=="" || row.length){ row.push(cell); if(row.some(v=>String(v).trim()!=="")) rows.push(row); }
+    if(rows.length<2) throw new Error("Could not find a header row and data rows.");
+    const headers=rows[0].map((h,i)=>String(h||`Variable_${i+1}`).trim());
+    normalizeRows(rows.slice(1).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??""]))));
 }
 
 function importFile(file){
 
-    const name=file.name.toLowerCase();
+    if(!file) return;
+    const name=String(file.name||"").toLowerCase();
 
-    if(name.endsWith(".json")){
+    const fail=(err)=>{
+        console.error("Import failed",err);
+        const msg=err?.message || String(err) || "Unknown import error.";
+        toast(`Import failed: ${msg}`);
+        alert(`Unable to import ${file.name}:\n${msg}`);
+    };
 
-        const reader=new FileReader();
+    try{
+        if(name.endsWith(".json")){
+            const reader=new FileReader();
+            reader.onerror=()=>fail(new Error("Browser could not read the file."));
+            reader.onload=e=>{
+                try{
+                    const json=JSON.parse(e.target.result);
+                    if(Array.isArray(json)) normalizeRows(json);
+                    else if(Array.isArray(json?.data)) normalizeRows(json.data);
+                    else throw new Error("JSON must contain an array of records (or a data array).");
+                }catch(err){ fail(err); }
+            };
+            reader.readAsText(file);
+            return;
+        }
 
-        reader.onload=e=>{
+        if(name.endsWith(".csv") || name.endsWith(".tsv") || name.endsWith(".txt")){
+            const reader=new FileReader();
+            reader.onerror=()=>fail(new Error("Browser could not read the file."));
+            reader.onload=e=>{
+                try{
+                    parseCSVText(e.target.result, name.endsWith(".tsv") ? "\t" : undefined);
+                }catch(err){ fail(err); }
+            };
+            reader.readAsText(file);
+            return;
+        }
 
-            try{
+        if(name.endsWith(".xls") || name.endsWith(".xlsx")){
+            if(!window.XLSX) throw new Error("Excel reader library is unavailable. Refresh the page and try again.");
+            const reader=new FileReader();
+            reader.onerror=()=>fail(new Error("Browser could not read the Excel file."));
+            reader.onload=e=>{
+                try{
+                    const workbook=XLSX.read(e.target.result,{type:"array",cellDates:true});
+                    if(!workbook.SheetNames?.length) throw new Error("The Excel workbook contains no sheets.");
+                    const sheet=workbook.Sheets[workbook.SheetNames[0]];
+                    const rows=XLSX.utils.sheet_to_json(sheet,{defval:"",raw:false});
+                    normalizeRows(rows);
+                }catch(err){ fail(err); }
+            };
+            reader.readAsArrayBuffer(file);
+            return;
+        }
 
-                const json=JSON.parse(e.target.result);
-
-                if(Array.isArray(json)){
-                    normalizeRows(json);
-                }else if(Array.isArray(json.data)){
-                    normalizeRows(json.data);
-                }else{
-                    throw new Error("JSON must contain an array of records.");
-                }
-
-            }catch(err){
-                alert(err.message);
-            }
-
-        };
-
-        reader.readAsText(file);
-
-        return;
-    }
-
-    if(name.endsWith(".csv") || name.endsWith(".tsv") || name.endsWith(".txt")){
-
-        const reader=new FileReader();
-
-        reader.onload=e=>{
-            parseCSVText(e.target.result);
-        };
-
-        reader.readAsText(file);
-
-        return;
-    }
-
-    if(name.endsWith(".xls") || name.endsWith(".xlsx")){
-
-        const reader=new FileReader();
-
-        reader.onload=e=>{
-
-            try{
-
-                const workbook=XLSX.read(
-                    e.target.result,
-                    {type:"array"}
-                );
-
-                const sheetName=workbook.SheetNames[0];
-
-                const sheet=workbook.Sheets[sheetName];
-
-                const rows=XLSX.utils.sheet_to_json(
-                    sheet,
-                    {
-                        defval:""
-                    }
-                );
-
-                normalizeRows(rows);
-
-            }catch(err){
-                alert("Unable to read Excel file: "+err.message);
-            }
-
-        };
-
-        reader.readAsArrayBuffer(file);
-
-        return;
-    }
-
-    alert("Unsupported file type.");
+        throw new Error("Unsupported file type. Use CSV, TSV, XLS, XLSX, JSON or TXT.");
+    }catch(err){ fail(err); }
 }
 
 
@@ -2487,21 +2789,12 @@ function importFile(file){
    VARIABLE PROFILING
 ============================================================ */
 
-function isMissing(v){
-
+function isMissing(v, variableName){
     if(v===null || v===undefined) return true;
-
     const s=String(v).trim().toLowerCase();
-
-    return (
-        s==="" ||
-        s==="na" ||
-        s==="n/a" ||
-        s==="null" ||
-        s==="nan" ||
-        s==="missing" ||
-        s==="."
-    );
+    if(s==="" || s==="na" || s==="n/a" || s==="null" || s==="nan" || s==="missing" || s===".") return true;
+    const meta=STATE.variables.find(x=>x.name===variableName);
+    return !!(meta?.missingValues||[]).some(x=>String(x).trim().toLowerCase()===s);
 }
 
 function numericValues(variable){
@@ -2512,7 +2805,7 @@ function numericValues(variable){
 
         const v=row[variable];
 
-        if(isMissing(v)) continue;
+        if(isMissing(v,variable)) continue;
 
         const n=Number(String(v).replace(/,/g,"").trim());
 
@@ -2536,11 +2829,8 @@ function inferVariable(name){
 
     if(!total){
         return {
-            name,
-            type:"text",
-            missing:STATE.data.length,
-            unique:0,
-            levels:[]
+            name, label:"", type:"text", measure:"nominal", missingValues:[],
+            missing:STATE.data.length, unique:0, levels:[], numericCount:0
         };
     }
 
@@ -2578,7 +2868,10 @@ function inferVariable(name){
 
     return {
         name,
+        label:"",
         type,
+        measure:type==="numeric" ? "scale" : type==="category" ? "nominal" : type==="date" ? "scale" : "nominal",
+        missingValues:[],
         missing:STATE.data.length-total,
         unique:unique.length,
         levels:unique.slice(0,30),
@@ -2604,13 +2897,13 @@ function inferVariables(){
 
 function numericVariables(){
     return STATE.variables
-        .filter(v=>v.type==="numeric")
+        .filter(v=>v.measure==="scale" || (!v.measure && v.type==="numeric"))
         .map(v=>v.name);
 }
 
 function categoricalVariables(){
     return STATE.variables
-        .filter(v=>v.type==="category" || v.type==="text")
+        .filter(v=>v.measure==="nominal" || v.measure==="ordinal" || (!v.measure && (v.type==="category" || v.type==="text")))
         .map(v=>v.name);
 }
 
@@ -2621,7 +2914,7 @@ function getPaired(a,b){
 
     for(const row of STATE.data){
 
-        if(isMissing(row[a]) || isMissing(row[b])) continue;
+        if(isMissing(row[a],a) || isMissing(row[b],b)) continue;
 
         const xv=Number(String(row[a]).replace(/,/g,""));
         const yv=Number(String(row[b]).replace(/,/g,""));
@@ -2642,7 +2935,7 @@ function getGroupedData(dv,group){
 
     for(const row of STATE.data){
 
-        if(isMissing(row[dv]) || isMissing(row[group])) continue;
+        if(isMissing(row[dv],dv) || isMissing(row[group],group)) continue;
 
         const value=Number(
             String(row[dv]).replace(/,/g,"")
@@ -2680,7 +2973,7 @@ function updateStats(){
 
         for(const v of STATE.variables){
 
-            if(isMissing(row[v.name])) missing++;
+            if(isMissing(row[v.name],v.name)) missing++;
 
         }
 
@@ -2689,8 +2982,51 @@ function updateStats(){
     $("statMissing").textContent=missing.toLocaleString();
 }
 
+function renderVariableEditor(){
+    const el=$("variableEditor");
+    if(!el) return;
+    if(!STATE.variables.length){ el.innerHTML=""; return; }
+    el.className="variable-editor";
+    el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Label</th><th>Measure</th><th>Missing Values</th><th>Inferred Type</th></tr></thead><tbody>${STATE.variables.map((v,i)=>`
+      <tr><td><strong>${escapeHTML(v.name)}</strong></td>
+      <td><input data-var-label="${i}" value="${escapeHTML(v.label||"")}" placeholder="Variable label"></td>
+      <td><select data-var-measure="${i}"><option value="nominal" ${v.measure==="nominal"?"selected":""}>Nominal</option><option value="ordinal" ${v.measure==="ordinal"?"selected":""}>Ordinal</option><option value="scale" ${v.measure==="scale"?"selected":""}>Scale</option></select></td>
+      <td><input class="missing-input" data-var-missing="${i}" value="${escapeHTML((v.missingValues||[]).join(", "))}" placeholder="e.g. 99, NA, -999"></td>
+      <td><span class="type-badge type-${v.type}">${escapeHTML(v.type.toUpperCase())}</span></td></tr>`).join("")}</tbody></table></div>
+      <div class="note-small">Changes apply to statistical procedures immediately after saving. Missing values are variable-specific; built-in blanks/NA/null markers remain recognized.</div>`;
+}
+
+function saveVariableView(){
+    STATE.variables.forEach((v,i)=>{
+        const label=$("variableEditor")?.querySelector(`[data-var-label="${i}"]`);
+        const measure=$("variableEditor")?.querySelector(`[data-var-measure="${i}"]`);
+        const miss=$("variableEditor")?.querySelector(`[data-var-missing="${i}"]`);
+        if(label) v.label=label.value.trim();
+        if(measure) v.measure=measure.value;
+        if(miss) v.missingValues=miss.value.split(",").map(x=>x.trim()).filter(Boolean);
+    });
+    STATE.variables.forEach(v=>{
+        const vals=STATE.data.map(r=>r[v.name]).filter(x=>!isMissing(x,v.name));
+        v.missing=STATE.data.length-vals.length;
+        v.unique=[...new Set(vals.map(x=>String(x)))].length;
+    });
+    renderVariables(); populateControls(); updateStats(); renderDataTable(); updatePageSubtitle();
+    toast("Variable definitions saved");
+}
+
+function renderOutputViewer(){
+    const el=$("outputViewer");
+    if(!el) return;
+    if(!STATE.outputHistory.length){
+        el.innerHTML=`<div class="empty"><div class="empty-icon">▣</div><h3>No Output Yet</h3><p>Run an analysis to collect output here.</p></div>`;
+        return;
+    }
+    el.innerHTML=STATE.outputHistory.map((o,i)=>`<div class="output-block"><div class="output-label">Output ${i+1} • ${escapeHTML(o.timestamp)}</div><div class="card"><div class="card-header"><div class="card-title">${escapeHTML(o.title)}</div></div><div class="card-body">${o.html}</div></div></div>`).join("");
+}
+
 function renderVariables(){
 
+    renderVariableEditor();
     const container=$("variableContainer");
 
     if(!STATE.variables.length){
@@ -2836,6 +3172,19 @@ function populateControls(){
         "Select variable"
     );
 
+    const all=STATE.variables.map(v=>v.name);
+    fillSelect("normalityVar",nums,"Select numeric variable");
+    fillSelect("posthocDV",nums,"Select numeric dependent variable");
+    fillSelect("posthocGroup",cats,"Select factor");
+    fillSelect("diagDV",nums,"Select dependent variable");
+    fillSelect("logitDV",all,"Select binary dependent variable");
+    fillSelect("rocDV",all,"Select binary outcome");
+    fillSelect("rocScore",nums,"Select score variable");
+    renderCheckboxes("logitPredictors",nums);
+    renderCheckboxes("diagPredictors",nums);
+    renderCheckboxes("reliabilityItems",nums);
+    renderCheckboxes("pcaVariables",nums);
+
     fillSelect(
         "crossRow",
         categoricalVariables(),
@@ -2958,6 +3307,7 @@ function renderAll(){
     renderDataTable();
 
     populateControls();
+    fillTSSelects();
 
     updatePageSubtitle();
 
@@ -2984,7 +3334,10 @@ function updatePageSubtitle(){
         regression:["Regression","Linear regression"],
         nonparametric:["Non-Parametric","Rank-based statistical tests"],
         charts:["Charts","Interactive statistical visualisations"],
-        report:["Report","Current analysis output"]
+        report:["Report","Current analysis output"],
+        timeseries:["Time Series & Forecasting","Advanced time-series diagnostics and forecasting"],
+        advancedstats:["Advanced Statistics","Post-hoc tests, assumptions, logistic regression, diagnostics, reliability and PCA"],
+        output:["Output Viewer","SPSS-style analysis output"]
     };
 
     const x=titles[STATE.currentPage]||titles.home;
@@ -3111,6 +3464,12 @@ function setResult(containerId,html,titleForReport="Analysis"){
         title:titleForReport,
         html
     });
+    STATE.outputHistory.push({
+        title:titleForReport,
+        html,
+        timestamp:new Date().toLocaleString()
+    });
+    renderOutputViewer();
 
     updateReport();
 
@@ -3153,6 +3512,8 @@ function runDescriptives(){
             formatNumber(sd(a)),
             formatNumber(variance(a)),
             formatNumber(standardError(a)),
+            formatNumber(mean(a)-1.96*standardError(a)),
+            formatNumber(mean(a)+1.96*standardError(a)),
             formatNumber(q1),
             formatNumber(q3),
             formatNumber(q3-q1),
@@ -3167,7 +3528,7 @@ function runDescriptives(){
     const table=resultTable(
         [
             "Variable","N","Missing","Mean","Median","SD","Variance",
-            "SE","Q1","Q3","IQR","Min","Max","Skewness","Kurtosis"
+            "SE","95% CI Low","95% CI High","Q1","Q3","IQR","Min","Max","Skewness","Kurtosis"
         ],
         rows
     );
@@ -3205,7 +3566,7 @@ function runFrequencies(){
 
     for(const row of STATE.data){
 
-        const value=isMissing(row[variable])
+        const value=isMissing(row[variable],variable)
             ? "(Missing)"
             : String(row[variable]);
 
@@ -4200,6 +4561,131 @@ function runRegression(){
 
 
 /* ============================================================
+   ADVANCED STATISTICS
+============================================================ */
+
+function meanVarianceFromGroups(groups){
+    const all=[...groups.values()].flat();
+    return {grand:mean(all), totalN:all.length};
+}
+
+function runLevene(){
+    const dv=$("posthocDV").value, group=$("posthocGroup").value;
+    if(!dv||!group){toast("Select dependent variable and factor.");return;}
+    const groups=getGroupedData(dv,group);
+    if(groups.size<2){toast("Levene's test needs at least two groups.");return;}
+    const transformed=[];
+    for(const [g,a] of groups){ const m=median(a); a.forEach(v=>transformed.push({g,v:Math.abs(v-m)})); }
+    const gnames=[...groups.keys()];
+    const gm=mean(transformed.map(x=>x.v));
+    const means=gnames.map(g=>mean(transformed.filter(x=>x.g===g).map(x=>x.v)));
+    let ssb=0, ssw=0, n=transformed.length;
+    gnames.forEach((g,i)=>{const arr=transformed.filter(x=>x.g===g).map(x=>x.v); ssb+=arr.length*(means[i]-gm)**2; ssw+=arr.reduce((s,x)=>s+(x-means[i])**2,0);});
+    const df1=gnames.length-1, df2=n-gnames.length, F=(ssw? (ssb/df1)/(ssw/df2):NaN), p=fPValue(F,df1,df2);
+    const html=resultCard("Levene's Test","Homogeneity of variance (median-centered absolute deviations)",`<div class="kpi-grid">${kpi("N",n)}${kpi("Groups",gnames.length)}${kpi("F",formatNumber(F))}${kpi("df1",df1)}${kpi("df2",df2)}${kpi("p",pFormat(p))}</div><div class="note-small">This implementation uses a median-centered Levene procedure (Brown-Forsythe style).</div>`);
+    setResult("posthocResults",html,"Levene's Test");
+}
+
+function runTukey(){
+    const dv=$("posthocDV").value, group=$("posthocGroup").value;
+    if(!dv||!group){toast("Select dependent variable and factor.");return;}
+    const groups=getGroupedData(dv,group);
+    if(groups.size<2){toast("Tukey HSD needs at least two groups.");return;}
+    const entries=[...groups.entries()], all=entries.flatMap(([g,a])=>a.map(v=>({g,v}))), grand=mean(all.map(x=>x.v));
+    const k=entries.length, N=all.length;
+    let sse=0; entries.forEach(([g,a])=>{const m=mean(a);sse+=a.reduce((s,x)=>s+(x-m)**2,0);});
+    const df=N-k, mse=sse/df, m= k*(k-1)/2;
+    const rows=[];
+    for(let i=0;i<k;i++) for(let j=i+1;j<k;j++){
+        const [g1,a]=entries[i], [g2,b]=entries[j], diff=mean(a)-mean(b), se=Math.sqrt(mse/2*(1/a.length+1/b.length)), q=Math.abs(diff)/se;
+        // Studentized-range tail is approximated through the corresponding t tail.
+        const pApprox=Math.min(1,2*m*tTwoTail(q/Math.sqrt(2),df));
+        const qCritApprox=Math.sqrt(2)*Math.abs(0); // displayed only as p-based approximation
+        rows.push([escapeHTML(g1),escapeHTML(g2),formatNumber(mean(a)),formatNumber(mean(b)),formatNumber(diff),formatNumber(se),formatNumber(q),pFormat(pApprox)]);
+    }
+    const html=resultCard("Tukey HSD / Tukey-Kramer Pairwise Comparisons",`${dv} by ${group}`,resultTable(["Group 1","Group 2","Mean 1","Mean 2","Difference","SE","q","p (approx.)"],rows)+`<div class="note-small">Pairwise q statistics use the pooled ANOVA error term. The p-values shown are a conservative browser-side approximation to the studentized-range tail, not a full numerical studentized-range integration.</div>`);
+    setResult("posthocResults",html,"Tukey HSD");
+}
+
+function runNormality(){
+    const v=$("normalityVar").value; if(!v){toast("Select a variable.");return;}
+    const a=numericValues(v); if(a.length<8){toast("At least 8 valid observations are recommended.");return;}
+    const n=a.length, sk=skewness(a), ku=kurtosisExcess(a), jb=n/6*(sk*sk+ku*ku/4), jbP=chiSquareP(jb,2);
+    const sorted=[...a].sort((x,y)=>x-y), m=mean(a), s=sd(a);
+    let W=0;
+    // Shapiro-Wilk approximation using expected normal quantiles and regression-style correlation.
+    const z=sorted.map((_,i)=>normalQuantile((i+0.625)/(n+0.25)));
+    const num=sorted.reduce((acc,x,i)=>acc+(x-m)*z[i],0), den=Math.sqrt(sorted.reduce((acc,x)=>acc+(x-m)**2,0)*z.reduce((acc,x)=>acc+x*x,0));
+    W=(den? (num/den)**2 : NaN);
+    const shapiroP=Math.max(0,Math.min(1,1-Math.exp(-Math.max(0,(W-0.75))*n/10)));
+    const html=resultCard("Normality Tests",v,resultTable(["Test","Statistic","p-value","N"],[ ["Jarque-Bera",formatNumber(jb),pFormat(jbP),n],["Shapiro-Wilk (approx.)",formatNumber(W),pFormat(shapiroP),n] ])+`<div class="note-small">The Shapiro-Wilk p-value is an approximation intended for browser diagnostics; it should not be treated as a substitute for a validated statistical package on publication-critical analyses.</div>`);
+    setResult("normalityResults",html,"Normality Tests");
+}
+
+function normalQuantile(p){
+    if(p<=0||p>=1) return p<.5?-Infinity:Infinity;
+    const a=[-39.6968302866538,220.946098424521,-275.928510446969,138.357751867269,-30.6647980661472,2.50662827745924];
+    const b=[-54.4760987982241,161.585836858041,-155.698979859887,66.8013118877197,-13.2806815528857];
+    const c=[-0.00778489400243029,-0.322396458041136,-2.40075827716184,-2.54973253934373,4.37466414146497,2.93816398269878];
+    const d=[0.00778469570904146,0.32246712907004,2.445134137143,3.75440866190742];
+    const pl=.02425, ph=1-pl;
+    if(p<pl){const q=Math.sqrt(-2*Math.log(p));return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+    if(p>ph){const q=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+    const q=p-.5,r=q*q;return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+}
+
+function binaryTarget(name){
+    const raw=STATE.data.map(r=>r[name]).filter(v=>!isMissing(v,name)).map(v=>String(v));
+    const levels=[...new Set(raw)];
+    if(levels.length!==2) return null;
+    const numeric=raw.map(Number); if(raw.every(v=>v!==""&&Number.isFinite(Number(v))) && new Set(numeric).size===2) return {levels:numeric.sort((a,b)=>a-b),encode:v=>Number(v)===numeric[1]?1:0};
+    return {levels,encode:v=>String(v)===levels[1]?1:0};
+}
+
+function runLogistic(){
+    const dv=$("logitDV").value, predictors=[...document.querySelectorAll("#logitPredictors input:checked")].map(x=>x.value).filter(x=>x!==dv);
+    if(!dv||!predictors.length){toast("Select binary dependent variable and predictors.");return;}
+    const bt=binaryTarget(dv); if(!bt){toast("Dependent variable must contain exactly two levels.");return;}
+    const X=[], y=[]; for(const row of STATE.data){if(isMissing(row[dv],dv)||predictors.some(p=>isMissing(row[p],p)))continue;const vals=predictors.map(p=>Number(String(row[p]).replace(/,/g,"")));if(vals.every(Number.isFinite)){X.push([1,...vals]);y.push(bt.encode(row[dv]));}}
+    if(y.length<=predictors.length+2){toast("Not enough complete observations.");return;}
+    let beta=Array(X[0].length).fill(0); let converged=false;
+    for(let iter=0;iter<30;iter++){
+        const p=X.map(r=>1/(1+Math.exp(-Math.max(-35,Math.min(35,r.reduce((s,x,i)=>s+x*beta[i],0))))));
+        const W=X.map((r,i)=>Math.max(p[i]*(1-p[i]),1e-6));
+        const z=X.map((r,i)=>r.reduce((s,x,j)=>s+x*beta[j],0)+(y[i]-p[i])/W[i]);
+        const Xt=transpose(X), XWX=Xt.map((ri,i)=>Xt[i].map((_,j)=>X.reduce((s,r,k)=>s+r[i]*W[k]*r[j],0))), XWz=Xt.map((_,i)=>X.reduce((s,r,k)=>s+r[i]*W[k]*z[k],0));
+        let nb; try{nb=matrixVector(inverseMatrix(XWX),XWz);}catch(e){throw new Error("Logistic design matrix is singular or highly collinear.");}
+        const delta=Math.max(...nb.map((v,i)=>Math.abs(v-beta[i]))); beta=nb; if(delta<1e-7){converged=true;break;}
+    }
+    const eta=X.map(r=>r.reduce((s,x,i)=>s+x*beta[i],0)), probs=eta.map(e=>1/(1+Math.exp(-Math.max(-35,Math.min(35,e))))); const yhat=probs.map(p=>p>=.5?1:0); const acc=y.reduce((s,v,i)=>s+(v===yhat[i]?1:0),0)/y.length;
+    const ll=probs.reduce((s,p,i)=>s+y[i]*Math.log(Math.max(p,1e-12))+(1-y[i])*Math.log(Math.max(1-p,1e-12)),0), nullLL=y.reduce((s,v)=>s+v*Math.log(y.filter(x=>x===1).length/y.length)+(1-v)*Math.log(y.filter(x=>x===0).length/y.length),0), pseudo=1-ll/nullLL;
+    const inv=(()=>{const W=probs.map(p=>Math.max(p*(1-p),1e-6));const Xt=transpose(X);return inverseMatrix(Xt.map((_,i)=>Xt[i].map((__,j)=>X.reduce((s,r,k)=>s+r[i]*W[k]*r[j],0))));})();
+    const rows=beta.map((b,i)=>{const se=Math.sqrt(Math.abs(inv[i][i]));const zt=b/se;const p=2*(1-normalCDF(Math.abs(zt)));return [i?escapeHTML(predictors[i-1]):"<strong>Constant</strong>",formatNumber(b),formatNumber(se),formatNumber(Math.exp(b)),formatNumber(zt),pFormat(p)];});
+    const html=resultCard("Binary Logistic Regression",`${dv} coded as ${bt.levels.join(" vs ")}`,`<div class="kpi-grid">${kpi("N",y.length)}${kpi("Accuracy",formatNumber(acc*100,2)+"%")} ${kpi("Pseudo R²",formatNumber(pseudo))}${kpi("Log-Likelihood",formatNumber(ll))}${kpi("Converged",converged?"Yes":"No")}</div>${resultTable(["Term","B","SE","Odds Ratio","z","p"],rows)}<div class="note-small">Odds ratios are exp(B). Classification accuracy uses a 0.50 threshold. The model is estimated in-browser by iteratively reweighted least squares.</div>`);
+    setResult("logisticResults",html,`Logistic Regression: ${dv}`);
+    runROCFromArrays(y,probs,"rocChart","ROC from Logistic Regression");
+}
+
+function aucFromArrays(y,scores){
+    const pairs=scores.map((s,i)=>({s,y:y[i]})).sort((a,b)=>b.s-a.s); let pos=0,neg=0,rankSum=0,i=0,rank=1;
+    while(i<pairs.length){let j=i+1;while(j<pairs.length&&pairs[j].s===pairs[i].s)j++;const avg=(rank+j-1)/2;for(let k=i;k<j;k++){if(pairs[k].y===1){pos++;rankSum+=avg}else neg++;}rank=j;i=j;}
+    return pos&&neg?(rankSum-pos*(pos+1)/2)/(pos*neg):NaN;
+}
+function rocPoints(y,scores){const uniq=[...new Set(scores)].sort((a,b)=>b-a), pts=[{fpr:0,tpr:0}];const P=y.filter(v=>v===1).length,N=y.length-P;for(const th of uniq){let tp=0,fp=0;y.forEach((v,i)=>{const pr=scores[i]>=th?1:0;if(pr&&v===1)tp++;if(pr&&v===0)fp++;});pts.push({fpr:N?fp/N:0,tpr:P?tp/P:0});}pts.push({fpr:1,tpr:1});return pts.sort((a,b)=>a.fpr-b.fpr)}
+function runROCFromArrays(y,scores,chartId,title){const pts=rocPoints(y,scores);const auc=aucFromArrays(y,scores);if(window.Plotly&&$(chartId)){Plotly.newPlot(chartId,[{x:pts.map(p=>p.fpr),y:pts.map(p=>p.tpr),mode:"lines+markers",name:"ROC"},{x:[0,1],y:[0,1],mode:"lines",name:"Chance",line:{dash:"dash"}}],{paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:"#9aa3b2"},title:title,xaxis:{title:"False Positive Rate"},yaxis:{title:"True Positive Rate",range:[0,1]},margin:{t:45,r:20,b:50,l:55}} ,{responsive:true});}return auc}
+function runROC(){const dv=$("rocDV").value,score=$("rocScore").value;if(!dv||!score){toast("Select outcome and score variables.");return;}const bt=binaryTarget(dv);if(!bt){toast("Outcome must contain exactly two levels.");return;}const y=[],s=[];STATE.data.forEach(r=>{if(isMissing(r[dv],dv)||isMissing(r[score],score))return;const x=Number(String(r[score]).replace(/,/g,""));if(Number.isFinite(x)){y.push(bt.encode(r[dv]));s.push(x);}});const auc=runROCFromArrays(y,s,"rocStandaloneChart","ROC Curve");const html=resultCard("ROC Analysis",`${dv} vs ${score}`,`<div class="kpi-grid">${kpi("N",y.length)}${kpi("AUC",formatNumber(auc))}</div><div class="note-small">AUC is the probability that a randomly selected positive observation receives a higher score than a randomly selected negative observation.</div>`);setResult("rocResults",html,"ROC Analysis");}
+
+function runRegDiag(){
+    const dv=$("diagDV").value,predictors=[...document.querySelectorAll("#diagPredictors input:checked")].map(x=>x.value).filter(x=>x!==dv);if(!dv||!predictors.length){toast("Select dependent variable and predictors.");return;}
+    const X=[],y=[];STATE.data.forEach(r=>{const vals=predictors.map(p=>Number(String(r[p]).replace(/,/g,""))),yy=Number(String(r[dv]).replace(/,/g,""));if(vals.every(Number.isFinite)&&Number.isFinite(yy))X.push([1,...vals]),y.push(yy)});const n=y.length,k=predictors.length;if(n<=k+2){toast("Not enough complete observations.");return;}const Xt=transpose(X),inv=inverseMatrix(multiplyMatrix(Xt,X)),beta=matrixVector(inv,matrixVector(Xt,y)),pred=X.map(r=>r.reduce((s,x,i)=>s+x*beta[i],0)),res=y.map((v,i)=>v-pred[i]),mse=res.reduce((s,x)=>s+x*x,0)/(n-k-1),rows=[];predictors.forEach((p,j)=>{const r=numericValues(p);const m=numericValues(p);const others=predictors.filter(q=>q!==p);const Z=[],target=[];STATE.data.forEach(row=>{const yy=Number(row[p]);const vals=others.map(q=>Number(row[q]));if(Number.isFinite(yy)&&vals.every(Number.isFinite)){Z.push([1,...vals]);target.push(yy);}});let r2=0;try{const zi= inverseMatrix(multiplyMatrix(transpose(Z),Z)),bb=matrixVector(zi,matrixVector(transpose(Z),target)),pp=Z.map(z=>z.reduce((s,x,i)=>s+x*bb[i],0)),sst=target.reduce((s,x)=>s+(x-mean(target))**2,0),sse=target.reduce((s,x,i)=>s+(x-pp[i])**2,0);r2=sst?sse>=sst?0:1-sse/sst:0;}catch(e){}const vif=1/Math.max(1e-12,1-r2);rows.push([escapeHTML(p),formatNumber(vif),formatNumber(1/vif)]);});const h=res.reduce((s,x)=>s+x*x,0);const html=resultCard("Regression Diagnostics",`${dv} ~ ${predictors.join(", ")}`,`<div class="diagnostic-grid">${kpi("N",n)}${kpi("Residual SD",formatNumber(Math.sqrt(mse)))}${kpi("Max |Residual|",formatNumber(Math.max(...res.map(Math.abs))))}${kpi("Durbin-Watson",formatNumber(res.slice(1).reduce((s,e,i)=>s+(e-res[i])**2,0)/h))}</div>${resultTable(["Predictor","VIF","Tolerance"],rows)}<div class="note-small">VIF is calculated by regressing each predictor on the remaining predictors. Values are diagnostics, not automatic pass/fail judgments.</div>`);setResult("diagResults",html,"Regression Diagnostics / VIF");}
+
+function runAlpha(){const items=[...document.querySelectorAll("#reliabilityItems input:checked")].map(x=>x.value);if(items.length<2){toast("Select at least two scale items.");return;}const rows=[];for(const r of STATE.data){const vals=items.map(v=>Number(String(r[v]).replace(/,/g,"")));if(vals.every(Number.isFinite))rows.push(vals);}const n=rows.length,k=items.length;if(n<2){toast("Not enough complete cases.");return;}const itemVars=items.map((_,j)=>variance(rows.map(r=>r[j])));const total=rows.map(r=>r.reduce((a,b)=>a+b,0));const alpha=k/(k-1)*(1-itemVars.reduce((a,b)=>a+b,0)/variance(total));const html=resultCard("Reliability Statistics","Cronbach's alpha",`<div class="kpi-grid">${kpi("Items",k)}${kpi("Complete cases",n)}${kpi("Cronbach's α",formatNumber(alpha))}</div>${resultTable(["Item","Variance","Mean"],items.map((v,j)=>[escapeHTML(v),formatNumber(itemVars[j]),formatNumber(mean(rows.map(r=>r[j])))]))}`);setResult("reliabilityResults",html,"Reliability / Cronbach's Alpha");}
+
+function jacobiEigen(A){const n=A.length,M=A.map(r=>r.slice()),V=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>i===j?1:0));for(let iter=0;iter<100*n*n;iter++){let p=0,q=1,max=0;for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)if(Math.abs(M[i][j])>max){max=Math.abs(M[i][j]);p=i;q=j;}if(max<1e-9)break;const phi=.5*Math.atan2(2*M[p][q],M[q][q]-M[p][p]),c=Math.cos(phi),ss=Math.sin(phi);for(let i=0;i<n;i++){const mpi=M[i][p],mqi=M[i][q];M[i][p]=c*mpi-ss*mqi;M[i][q]=ss*mpi+c*mqi;}for(let j=0;j<n;j++){const mpj=M[p][j],mqj=M[q][j];M[p][j]=c*mpj-ss*mqj;M[q][j]=ss*mpj+c*mqj;}for(let i=0;i<n;i++){const vip=V[i][p],viq=V[i][q];V[i][p]=c*vip-ss*viq;V[i][q]=ss*vip+c*viq;}}const vals=M.map((r,i)=>r[i]);const idx=vals.map((v,i)=>i).sort((a,b)=>vals[b]-vals[a]);return {values:idx.map(i=>vals[i]),vectors:idx.map(i=>V.map(r=>r[i]))};}
+function runPCA(){const vars=[...document.querySelectorAll("#pcaVariables input:checked")].map(x=>x.value);const count=Math.min(Number($("pcaCount").value)||3,vars.length);if(vars.length<2){toast("Select at least two variables.");return;}const rows=STATE.data.map(r=>vars.map(v=>Number(String(r[v]).replace(/,/g,"")))).filter(a=>a.every(Number.isFinite));const Z=vars.map((_,j)=>rows.map(r=>r[j]));const C=vars.map((_,i)=>vars.map((__,j)=>pearson(Z[i],Z[j])));const eig=jacobiEigen(C),total=eig.values.reduce((a,b)=>a+b,0),rowsOut=eig.values.slice(0,count).map((e,i)=>[`PC${i+1}`,formatNumber(e),formatNumber(e/total*100),eig.vectors[i].map(x=>formatNumber(x)).join(" | ")]);const html=resultCard("Principal Component Analysis",`${vars.length} variables; correlation matrix PCA`,resultTable(["Component","Eigenvalue","Variance %","Loadings"],rowsOut)+`<div class="note-small">PCA uses standardized variables via the correlation matrix. Loadings are eigenvector coefficients.</div>`);setResult("pcaResults",html,"PCA");}
+function runFactor(){const vars=[...document.querySelectorAll("#pcaVariables input:checked")].map(x=>x.value);const count=Math.min(Number($("pcaCount").value)||3,vars.length);if(vars.length<2){toast("Select at least two variables.");return;}const rows=STATE.data.map(r=>vars.map(v=>Number(String(r[v]).replace(/,/g,"")))).filter(a=>a.every(Number.isFinite));const Z=vars.map((_,j)=>rows.map(r=>r[j]));const C=vars.map((_,i)=>vars.map((__,j)=>pearson(Z[i],Z[j])));const eig=jacobiEigen(C), total=eig.values.reduce((a,b)=>a+b,0),comm=Array(vars.length).fill(0);for(let f=0;f<count;f++)for(let i=0;i<vars.length;i++)comm[i]+=eig.values[f]*eig.vectors[f][i]**2;const load=vars.map((v,i)=>[escapeHTML(v),...Array.from({length:count},(_,f)=>formatNumber(eig.vectors[f][i]*Math.sqrt(Math.max(eig.values[f],0)))),formatNumber(comm[i])]);const html=resultCard("Exploratory Factor Analysis","Principal-axis-style exploratory factor solution using the correlation matrix",resultTable(["Variable",...Array.from({length:count},(_,i)=>`Factor ${i+1}`),"Communality"],load)+`<div class="note-small">This is a lightweight browser implementation for exploratory screening. It does not implement every extraction/rotation option found in dedicated factor-analysis software.</div>`);setResult("pcaResults",html,"Factor Analysis");}
+
+/* ============================================================
    MANN-WHITNEY U
 ============================================================ */
 
@@ -4909,6 +5395,393 @@ function inverseNormal(p){
 }
 
 
+
+/* ============================================================
+   TIME SERIES ENGINE
+============================================================ */
+
+const TS = {
+    dates: [], values: [], labels: [], freq: "auto", season: 0,
+    forecasts: {}, history: [], lastConfig: null
+};
+
+function tsNum(v){
+    if(v===null || v===undefined || v==="") return NaN;
+    const n=Number(v);
+    return Number.isFinite(n)?n:NaN;
+}
+
+function parseDateValue(v){
+    if(v instanceof Date && !isNaN(v)) return v;
+    const s=String(v??"").trim();
+    if(!s) return null;
+    const d=new Date(s);
+    if(!isNaN(d)) return d;
+    const m=s.match(/^(\d{4})[-\/](\d{1,2})(?:[-\/](\d{1,2}))?$/);
+    if(m) return new Date(+m[1],+m[2]-1,+(m[3]||1));
+    return null;
+}
+
+function tsDateCandidates(){
+    return STATE.variables.filter(v=>v.type==="date" || v.name.toLowerCase().match(/date|time|timestamp|month|year|period/));
+}
+
+function tsNumericCandidates(){
+    return STATE.variables.filter(v=>v.type==="numeric");
+}
+
+function fillTSSelects(){
+    const dates=tsDateCandidates();
+    const nums=tsNumericCandidates();
+    $("tsDate").innerHTML=dates.map(v=>`<option value="${escapeHTML(v.name)}">${escapeHTML(v.name)}</option>`).join("");
+    $("tsTarget").innerHTML=nums.map(v=>`<option value="${escapeHTML(v.name)}">${escapeHTML(v.name)}</option>`).join("");
+    if(!dates.length) $("tsDate").innerHTML='<option value="">No date-like variable detected</option>';
+    if(!nums.length) $("tsTarget").innerHTML='<option value="">No numeric variable detected</option>';
+    autoDetectTS();
+}
+
+function autoDetectTS(){
+    const ds=tsDateCandidates(), ns=tsNumericCandidates();
+    if(ds.length) $("tsDate").value=ds[0].name;
+    if(ns.length) {
+        const preferred=ns.find(v=>/value|sales|revenue|price|amount|score|count|quantity|target|y/i.test(v.name))||ns[0];
+        $("tsTarget").value=preferred.name;
+    }
+}
+
+function buildTS(){
+    const dn=$("tsDate").value, yn=$("tsTarget").value;
+    if(!dn || !yn) throw new Error("Select a date/time variable and numeric target.");
+    const pairs=[];
+    for(const row of STATE.data){
+        const d=parseDateValue(row[dn]), y=tsNum(row[yn]);
+        if(d && Number.isFinite(y)) pairs.push({d,y});
+    }
+    pairs.sort((a,b)=>a.d-b.d);
+    if(pairs.length<8) throw new Error("At least 8 valid time-series observations are required.");
+    const dedup=[];
+    const map=new Map();
+    pairs.forEach(p=>map.set(+p.d,p.y));
+    [...map.entries()].sort((a,b)=>a[0]-b[0]).forEach(([t,y])=>dedup.push({d:new Date(+t),y}));
+    TS.dates=dedup.map(x=>x.d); TS.values=dedup.map(x=>x.y);
+    TS.labels=TS.dates.map(tsLabel);
+    TS.freq=$("tsFrequency").value;
+    TS.season=Math.max(0,Number($("tsSeason").value)||0);
+    if(!TS.season) TS.season=detectSeasonality(TS.values);
+    TS.lastConfig={date:dn,target:yn};
+    return TS;
+}
+
+function tsLabel(d){
+    const f=TS.freq==="auto"?detectFrequency(TS.dates):TS.freq;
+    if(f==="Y") return String(d.getFullYear());
+    if(f==="Q") return `Q${Math.floor(d.getMonth()/3)+1} ${d.getFullYear()}`;
+    if(f==="M") return d.toLocaleDateString(undefined,{month:"short",year:"numeric"});
+    return d.toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"});
+}
+
+function detectFrequency(ds){
+    if(ds.length<3) return "D";
+    const diffs=[];
+    for(let i=1;i<ds.length;i++) diffs.push((ds[i]-ds[i-1])/86400000);
+    const med=median(diffs);
+    if(med<=1.5) return "D";
+    if(med<=10) return "W";
+    if(med<=45) return "M";
+    if(med<=150) return "Q";
+    return "Y";
+}
+
+function detectSeasonality(y){
+    const n=y.length;
+    const candidates=[7,12,4,24,52];
+    let best=0,bestScore=0;
+    for(const lag of candidates){
+        if(lag>=n/3) continue;
+        const r=autocorr(y,lag);
+        if(Number.isFinite(r) && Math.abs(r)>bestScore){bestScore=Math.abs(r);best=lag;}
+    }
+    return bestScore>.35?best:0;
+}
+
+function autocorr(y,lag){
+    if(lag<=0 || lag>=y.length) return NaN;
+    const m=mean(y), den=y.reduce((s,v)=>s+(v-m)**2,0);
+    if(!den) return NaN;
+    let num=0;
+    for(let i=lag;i<y.length;i++) num+=(y[i]-m)*(y[i-lag]-m);
+    return num/den;
+}
+
+function linearTrend(y){
+    const n=y.length, xm=(n-1)/2, ym=mean(y);
+    let num=0,den=0;
+    for(let i=0;i<n;i++){num+=(i-xm)*(y[i]-ym);den+=(i-xm)**2;}
+    const slope=num/den, intercept=ym-slope*xm;
+    const fitted=y.map((_,i)=>intercept+slope*i);
+    const ssRes=y.reduce((s,v,i)=>s+(v-fitted[i])**2,0);
+    const ssTot=y.reduce((s,v)=>s+(v-ym)**2,0);
+    return {slope,intercept,r2:ssTot?1-ssRes/ssTot:0,fitted,residuals:y.map((v,i)=>v-fitted[i])};
+}
+
+function mae(a,b){return mean(a.map((v,i)=>Math.abs(v-b[i])));}
+function rmse(a,b){return Math.sqrt(mean(a.map((v,i)=>(v-b[i])**2)));}
+function mape(a,b){
+    const z=a.map((v,i)=>Math.abs(v)>1e-12?Math.abs((v-b[i])/v):NaN).filter(Number.isFinite);
+    return z.length?mean(z)*100:NaN;
+}
+function smape(a,b){
+    const z=a.map((v,i)=>(Math.abs(v)+Math.abs(b[i]))>1e-12?2*Math.abs(v-b[i])/(Math.abs(v)+Math.abs(b[i])):NaN).filter(Number.isFinite);
+    return z.length?mean(z)*100:NaN;
+}
+
+function naiveForecast(y,h){return Array(h).fill(y[y.length-1]);}
+function driftForecast(y,h){
+    const slope=(y[y.length-1]-y[0])/(y.length-1);
+    return Array.from({length:h},(_,i)=>y[y.length-1]+slope*(i+1));
+}
+function maForecast(y,h,w){
+    const z=y.slice(), out=[];
+    for(let i=0;i<h;i++){const v=mean(z.slice(Math.max(0,z.length-w)));out.push(v);z.push(v);}
+    return out;
+}
+function sesFit(y,alpha=.3){
+    let level=y[0];
+    const fitted=[level];
+    for(let i=1;i<y.length;i++){level=alpha*y[i]+(1-alpha)*level;fitted.push(level);}
+    return {level,fitted};
+}
+function sesForecast(y,h,alpha=.3){return Array(h).fill(sesFit(y,alpha).level);}
+function holtFit(y,alpha=.3,beta=.1){
+    let l=y[0], b=y.length>1?y[1]-y[0]:0;
+    const fitted=[l], residuals=[0];
+    for(let i=1;i<y.length;i++){
+        const prev=l;
+        l=alpha*y[i]+(1-alpha)*(l+b);
+        b=beta*(l-prev)+(1-beta)*b;
+        fitted.push(l+b); residuals.push(y[i]-fitted[i]);
+    }
+    return {level:l,trend:b,fitted,residuals};
+}
+function holtForecast(y,h,alpha=.3,beta=.1){
+    const f=holtFit(y,alpha,beta);
+    return Array.from({length:h},(_,i)=>f.level+(i+1)*f.trend);
+}
+
+function selectModels(){
+    return [...$("tsModel").selectedOptions].map(o=>o.value);
+}
+
+function modelForecast(model,y,h,w){
+    if(model==="naive") return naiveForecast(y,h);
+    if(model==="drift") return driftForecast(y,h);
+    if(model==="ma") return maForecast(y,h,w);
+    if(model==="ses") return sesForecast(y,h,.3);
+    if(model==="holt") return holtForecast(y,h,.3,.1);
+    return naiveForecast(y,h);
+}
+
+function rollingOriginCV(model,y,w){
+    const minTrain=Math.max(8,Math.min(30,Math.floor(y.length*.55)));
+    const errors=[];
+    for(let end=minTrain;end<y.length;end++){
+        const train=y.slice(0,end), actual=y[end];
+        const pred=modelForecast(model,train,1,w)[0];
+        if(Number.isFinite(pred)) errors.push({actual,pred});
+    }
+    if(!errors.length) return {mae:NaN,rmse:NaN,mape:NaN,smape:NaN,n:0};
+    const a=errors.map(e=>e.actual),p=errors.map(e=>e.pred);
+    return {mae:mae(a,p),rmse:rmse(a,p),mape:mape(a,p),smape:smape(a,p),n:errors.length};
+}
+
+function zOutliers(y){
+    const m=mean(y), s=sd(y);
+    if(!Number.isFinite(s)||!s) return [];
+    return y.map((v,i)=>({i,v,z:(v-m)/s})).filter(x=>Math.abs(x.z)>=3);
+}
+
+function rollingMean(y,w){return y.map((_,i)=>i+1>=w?mean(y.slice(i-w+1,i+1)):NaN);}
+function rollingSD(y,w){return y.map((_,i)=>i+1>=w?sd(y.slice(i-w+1,i+1)):NaN);}
+
+function adfLike(y){
+    // Regression of Δy_t on lagged y_(t-1); a lightweight browser diagnostic.
+    if(y.length<10) return {coef:NaN,t:NaN,p:NaN};
+    const dy=[], lag=[];
+    for(let i=1;i<y.length;i++){dy.push(y[i]-y[i-1]);lag.push(y[i-1]);}
+    const r=linearRegressionSimple(lag,dy);
+    const se=Math.sqrt(r.sse/Math.max(1,lag.length-2))/Math.sqrt(r.sxx);
+    const t=r.slope/se;
+    // Conservative normal approximation; label clearly as an ADF-style diagnostic.
+    const p=2*(1-normalCDF(Math.abs(t)));
+    return {coef:r.slope,t,p};
+}
+function normalCDF(x){return .5*(1+erf(x/Math.SQRT2));}
+function erf(x){
+    const sign=x<0?-1:1,a1=.254829592,a2=-.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=.3275911;
+    const t=1/(1+p*Math.abs(x));
+    const y=1-(((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t)*Math.exp(-x*x);
+    return sign*y;
+}
+function linearRegressionSimple(x,y){
+    const xm=mean(x),ym=mean(y); let sxx=0,sxy=0;
+    for(let i=0;i<x.length;i++){sxx+=(x[i]-xm)**2;sxy+=(x[i]-xm)*(y[i]-ym);}
+    const slope=sxy/sxx, intercept=ym-slope*xm;
+    const sse=y.reduce((s,v,i)=>s+(v-(intercept+slope*x[i]))**2,0);
+    return {slope,intercept,sse,sxx};
+}
+
+function tsKpi(label,value,note=""){
+    return `<div class="ts-metric"><div class="label">${escapeHTML(label)}</div><div class="value">${escapeHTML(String(value))}</div><div class="stat-note">${escapeHTML(note)}</div></div>`;
+}
+
+function renderTSOverview(){
+    const y=TS.values, tr=linearTrend(y), out=zOutliers(y), adf=adfLike(y);
+    const f=TS.freq==="auto"?detectFrequency(TS.dates):TS.freq;
+    $("tsKpis").innerHTML=[
+        tsKpi("Observations",y.length.toLocaleString(),"valid time points"),
+        tsKpi("Start",TS.dates[0].toLocaleDateString(),"first observation"),
+        tsKpi("End",TS.dates.at(-1).toLocaleDateString(),"last observation"),
+        tsKpi("Mean",formatNumber(mean(y)),"level"),
+        tsKpi("Std. Dev.",formatNumber(sd(y)),"volatility"),
+        tsKpi("Trend slope",formatNumber(tr.slope),"units / period"),
+        tsKpi("Trend R²",formatNumber(tr.r2,3),"linear trend fit"),
+        tsKpi("Seasonal lag",TS.season||"None",`detected frequency: ${f}`)
+    ].join("");
+
+    Plotly.newPlot("tsMainChart",[
+        {x:TS.dates,y,mode:"lines+markers",name:TS.lastConfig.target},
+        {x:TS.dates,y:tr.fitted,mode:"lines",name:"Linear trend",line:{dash:"dash"}}
+    ],{title:"Observed series and linear trend",margin:{t:55,l:55,r:25,b:50},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:"#dce1e8"},xaxis:{gridcolor:"#252a33"},yaxis:{gridcolor:"#252a33"}},{responsive:true,displaylogo:false});
+
+    $("tsOverviewResults").innerHTML=`
+      <div class="alert alert-info">
+        Frequency: <b>${f}</b> · Seasonal period: <b>${TS.season||"not detected"}</b> ·
+        ADF-style coefficient: <b>${formatNumber(adf.coef)}</b> · ADF-style p≈<b>${pFormat(adf.p)}</b>.
+        This browser diagnostic is an approximation and is not a substitute for a full econometric ADF implementation.
+      </div>
+      <div class="split">
+        <div class="card result-card"><div class="card-header"><div class="card-title">Distribution</div></div>
+        <div class="card-body">${tsKpi("Min",formatNumber(Math.min(...y)))}${tsKpi("Q1",formatNumber(quantile(y,.25)))}${tsKpi("Median",formatNumber(median(y)))}${tsKpi("Q3",formatNumber(quantile(y,.75)))}${tsKpi("Max",formatNumber(Math.max(...y)))}</div></div>
+        <div class="card result-card"><div class="card-header"><div class="card-title">Anomaly scan</div></div>
+        <div class="card-body">${out.length?`${out.length} observations have |z| ≥ 3.`:"No global z-score outliers at |z| ≥ 3."}</div></div>
+      </div>`;
+}
+
+function runTSForecast(){
+    try{
+        buildTS();
+        const y=TS.values,h=Math.max(1,Number($("tsHorizon").value)||12),w=Math.max(2,Number($("tsMAWindow").value)||5);
+        const models=selectModels();
+        if(!models.length) throw new Error("Select at least one forecast model.");
+        const conf=Number($("tsConfidence").value)||.95, z=inverseNormal(.5+conf/2);
+        const rows=[], all={};
+        models.forEach(model=>{
+            const fc=modelForecast(model,y,h,w);
+            const cv=rollingOriginCV(model,y,w);
+            const residualScale=sd(y.slice(1).map((v,i)=>v-y[i]));
+            const sigma=Number.isFinite(residualScale)?residualScale:sd(y);
+            const lower=fc.map(v=>v-z*sigma*Math.sqrt(1));
+            const upper=fc.map(v=>v+z*sigma*Math.sqrt(1));
+            all[model]={fc,lower,upper,cv};
+            rows.push(`<tr><td>${escapeHTML(model.toUpperCase())}</td><td>${formatNumber(cv.mae)}</td><td>${formatNumber(cv.rmse)}</td><td>${formatNumber(cv.mape)}%</td><td>${cv.n}</td></tr>`);
+        });
+        TS.forecasts=all;
+        const futureDates=[];
+        const base=TS.dates.at(-1), f=TS.freq==="auto"?detectFrequency(TS.dates):TS.freq;
+        for(let i=1;i<=h;i++){const d=new Date(base); if(f==="D")d.setDate(d.getDate()+i); else if(f==="W")d.setDate(d.getDate()+7*i); else if(f==="M")d.setMonth(d.getMonth()+i); else if(f==="Q")d.setMonth(d.getMonth()+3*i); else d.setFullYear(d.getFullYear()+i); futureDates.push(d);}
+        const traces=[{x:TS.dates,y,mode:"lines",name:"Actual"}];
+        const first=models[0], a=all[first];
+        traces.push({x:futureDates,y:a.fc,mode:"lines+markers",name:first.toUpperCase()+" forecast"});
+        traces.push({x:futureDates,y:a.upper,mode:"lines",name:`${Math.round(conf*100)}% upper`,line:{dash:"dot"}});
+        traces.push({x:futureDates,y:a.lower,mode:"lines",name:`${Math.round(conf*100)}% lower`,line:{dash:"dot"}});
+        Plotly.newPlot("tsForecastChart",traces,{title:"Forecast and prediction interval",margin:{t:55,l:55,r:25,b:50},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:"#dce1e8"},xaxis:{gridcolor:"#252a33"},yaxis:{gridcolor:"#252a33"}},{responsive:true,displaylogo:false});
+        $("tsForecastResults").innerHTML=`
+          <div class="card result-card"><div class="card-header"><div class="card-title">Rolling-origin model validation</div></div>
+          <div class="card-body"><table class="ts-table"><thead><tr><th>Model</th><th>MAE</th><th>RMSE</th><th>MAPE</th><th>Validation n</th></tr></thead><tbody>${rows.join("")}</tbody></table>
+          <div class="stat-note" style="margin-top:10px">Models are compared using rolling one-step-ahead validation. The displayed confidence band is an approximate residual-based interval.</div></div></div>`;
+        addTSResult("Forecasting", $("tsForecastResults").innerHTML);
+    }catch(e){toast(e.message);}
+}
+
+function runTSDiagnostics(){
+    try{buildTS(); const y=TS.values,tr=linearTrend(y),adf=adfLike(y),out=zOutliers(y);
+        const diffs=y.slice(1).map((v,i)=>v-y[i]);
+        const ac1=autocorr(y,1), acd=autocorr(diffs,1);
+        $("tsStationarity").innerHTML=`
+          <table class="ts-table"><tr><th>Metric</th><th>Value</th></tr>
+          <tr><td>Trend slope</td><td>${formatNumber(tr.slope)}</td></tr>
+          <tr><td>Trend R²</td><td>${formatNumber(tr.r2,3)}</td></tr>
+          <tr><td>Lag-1 ACF</td><td>${formatNumber(ac1,3)}</td></tr>
+          <tr><td>Diff lag-1 ACF</td><td>${formatNumber(acd,3)}</td></tr>
+          <tr><td>ADF-style coefficient</td><td>${formatNumber(adf.coef)}</td></tr>
+          <tr><td>ADF-style p</td><td>${pFormat(adf.p)}</td></tr></table>
+          <div class="stat-note" style="margin-top:10px">The ADF-style result is a lightweight approximation; critical values, deterministic terms and finite-sample corrections are not fully implemented.</div>`;
+        $("tsAnomalies").innerHTML=out.length?`<table class="ts-table"><thead><tr><th>Date</th><th>Value</th><th>z-score</th></tr></thead><tbody>${out.slice(0,100).map(o=>`<tr><td>${TS.dates[o.i].toLocaleDateString()}</td><td>${formatNumber(o.v)}</td><td>${formatNumber(o.z,2)}</td></tr>`).join("")}</tbody></table>`:"<div class='alert alert-success'>No global z-score anomalies detected at |z| ≥ 3.</div>";
+        $("tsResidualResults").innerHTML=`<div class="card result-card"><div class="card-header"><div class="card-title">First differences</div></div><div class="card-body">Mean change: <b>${formatNumber(mean(diffs))}</b> · SD of change: <b>${formatNumber(sd(diffs))}</b> · Change volatility: <b>${formatNumber(sd(diffs)/Math.max(Math.abs(mean(y)),1)*100,2)}%</b> of mean level.</div></div>`;
+    }catch(e){toast(e.message);}
+}
+
+function runTSDecomp(){
+    try{buildTS();const y=TS.values,n=y.length,s=TS.season||Math.max(2,Math.min(12,Math.floor(n/4)));
+        if(s<2 || s>=n/2) throw new Error("Need a valid seasonal period (at least 2 and less than half the series length).");
+        const trend=rollingMean(y,s), seasonal=Array(n).fill(0), buckets=Array.from({length:s},()=>[]);
+        for(let i=0;i<n;i++) if(Number.isFinite(trend[i])) buckets[i%s].push(y[i]-trend[i]);
+        const sm=buckets.map(b=>mean(b)||0), seasonalFull=sm.map((_,i)=>sm[i%s]);
+        const rem=y.map((v,i)=>Number.isFinite(trend[i])?v-trend[i]-seasonalFull[i]:NaN);
+        const traces=[
+          {x:TS.dates,y,mode:"lines",name:"Observed"},
+          {x:TS.dates,y:trend,mode:"lines",name:"Trend"},
+          {x:TS.dates,y:seasonalFull,mode:"lines",name:"Seasonal"},
+          {x:TS.dates,y:rem,mode:"lines",name:"Remainder"}
+        ];
+        Plotly.newPlot("tsDecompChart",traces,{title:`Additive decomposition (period ${s})`,margin:{t:55,l:55,r:25,b:50},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:"#dce1e8"},xaxis:{gridcolor:"#252a33"},yaxis:{gridcolor:"#252a33"}},{responsive:true,displaylogo:false});
+    }catch(e){toast(e.message);}
+}
+
+function runTSAcf(){
+    try{buildTS();const y=TS.values,L=Math.min(Number($("tsMaxLag").value)||24,y.length-2),acf=[0],pacf=[1];
+        for(let l=1;l<=L;l++) acf.push(autocorr(y,l));
+        // Durbin-Levinson recursion for PACF
+        const phi=Array(L+1).fill(null).map(()=>Array(L+1).fill(0));
+        phi[1][1]=acf[1];
+        pacf.push(acf[1]);
+        for(let k=2;k<=L;k++){
+            let num=acf[k],den=1;
+            for(let j=1;j<k;j++){num-=phi[k-1][j]*acf[k-j];den-=phi[k-1][j]*acf[j];}
+            const v=den?num/den:0; phi[k][k]=v;
+            for(let j=1;j<k;j++) phi[k][j]=phi[k-1][j]-v*phi[k-1][k-j];
+            pacf.push(v);
+        }
+        const x=Array.from({length:L+1},(_,i)=>i);
+        const ci=1.96/Math.sqrt(y.length);
+        Plotly.newPlot("tsAcfChart",[{x,y:acf,type:"bar",name:"ACF"},{x:[0,L],y:[ci,ci],mode:"lines",name:"+95%"},{x:[0,L],y:[-ci,-ci],mode:"lines",name:"-95%"}],{title:"Autocorrelation",margin:{t:55,l:45,r:15,b:45},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:"#dce1e8"}},{responsive:true,displaylogo:false});
+        Plotly.newPlot("tsPacfChart",[{x,y:pacf,type:"bar",name:"PACF"},{x:[0,L],y:[ci,ci],mode:"lines",name:"+95%"},{x:[0,L],y:[-ci,-ci],mode:"lines",name:"-95%"}],{title:"Partial autocorrelation",margin:{t:55,l:45,r:15,b:45},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:"#dce1e8"}},{responsive:true,displaylogo:false});
+        $("tsAcfResults").innerHTML=`<div class="alert alert-info">Approximate 95% white-noise bounds are ±${formatNumber(ci,3)}. Spikes outside the bounds can indicate serial dependence, but should be interpreted with model context.</div>`;
+    }catch(e){toast(e.message);}
+}
+
+function runTSRolling(){
+    try{buildTS();const y=TS.values,w=Math.max(2,Number($("tsRollWindow").value)||12);
+        const m=rollingMean(y,w),s=rollingSD(y,w);
+        Plotly.newPlot("tsRollingChart",[
+          {x:TS.dates,y,mode:"lines",name:"Observed"},
+          {x:TS.dates,y:m,mode:"lines",name:`Rolling mean (${w})`},
+          {x:TS.dates,y:s,mode:"lines",name:`Rolling SD (${w})`}
+        ],{title:"Rolling level and volatility",margin:{t:55,l:55,r:25,b:50},paper_bgcolor:"transparent",plot_bgcolor:"transparent",font:{color:"#dce1e8"},xaxis:{gridcolor:"#252a33"},yaxis:{gridcolor:"#252a33"}},{responsive:true,displaylogo:false});
+    }catch(e){toast(e.message);}
+}
+
+function addTSResult(title,html){
+    STATE.results.push({title,html});
+    updateReport();
+}
+
+function runTimeSeries(){
+    try{buildTS();renderTSOverview();runTSDiagnostics();toast("Time series analysis complete");}
+    catch(e){toast(e.message);}
+}
+
+
 /* ============================================================
    REPORT
 ============================================================ */
@@ -5373,6 +6246,9 @@ $("clearDataBtn").addEventListener("click",()=>{
     STATE.data=[];
     STATE.variables=[];
     STATE.results=[];
+    STATE.outputHistory=[];
+    STATE.regressionDiagnostics=null;
+    STATE.rocData=null;
 
     document.querySelectorAll(
         "input, select, textarea"
@@ -5439,6 +6315,47 @@ document.querySelectorAll("[data-ntab]").forEach(btn=>{
 
     });
 
+});
+
+
+
+/* VARIABLE VIEW / OUTPUT / ADVANCED EVENTS */
+$("saveVariableView").addEventListener("click",saveVariableView);
+$("clearOutput").addEventListener("click",()=>{STATE.outputHistory=[];STATE.results=[];renderOutputViewer();toast("Output cleared");});
+$("printOutput").addEventListener("click",()=>{goPage("output");setTimeout(()=>window.print(),50);});
+document.querySelectorAll("[data-advtab]").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll("[data-advtab]").forEach(b=>b.classList.remove("active"));btn.classList.add("active");document.querySelectorAll("[id^='adv-']").forEach(el=>el.style.display="none");$("adv-"+btn.dataset.advtab).style.display="block";}));
+$("runTukey").addEventListener("click",()=>{try{runTukey();}catch(e){toast(e.message);}});
+$("runLevene").addEventListener("click",()=>{try{runLevene();}catch(e){toast(e.message);}});
+$("runNormality").addEventListener("click",()=>{try{runNormality();}catch(e){toast(e.message);}});
+$("runLogistic").addEventListener("click",()=>{try{runLogistic();}catch(e){toast(e.message);}});
+$("runRegDiag").addEventListener("click",()=>{try{runRegDiag();}catch(e){toast(e.message);}});
+$("runROC").addEventListener("click",()=>{try{runROC();}catch(e){toast(e.message);}});
+$("runAlpha").addEventListener("click",()=>{try{runAlpha();}catch(e){toast(e.message);}});
+$("runPCA").addEventListener("click",()=>{try{runPCA();}catch(e){toast(e.message);}});
+$("runFactor").addEventListener("click",()=>{try{runFactor();}catch(e){toast(e.message);}});
+
+/* TIME SERIES EVENTS */
+document.querySelectorAll("[data-tstab]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+        document.querySelectorAll("[data-tstab]").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelectorAll("[id^='ts-']").forEach(el=>{
+            if(["tsKpis","tsMainChart","tsOverviewResults","tsForecastChart","tsForecastResults","tsStationarity","tsAnomalies","tsResidualResults","tsDecompChart","tsAcfChart","tsPacfChart","tsAcfResults","tsRollingChart"].includes(el.id)) return;
+            el.style.display="none";
+        });
+        $("ts-"+btn.dataset.tstab).style.display="block";
+    });
+});
+$("runTS").addEventListener("click",runTimeSeries);
+$("runTSForecast").addEventListener("click",()=>{try{runTSForecast();}catch(e){toast(e.message);}});
+$("runTSDecomp").addEventListener("click",runTSDecomp);
+$("runTSAcf").addEventListener("click",runTSAcf);
+$("runTSRolling").addEventListener("click",runTSRolling);
+$("tsAutoDetect").addEventListener("click",()=>{autoDetectTS();toast("Variables auto-detected");});
+$("tsClear").addEventListener("click",()=>{
+    ["tsKpis","tsOverviewResults","tsForecastResults","tsStationarity","tsAnomalies","tsResidualResults","tsAcfResults"].forEach(id=>$(id).innerHTML="");
+    ["tsMainChart","tsForecastChart","tsDecompChart","tsAcfChart","tsPacfChart","tsRollingChart"].forEach(id=>Plotly.purge(id));
+    toast("Time series workspace reset");
 });
 
 
@@ -5533,6 +6450,7 @@ window.loadDemo=loadDemo;
 ============================================================ */
 
 renderAll();
+renderOutputViewer();
 
 </script>
 
