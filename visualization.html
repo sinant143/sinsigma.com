@@ -1,238 +1,359 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>SinSigma | Data Visualization</title>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.3/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<meta name="description" content="Browser-based interactive data visualization and analytics by SinSigma.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070707'/%3E%3Ctext x='32' y='45' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3EΣ%3C/text%3E%3C/svg%3E">
+
+<!-- Open-source browser libraries. No SinSigma backend/API is used. -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.8/dist/simple-statistics.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <style>
-:root{--bg:#080b12;--panel:#101521;--panel2:#151b29;--line:#273044;--text:#edf2f7;--muted:#8995a7;--accent:#7c5cff;--accent2:#00d4ff;--good:#2dd4a7;--danger:#ff667d}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#1c1642 0,#080b12 38%);color:var(--text);font:14px Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-header{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(8,11,18,.88);position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
-.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:20px;letter-spacing:.4px}.logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 0 24px #7055ff55}.logo:after{content:"Σ";font-size:22px}.brand small{display:block;font-size:10px;color:var(--muted);font-weight:500;letter-spacing:1.5px}
-main{max-width:1500px;margin:auto;padding:28px}.hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:22px}.hero h1{font-size:32px;margin:0 0 7px}.hero p{margin:0;color:var(--muted)}.privacy{color:#9cebd8;font-size:12px;border:1px solid #2b6b60;padding:8px 12px;border-radius:20px;background:#10251f}
-.upload{border:1px dashed #46516a;border-radius:18px;padding:28px;text-align:center;background:linear-gradient(145deg,#111827,#0d111a);transition:.2s}.upload.drag{border-color:var(--accent2);background:#11182a}.upload strong{font-size:16px}.upload input{display:none}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;padding:11px 16px;background:linear-gradient(135deg,var(--accent),#5d43d9);color:#fff;font-weight:700;cursor:pointer}.btn.secondary{background:#1b2231;border:1px solid var(--line)}.hint{color:var(--muted);font-size:12px;margin-top:9px}
-.tabs{display:flex;gap:8px;overflow:auto;margin:22px 0}.tab{padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:#0d121c;color:#9ba7b8;cursor:pointer;white-space:nowrap}.tab.active{background:#211a49;color:#fff;border-color:#5542aa}
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.card,.panel{background:linear-gradient(145deg,#111722,#0e131d);border:1px solid var(--line);border-radius:16px}.card{padding:18px}.card .label{color:var(--muted);font-size:12px}.card .value{font-size:26px;font-weight:800;margin-top:8px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}.panel{padding:18px}.panel h3{margin:0 0 15px;font-size:15px}.chartbox{height:370px;position:relative}.controls{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px}.select,.input{background:#0a0f17;color:#e8edf5;border:1px solid var(--line);border-radius:9px;padding:9px 11px;outline:none}.select{min-width:150px}
-table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 8px;border-bottom:1px solid #202838;text-align:left;white-space:nowrap}th{color:#aeb9ca;background:#121927;position:sticky;top:0}td{color:#dbe2ec}.tablewrap{overflow:auto;max-height:470px;border:1px solid var(--line);border-radius:10px}
-.insights{display:grid;gap:10px}.insight{padding:12px;border-radius:10px;background:#121927;border-left:3px solid var(--accent)}.muted{color:var(--muted)}.empty{text-align:center;padding:50px;color:var(--muted)}
-footer{padding:28px;text-align:center;color:#687386;font-size:11px}
-@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}}
-@media(max-width:560px){main{padding:16px}.cards{grid-template-columns:1fr 1fr}.hero h1{font-size:25px}}
-
-
-.uploadStatus{margin:16px auto 0;max-width:720px;padding:13px 15px;border-radius:11px;text-align:left;font-size:13px;background:#111927;border:1px solid #2c3a50}
-.uploadStatus.ok{border-color:#286d5f;background:#0d211d;color:#9cebd8}
-.uploadStatus.error{border-color:#733347;background:#26121b;color:#ff9caf}
-.uploadStatus.warn{border-color:#76622d;background:#241f0f;color:#f2d98a}
-.featureShowcase{margin:20px 0 24px;padding:20px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(145deg,#101622,#0c111a)}
-.featureTitle{font-size:16px;font-weight:800;margin-bottom:14px}
-.featureGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.feature{min-height:105px;padding:15px;border:1px solid #202a3c;border-radius:12px;background:#0d131e;display:flex;flex-direction:column;gap:6px;font-size:20px}
-.feature b{font-size:13px}.feature span{font-size:11px;color:var(--muted);line-height:1.4}
-@media(max-width:900px){.featureGrid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.featureGrid{grid-template-columns:1fr}}
+:root{
+ --bg:#060606;--surface:#0d0d0d;--surface2:#111;--surface3:#161616;
+ --border:#252525;--border2:#333;--text:#f5f5f5;--muted:#929292;
+ --soft:#cfcfcf;--green:#7be2a7;--danger:#ff8b8b;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.header{height:66px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;background:#050505;position:sticky;top:0;z-index:50}
+.logo{font-weight:800;font-size:20px;letter-spacing:-.6px}.logo b{font-size:27px;margin-right:5px}.logo small{font-size:10px;color:#777;display:block;margin-left:34px;margin-top:-5px;letter-spacing:1.6px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.badge{font-size:11px;color:#aaa;border:1px solid #2b2b2b;border-radius:999px;padding:6px 10px}
+.btn{border:1px solid #333;background:#171717;color:#fff;border-radius:8px;padding:9px 13px;font-weight:650}
+.btn:hover{background:#222}.btn.primary{background:#fff;color:#000;border-color:#fff}.btn.primary:hover{background:#ddd}
+.hero{max-width:1180px;margin:0 auto;padding:54px 24px 34px;text-align:center}
+.kicker{font-size:12px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+.hero h1{font-size:clamp(34px,5vw,58px);line-height:1.02;letter-spacing:-2.5px;margin:0 0 14px}
+.hero p{max-width:700px;margin:0 auto;color:#9d9d9d;font-size:15px;line-height:1.65}
+.privacy{display:inline-flex;align-items:center;gap:7px;margin-top:20px;color:#aaa;font-size:12px}
+.dot{width:7px;height:7px;background:var(--green);border-radius:50%}
+.shell{max-width:1180px;margin:auto;padding:0 24px 50px}
+.upload-card{border:1px solid var(--border);background:linear-gradient(180deg,#101010,#0b0b0b);border-radius:14px;padding:28px;position:relative;overflow:hidden}
+.upload-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 0,rgba(255,255,255,.045),transparent 45%);pointer-events:none}
+.upload-title{font-size:18px;font-weight:750;margin-bottom:6px}.upload-sub{font-size:12px;color:#858585;margin-bottom:18px}
+.dropzone{border:1px dashed #444;border-radius:11px;padding:26px;text-align:center;background:#0a0a0a;transition:.18s}
+.dropzone.drag{border-color:#aaa;background:#111}
+.upload-icon{font-size:30px;margin-bottom:7px}.dropzone strong{display:block;font-size:14px}.dropzone span{display:block;color:#777;font-size:12px;margin:6px 0 15px}
+.file-hidden{display:none}
+.file-status{margin-top:12px;min-height:18px;text-align:center;font-size:12px;color:#888}.file-status.ok{color:#9edab7}.file-status.err{color:#ff9999}
+.features{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:14px 0 22px}
+.feature{border:1px solid var(--border);background:#0c0c0c;border-radius:10px;padding:14px}.feature .ico{font-size:18px}.feature b{display:block;font-size:12px;margin-top:7px}.feature span{display:block;color:#777;font-size:10px;line-height:1.4;margin-top:3px}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);padding-bottom:9px;overflow:auto}.tab{background:transparent;border:1px solid transparent;color:#888;border-radius:7px;padding:9px 13px;white-space:nowrap}.tab.active{background:#171717;color:#fff;border-color:#292929}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.stat{border:1px solid var(--border);background:#0c0c0c;border-radius:10px;padding:15px}.stat label{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:1px}.stat strong{font-size:24px;display:block;margin-top:5px}
+.panel{border:1px solid var(--border);background:#0c0c0c;border-radius:12px;margin-top:12px;padding:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.panel-head h2{font-size:15px;margin:0}.panel-head p{font-size:11px;color:#777;margin:4px 0 0}
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:9px;margin-bottom:15px}
+select,input{background:#090909;color:#eee;border:1px solid #303030;border-radius:7px;padding:9px 10px;outline:none}
+select:focus,input:focus{border-color:#666}
+.chart-wrap{height:460px;position:relative}.empty{height:100%;display:flex;align-items:center;justify-content:center;color:#666;text-align:center;border:1px dashed #262626;border-radius:9px;padding:30px}
+.table-wrap{overflow:auto;max-height:460px;border:1px solid #202020;border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:9px 10px;border-bottom:1px solid #202020;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:#151515;color:#aaa}td{color:#ccc}
+.insights{display:grid;grid-template-columns:1fr 1fr;gap:10px}.insight{border:1px solid #222;background:#111;padding:13px;border-radius:8px;color:#aaa;font-size:12px;line-height:1.5}
+.footer{text-align:center;color:#555;font-size:11px;padding:20px}.footer strong{color:#aaa}
+.hidden{display:none!important}
+@media(max-width:900px){.features{grid-template-columns:repeat(3,1fr)}.controls{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.header{padding:0 15px}.header .badge{display:none}.hero{padding-top:38px}.shell{padding:0 14px 35px}.features{grid-template-columns:repeat(2,1fr)}.upload-card{padding:18px}.controls{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.chart-wrap{height:360px}.insights{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<header>
-  <div class="brand"><div class="logo"></div><div>SinSigma<small>DATA ANALYTICS</small></div></div>
-  <div class="muted">Dashboard 4.0</div>
+
+<header class="header">
+  <div class="logo"><b>Σ</b>SinSigma<small>DATA VISUALIZATION</small></div>
+  <div class="header-right">
+    <span class="badge">Dashboard 4.0</span>
+    <button class="btn" id="demoTop">Try Demo</button>
+  </div>
 </header>
 
-<main>
 <section class="hero">
-  <div><h1>Your Data In. Your Results Out.</h1><p>Interactive analytics and visualizations — See Trends. Discover Insights. Make Smarter Decisions.</p></div>
-  <div class="privacy">● Nothing Stored</div>
+  <div class="kicker">Turn Complexity Into Clarity.</div>
+  <h1>Your Data In. Your Results Out.</h1>
+  <p>Interactive analytics and visualizations — See Trends. Discover Insights. Make Smarter Decisions.</p>
+  <div class="privacy"><i class="dot"></i> Nothing Stored · Your Research. Your Privacy.</div>
 </section>
 
-<section id="drop" class="upload">
-  <div style="font-size:30px;margin-bottom:8px">📊</div>
-  <strong>Upload your dataset</strong>
-  <div class="hint" style="margin:7px 0 15px">CSV, XLSX or XLS • Processed securely in your browser.</div>
-  <label class="btn" for="file">Choose CSV / Excel</label>
-  <button id="demoBtn" class="btn secondary" style="margin-left:8px">Try Demo Dataset</button>
-  <input id="file" type="file" accept=".csv,.xlsx,.xls">
-  <div id="uploadStatus" class="uploadStatus" style="display:none"></div>
-</section>
+<main class="shell">
+  <section class="upload-card">
+    <div class="upload-title">Upload your dataset</div>
+    <div class="upload-sub">CSV, XLSX or XLS • Your data is private.</div>
+    <div class="dropzone" id="dropzone">
+      <div class="upload-icon">📊</div>
+      <strong>Drop your dataset here</strong>
+      <span>or choose a CSV / Excel file from your computer</span>
+      <button class="btn primary" id="chooseBtn" type="button">Choose CSV / Excel</button>
+      <input class="file-hidden" id="fileInput" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+    </div>
+    <div class="file-status" id="fileStatus">No dataset loaded</div>
+  </section>
 
-<div id="featureShowcase" class="featureShowcase">
-  <div class="featureTitle">What you can do with SinSigma</div>
-  <div class="featureGrid">
-    <div class="feature">📈 <b>Interactive Charts</b><span>Line, Bar, Area, Scatter, Pie & Histogram</span></div>
-    <div class="feature">🎛️ <b>Filters & Dashboard</b><span>Explore data dynamically</span></div>
-    <div class="feature">📊 <b>Statistics</b><span>Mean, Median, SD, Min, Max & Missing</span></div>
-    <div class="feature">🔗 <b>Correlation</b><span>Discover relationships between variables</span></div>
-    <div class="feature">⏱️ <b>Time Series</b><span>Trend, moving average & forecasting-ready views</span></div>
-    <div class="feature">🧪 <b>Advanced Analytics</b><span>Regression, ANOVA, PCA & diagnostics</span></div>
-    <div class="feature">🤖 <b>Smart Insights</b><span>Automatic dataset profiling & observations</span></div>
-    <div class="feature">🔒 <b>Nothing Stored</b><span>No upload server, no database</span></div>
-  </div>
-</div>
+  <section class="features">
+    <div class="feature"><div class="ico">📈</div><b>Interactive Charts</b><span>Line, Bar, Area, Scatter, Pie & Histogram</span></div>
+    <div class="feature"><div class="ico">🎛️</div><b>Filters & Dashboard</b><span>Explore data dynamically</span></div>
+    <div class="feature"><div class="ico">📊</div><b>Statistics</b><span>Mean, Median, SD, Min, Max & Missing</span></div>
+    <div class="feature"><div class="ico">🔗</div><b>Correlation</b><span>Discover relationships between variables</span></div>
+    <div class="feature"><div class="ico">⏱️</div><b>Time Series</b><span>Trend and moving-average ready views</span></div>
+    <div class="feature"><div class="ico">🤖</div><b>Smart Insights</b><span>Automatic dataset profiling</span></div>
+  </section>
 
-<div id="app" style="display:none">
-  <div class="tabs">
-    <button class="tab active" data-tab="dashboard">Overview</button>
+  <nav class="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
     <button class="tab" data-tab="data">Data</button>
     <button class="tab" data-tab="visualize">Visualize</button>
-    <button class="tab" data-tab="stats">Statistics</button>
+    <button class="tab" data-tab="statistics">Statistics</button>
     <button class="tab" data-tab="timeseries">Time Series</button>
-  </div>
+  </nav>
 
-  <section id="dashboard" class="view">
-    <div class="cards">
-      <div class="card"><div class="label">Records</div><div id="rows" class="value">0</div></div>
-      <div class="card"><div class="label">Variables</div><div id="cols" class="value">0</div></div>
-      <div class="card"><div class="label">Numeric Variables</div><div id="nums" class="value">0</div></div>
-      <div class="card"><div class="label">Missing Cells</div><div id="missing" class="value">0</div></div>
-    </div>
-    <div class="grid">
-      <div class="panel"><h3>Automatic Visualization</h3><div class="chartbox"><canvas id="mainChart"></canvas></div></div>
-      <div class="panel"><h3>Dataset Insights</h3><div id="insights" class="insights"></div></div>
-    </div>
+  <section class="stats">
+    <div class="stat"><label>Records</label><strong id="records">0</strong></div>
+    <div class="stat"><label>Variables</label><strong id="variables">0</strong></div>
+    <div class="stat"><label>Numeric Variables</label><strong id="numeric">0</strong></div>
+    <div class="stat"><label>Missing Cells</label><strong id="missing">0</strong></div>
   </section>
 
-  <section id="data" class="view" style="display:none">
-    <div class="panel"><h3>Data Preview</h3><div id="table" class="tablewrap"></div></div>
-  </section>
-
-  <section id="visualize" class="view" style="display:none">
+  <section id="overview" class="view">
     <div class="panel">
-      <h3>Visualization Builder</h3>
+      <div class="panel-head"><div><h2>Automatic Visualization</h2><p>SinSigma chooses a useful first view from your dataset.</p></div></div>
+      <div class="chart-wrap"><div class="empty" id="overviewEmpty">Upload a dataset or try the demo to generate your first visualization.</div><canvas id="overviewChart" class="hidden"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div><h2>Dataset Insights</h2><p>Local profile generated from the loaded data.</p></div></div>
+      <div class="insights" id="insights"><div class="insight">No dataset loaded.</div></div>
+    </div>
+  </section>
+
+  <section id="data" class="view hidden">
+    <div class="panel">
+      <div class="panel-head"><div><h2>Data Preview</h2><p>Search and inspect your dataset without uploading it anywhere.</p></div><input id="search" placeholder="Search rows…"></div>
+      <div class="table-wrap" id="tableWrap"><div class="empty">No data.</div></div>
+    </div>
+  </section>
+
+  <section id="visualize" class="view hidden">
+    <div class="panel">
+      <div class="panel-head"><div><h2>Visualization Builder</h2><p>Build a chart from any categorical and numeric fields.</p></div></div>
       <div class="controls">
-        <select id="chartType" class="select"><option>Line</option><option>Bar</option><option>Scatter</option><option>Area</option><option>Histogram</option><option>Pie</option></select>
-        <select id="xCol" class="select"></select><select id="yCol" class="select"></select><button id="draw" class="btn">Update Chart</button>
+        <select id="xField"><option value="">X / Category</option></select>
+        <select id="yField"><option value="">Y / Measure</option></select>
+        <select id="chartType"><option value="bar">Bar</option><option value="line">Line</option><option value="area">Area</option><option value="scatter">Scatter</option><option value="pie">Pie</option><option value="doughnut">Doughnut</option><option value="histogram">Histogram</option></select>
+        <button class="btn primary" id="updateBtn">Update Chart</button>
       </div>
-      <div class="chartbox"><canvas id="customChart"></canvas></div>
+      <div class="controls" style="grid-template-columns:1fr 1fr 1fr">
+        <select id="aggregation"><option value="sum">Sum</option><option value="avg">Average</option><option value="min">Minimum</option><option value="max">Maximum</option><option value="count">Count</option></select>
+        <select id="sort"><option value="desc">Sort High → Low</option><option value="asc">Sort Low → High</option><option value="none">Original order</option></select>
+        <input id="topN" type="number" min="1" max="100" value="20" placeholder="Top N">
+      </div>
+      <div class="chart-wrap"><div class="empty" id="builderEmpty">Choose fields after loading a dataset.</div><canvas id="builderChart" class="hidden"></canvas></div>
+      <div style="text-align:right;margin-top:12px"><button class="btn" id="pngBtn">Export PNG</button></div>
     </div>
   </section>
 
-  <section id="stats" class="view" style="display:none">
-    <div class="panel"><h3>Descriptive Statistics</h3><div id="statsTable" class="tablewrap"></div></div>
+  <section id="statistics" class="view hidden">
+    <div class="panel"><div class="panel-head"><div><h2>Descriptive Statistics</h2><p>Calculated locally from numeric variables.</p></div></div><div class="table-wrap" id="statsTable"><div class="empty">No numeric data.</div></div></div>
   </section>
 
-  <section id="timeseries" class="view" style="display:none">
+  <section id="timeseries" class="view hidden">
     <div class="panel">
-      <h3>Time Series & Moving Average</h3>
-      <div class="controls"><select id="dateCol" class="select"></select><select id="valueCol" class="select"></select><select id="window" class="select"><option value="3">3-period MA</option><option value="5" selected>5-period MA</option><option value="10">10-period MA</option><option value="20">20-period MA</option></select><button id="tsDraw" class="btn">Analyze</button></div>
-      <div class="chartbox"><canvas id="tsChart"></canvas></div>
+      <div class="panel-head"><div><h2>Time Series & Moving Average</h2><p>Select a date/time field and a numeric measure.</p></div></div>
+      <div class="controls"><select id="dateField"><option value="">Date / Time field</option></select><select id="tsY"><option value="">Measure</option></select><select id="ma"><option value="0">No moving average</option><option value="3">3-period moving average</option><option value="5">5-period moving average</option><option value="7">7-period moving average</option></select><button class="btn primary" id="tsBtn">Analyze</button></div>
+      <div class="chart-wrap"><div class="empty" id="tsEmpty">Select a date field and measure.</div><canvas id="tsChart" class="hidden"></canvas></div>
     </div>
   </section>
-</div>
 </main>
-<footer>SinSigma | Powered by SINANT • Powerful Business Intelligence Without the Complexity.</footer>
+
+<div class="footer">SinSigma · Powered by SINANT · Simple tools for better research.</div>
 
 <script>
-let data=[], headers=[], mainChart, customChart, tsChart;
+(function(){
+"use strict";
+let rows=[], fields=[], types={}, charts={};
+
 const $=id=>document.getElementById(id);
-const numeric=h=>data.filter(r=>r[h]!==''&&r[h]!=null&&!isNaN(Number(r[h]))).length>Math.max(3,data.length*.6);
-function numCols(){return headers.filter(numeric)}
-function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-$('file').onchange=e=>loadFile(e.target.files[0]); $('demoBtn').onclick=loadDemo;
-const drop=$('drop');
-['dragenter','dragover'].forEach(x=>drop.addEventListener(x,e=>{e.preventDefault();drop.classList.add('drag')}));
-['dragleave','drop'].forEach(x=>drop.addEventListener(x,e=>{e.preventDefault();drop.classList.remove('drag')}));
-drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
-
-function setUploadStatus(type, title, detail){
- const el=$('uploadStatus'); el.style.display='block'; el.className='uploadStatus '+type;
- el.innerHTML='<b>'+title+'</b><br><span style="opacity:.9">'+detail+'</span>';
+function setStatus(msg,kind=""){const e=$("fileStatus");e.textContent=msg;e.className="file-status "+kind}
+function isNum(v){return v!==null&&v!==""&&Number.isFinite(Number(String(v).replace(/,/g,"")))}
+function num(v){return Number(String(v).replace(/,/g,""))}
+function normalize(raw){
+  fields=[...new Set(raw.flatMap(r=>Object.keys(r||{})))];
+  rows=raw.map(r=>{const o={};fields.forEach(f=>o[f]=(r[f]===undefined||r[f]==="")?null:r[f]);return o});
+  types={};
+  fields.forEach(f=>{const vals=rows.map(r=>r[f]).filter(v=>v!==null&&v!=="");types[f]=vals.length&&vals.filter(isNum).length/vals.length>=.8?"number":"text"});
 }
-function fileSizeText(bytes){if(bytes<1024)return bytes+' B';if(bytes<1048576)return (bytes/1024).toFixed(1)+' KB';if(bytes<1073741824)return (bytes/1048576).toFixed(1)+' MB';return (bytes/1073741824).toFixed(2)+' GB';}
-function finishDataset(rows,file){
+function populate(){
+  const nums=fields.filter(f=>types[f]==="number");
+  const opts=fields.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join("");
+  $("xField").innerHTML='<option value="">X / Category</option>'+opts;
+  $("yField").innerHTML='<option value="">Y / Measure</option>'+nums.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join("");
+  $("dateField").innerHTML='<option value="">Date / Time field</option>'+fields.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join("");
+  $("tsY").innerHTML='<option value="">Measure</option>'+nums.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join("");
+  if(fields.length)$("xField").value=fields[0];
+  if(nums.length)$("yField").value=nums[0];
+  if(nums.length)$("tsY").value=nums[0];
+}
+function stats(){
+ let missing=0;rows.forEach(r=>fields.forEach(f=>{if(r[f]===null)missing++}));
+ $("records").textContent=rows.length.toLocaleString();$("variables").textContent=fields.length;
+ $("numeric").textContent=fields.filter(f=>types[f]==="number").length;$("missing").textContent=missing.toLocaleString();
+}
+function load(raw,name){
+ if(!Array.isArray(raw)||!raw.length)throw Error("The file contains no rows.");
+ normalize(raw);populate();stats();renderTable();renderStats();renderInsights();
+ setStatus(`${name} loaded · ${rows.length.toLocaleString()} rows`,"ok");
+ autoChart();renderBuilder();
+}
+function csvParse(text){
+ const lines=[];let row=[],cell="",q=false;
+ for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];
+  if(c==='"'&&q&&n==='"'){cell+='"';i++;continue}
+  if(c==='"'){q=!q;continue}
+  if(c===","&&!q){row.push(cell);cell="";continue}
+  if((c==="\n"||c==="\r")&&!q){if(c==="\r"&&n==="\n")i++;row.push(cell);cell="";if(row.some(x=>x.trim()!==""))lines.push(row);row=[];continue}
+  cell+=c;
+ }
+ if(cell!==""||row.length){row.push(cell);lines.push(row)}
+ if(!lines.length)return [];
+ const headers=lines[0].map((h,i)=>h.trim()||`Column ${i+1}`);
+ return lines.slice(1).map(a=>{const o={};headers.forEach((h,i)=>o[h]=(a[i]??"").trim());return o});
+}
+async function parseFile(file){
+ setStatus("Reading "+file.name+"…");
+ const ext=file.name.toLowerCase().split(".").pop();
  try{
-  rows=rows.filter(r=>r&&Object.keys(r).some(k=>String(r[k]??'').trim()!==''));
-  if(!rows.length){setUploadStatus('error','No usable rows found','The file was read, but no non-empty data rows were found.');return;}
-  data=rows; headers=[...new Set(data.flatMap(Object.keys))].filter(Boolean);
-  if(!headers.length){setUploadStatus('error','No columns detected','Please check that the first row contains column names.');return;}
-  renderAll();
-  setUploadStatus('ok','✓ Dataset uploaded and validated',`<b>${data.length.toLocaleString()}</b> rows • <b>${headers.length}</b> columns • <b>${numCols().length}</b> numeric variables • File size <b>${fileSizeText(file.size)}</b>.<br><span style="color:#7de1c9">✓ No server upload • ✓ No database • ✓ Processed in this browser</span>`);
-  $('app').scrollIntoView({behavior:'smooth',block:'start'});
- }catch(err){console.error(err);setUploadStatus('error','Dataset validation failed',err.message||'Please check the file format.');}
+   if(ext==="csv"||file.type==="text/csv"){load(csvParse(await file.text()),file.name);return}
+   if(ext==="json"){const j=JSON.parse(await file.text());load(Array.isArray(j)?j:(j.data||[]),file.name);return}
+   if(ext==="xlsx"||ext==="xls"){
+     if(!window.XLSX)throw Error("Excel engine did not load. Check your internet/CDN connection and refresh.");
+     const buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:"array",cellDates:true});
+     const sheet=wb.Sheets[wb.SheetNames[0]];
+     load(XLSX.utils.sheet_to_json(sheet,{defval:""}),file.name);return
+   }
+   throw Error("Unsupported file. Please choose CSV, XLSX or XLS.");
+ }catch(e){setStatus("Upload failed: "+e.message,"err")}
 }
-function loadFile(file){
- if(!file){setUploadStatus('warn','No file selected','Please choose a CSV or Excel file.');return;}
- const name=file.name.toLowerCase();
- if(!/\.(csv|xlsx|xls)$/.test(name)){setUploadStatus('error','Unsupported file type','Please upload a CSV, XLSX or XLS file.');return;}
- if(file.size===0){setUploadStatus('error','Empty file','The selected file contains no data.');return;}
- setUploadStatus('warn','Reading dataset…','Starting local file processing. Your file is <b>not</b> being uploaded anywhere.');
- if(/\.csv$/i.test(name)){
-  Papa.parse(file,{header:true,skipEmptyLines:'greedy',dynamicTyping:false,worker:true,chunkSize:1048576,
-   chunk:r=>{if(r?.meta?.cursor){const pct=Math.min(99,Math.round(r.meta.cursor/file.size*100));setUploadStatus('warn','Reading dataset…',`CSV processing: <b>${pct}%</b> complete. Please keep this tab open.`);}},
-   complete:r=>{if(r.errors?.length){setUploadStatus('error','CSV parsing error',r.errors.slice(0,5).map(x=>`Row ${x.row??'?'}: ${x.message}`).join('<br>'));return;}setUploadStatus('warn','Validating dataset…','CSV read successfully. Checking columns, rows and numeric fields…');setTimeout(()=>finishDataset(r.data,file),0);},
-   error:err=>setUploadStatus('error','Could not read CSV',err.message||'The CSV could not be processed.')
-  });
- }else{
-  const rd=new FileReader();
-  rd.onprogress=e=>{if(e.lengthComputable)setUploadStatus('warn','Reading Excel file…',`Loading file: <b>${Math.round(e.loaded/e.total*100)}%</b> complete.`);};
-  rd.onload=e=>{setUploadStatus('warn','Processing Excel…','Workbook loaded. Reading the first worksheet…');setTimeout(()=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true,cellNF:false,cellHTML:false});if(!wb.SheetNames.length)throw new Error('No worksheet found.');const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});setUploadStatus('warn','Validating dataset…','Excel worksheet read successfully. Checking columns and rows…');setTimeout(()=>finishDataset(rows,file),0);}catch(err){console.error(err);setUploadStatus('error','Excel validation failed',err.message||'The workbook could not be read.');}},0);};
-  rd.onerror=()=>setUploadStatus('error','Could not read Excel file','Please try the file again or save it as CSV.');rd.readAsArrayBuffer(file);
- }
+function handleFile(f){if(!f)return;parseFile(f)}
+$("chooseBtn").onclick=()=>$("fileInput").click();
+$("fileInput").addEventListener("change",e=>handleFile(e.target.files[0]));
+["dragenter","dragover"].forEach(ev=>$("dropzone").addEventListener(ev,e=>{e.preventDefault();$("dropzone").classList.add("drag")}));
+["dragleave","drop"].forEach(ev=>$("dropzone").addEventListener(ev,e=>{e.preventDefault();$("dropzone").classList.remove("drag")}));
+$("dropzone").addEventListener("drop",e=>handleFile(e.dataTransfer.files[0]));
+$("demoTop").onclick=demo;
+function demo(){
+ load([
+  {Month:"Jan",Region:"West",Sales:125000,Profit:22000,Orders:410},{Month:"Feb",Region:"West",Sales:138000,Profit:26000,Orders:452},
+  {Month:"Mar",Region:"North",Sales:148000,Profit:29000,Orders:487},{Month:"Apr",Region:"North",Sales:156000,Profit:31000,Orders:503},
+  {Month:"May",Region:"South",Sales:129000,Profit:24000,Orders:421},{Month:"Jun",Region:"South",Sales:167000,Profit:35000,Orders:552},
+  {Month:"Jul",Region:"East",Sales:176000,Profit:38000,Orders:590},{Month:"Aug",Region:"East",Sales:191000,Profit:42000,Orders:624}
+ ],"SinSigma demo dataset");
 }
-
-function loadDemo(){
- const rows=[];
- for(let i=0;i<60;i++){
-   const d=new Date(2022,0,1); d.setMonth(d.getMonth()+i);
-   const trend=100+i*2.1+Math.sin(i/3)*10;
-   rows.push({Date:d.toISOString().slice(0,7),Revenue:Math.round(trend*1000),Orders:Math.round(180+i*3+Math.sin(i/2)*20),Customers:Math.round(80+i*2),Marketing_Spend:Math.round(12000+i*180+Math.cos(i/3)*1200),Region:['North','South','West','East'][i%4]});
- }
- data=rows; headers=Object.keys(rows[0]); renderAll();
- setUploadStatus('ok','✓ Demo dataset loaded','60 monthly records • 6 variables • Try the Visualization, Statistics and Time Series tabs.');
- $('app').scrollIntoView({behavior:'smooth',block:'start'});
+function aggregate(x,y,agg){
+ const m=new Map();rows.forEach(r=>{const k=String(r[x]??"Missing");if(!m.has(k))m.set(k,[]);if(y&&isNum(r[y]))m.get(k).push(num(r[y]))});
+ return [...m].map(([label,v])=>{let value=0;if(agg==="count")value=v.length;else if(v.length){if(agg==="sum")value=v.reduce((a,b)=>a+b,0);if(agg==="avg")value=v.reduce((a,b)=>a+b,0)/v.length;if(agg==="min")value=Math.min(...v);if(agg==="max")value=Math.max(...v)}return{label,value}})}
+function chartConfig(canvas,type,labels,values,label,area=false){
+ let t=type==="area"?"line":type,ds={label,data:values,borderWidth:2};
+ if(t==="line"){ds.borderColor="#fff";ds.backgroundColor=area?"rgba(255,255,255,.12)":"rgba(255,255,255,.05)";ds.fill=area;ds.tension=.25}
+ else if(t==="bar"){ds.backgroundColor="rgba(255,255,255,.78)"}
+ else if(t==="pie"||t==="doughnut"){ds.backgroundColor=["#fff","#8b8b8b","#bdbdbd","#6b6b6b","#dcdcdc","#444","#aaa","#eee"]}
+ else ds.backgroundColor="#fff";
+ const opt={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:t==="pie"||t==="doughnut"},tooltip:{mode:"index",intersect:false}},scales:{}};
+ if(t!=="pie"&&t!=="doughnut"){opt.scales={x:{ticks:{color:"#888"},grid:{color:"#222"}},y:{ticks:{color:"#888"},grid:{color:"#222"}}}}
+ return new Chart(canvas,{type:t,data:{labels,datasets:[ds]},options:opt});
 }
-
-function renderAll(){
- $('app').style.display='block';$('rows').textContent=data.length.toLocaleString();$('cols').textContent=headers.length;
- $('nums').textContent=numCols().length;
- let miss=0;data.forEach(r=>headers.forEach(h=>{if(r[h]===''||r[h]==null)miss++}));$('missing').textContent=miss.toLocaleString();
- renderTable();fillSelects();renderStats();renderInsights();drawAuto();drawCustom();drawTS();
+function makeChart(id,kind,sourceRows){
+ if(charts[id])charts[id].destroy();
+ const canvas=$(id), empty=$(id==="overviewChart"?"overviewEmpty":id==="builderChart"?"builderEmpty":"tsEmpty");
+ empty.classList.add("hidden");canvas.classList.remove("hidden");
+ const x=$("xField").value||fields[0],y=$("yField").value||fields.find(f=>types[f]==="number"),agg=$("aggregation").value;
+ let a=aggregate(x,y,agg);const sort=$("sort").value;if(sort!=="none")a.sort((p,q)=>sort==="desc"?q.value-p.value:p.value-q.value);
+ a=a.slice(0,Math.max(1,Number($("topN").value)||20));
+ charts[id]=chartConfig(canvas,kind,a.map(o=>o.label),a.map(o=>o.value),y||"Count",kind==="area");
 }
-function fillSelects(){
- const nums=numCols(), all=headers;
- ['xCol','yCol','dateCol','valueCol'].forEach(id=>{$(id).innerHTML='';});
- all.forEach(h=>['xCol','dateCol'].forEach(id=>$(id).insertAdjacentHTML('beforeend',`<option>${esc(h)}</option>`)));
- nums.forEach(h=>['yCol','valueCol'].forEach(id=>$(id).insertAdjacentHTML('beforeend',`<option>${esc(h)}</option>`)));
+function autoChart(){
+ if(!fields.length)return;
+ const x=fields.find(f=>types[f]==="text")||fields[0],y=fields.find(f=>types[f]==="number");
+ $("xField").value=x;$("yField").value=y||"";
+ const a=aggregate(x,y,"sum").sort((p,q)=>q.value-p.value).slice(0,15);
+ if(charts.overviewChart)charts.overviewChart.destroy();
+ $("overviewEmpty").classList.add("hidden");$("overviewChart").classList.remove("hidden");
+ charts.overviewChart=chartConfig($("overviewChart"),"bar",a.map(o=>o.label),a.map(o=>o.value),y||"Count");
 }
-function renderTable(){
- let s='<table><thead><tr>'+headers.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr></thead><tbody>';
- data.slice(0,500).forEach(r=>s+='<tr>'+headers.map(h=>`<td>${esc(r[h])}</td>`).join('')+'</tr>');
- $('table').innerHTML=s+'</tbody></table>';
+function renderBuilder(){
+ if(!fields.length)return;
+ const type=$("chartType").value;
+ if(type==="histogram"){histogram();return}
+ if(type==="scatter"){scatter();return}
+ makeChart("builderChart",type);
+}
+function histogram(){
+ const y=$("yField").value;if(!y)return;
+ if(charts.builderChart)charts.builderChart.destroy();$("builderEmpty").classList.add("hidden");$("builderChart").classList.remove("hidden");
+ const v=rows.map(r=>isNum(r[y])?num(r[y]):null).filter(v=>v!==null),n=10,min=Math.min(...v),max=Math.max(...v),step=(max-min||1)/n,bins=Array.from({length:n},(_,i)=>({label:(min+i*step).toFixed(1),value:0}));
+ v.forEach(z=>{let i=Math.min(n-1,Math.floor((z-min)/step));bins[i].value++});
+ charts.builderChart=chartConfig($("builderChart"),"bar",bins.map(b=>b.label),bins.map(b=>b.value),"Frequency");
+}
+function scatter(){
+ const x=$("xField").value,y=$("yField").value;if(!x||!y)return;
+ if(charts.builderChart)charts.builderChart.destroy();$("builderEmpty").classList.add("hidden");$("builderChart").classList.remove("hidden");
+ const pts=rows.filter(r=>isNum(r[x])&&isNum(r[y])).map(r=>({x:num(r[x]),y:num(r[y])}));
+ charts.builderChart=new Chart($("builderChart"),{type:"scatter",data:{datasets:[{label:`${y} vs ${x}`,data:pts,backgroundColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true}},scales:{x:{ticks:{color:"#888"},grid:{color:"#222"},title:{display:true,text:x,color:"#aaa"}},y:{ticks:{color:"#888"},grid:{color:"#222"},title:{display:true,text:y,color:"#aaa"}}}}});
+}
+function renderTable(filter=""){
+ if(!rows.length){$("tableWrap").innerHTML='<div class="empty">No data.</div>';return}
+ const shown=rows.filter(r=>!filter||fields.some(f=>String(r[f]??"").toLowerCase().includes(filter.toLowerCase()))).slice(0,150);
+ $("tableWrap").innerHTML="<table><thead><tr>"+fields.map(f=>`<th>${esc(f)}</th>`).join("")+"</tr></thead><tbody>"+shown.map(r=>"<tr>"+fields.map(f=>`<td>${esc(r[f]??"")}</td>`).join("")+"</tr>").join("")+"</tbody></table>";
 }
 function renderStats(){
- const ns=numCols();let s='<table><thead><tr><th>Variable</th><th>N</th><th>Mean</th><th>Median</th><th>Std Dev</th><th>Min</th><th>Max</th></tr></thead><tbody>';
- ns.forEach(h=>{let a=data.map(r=>Number(r[h])).filter(Number.isFinite),mean=a.reduce((x,y)=>x+y,0)/a.length,med=ss.median(a),sd=ss.standardDeviation(a);
- s+=`<tr><td>${esc(h)}</td><td>${a.length}</td><td>${mean.toFixed(3)}</td><td>${med.toFixed(3)}</td><td>${sd.toFixed(3)}</td><td>${Math.min(...a).toFixed(3)}</td><td>${Math.max(...a).toFixed(3)}</td></tr>`});
- $('statsTable').innerHTML=s+'</tbody></table>';
+ const nums=fields.filter(f=>types[f]==="number");if(!nums.length){$("statsTable").innerHTML='<div class="empty">No numeric variables.</div>';return}
+ $("statsTable").innerHTML="<table><thead><tr><th>Variable</th><th>Count</th><th>Mean</th><th>Median</th><th>SD</th><th>Min</th><th>Max</th><th>Missing</th></tr></thead><tbody>"+nums.map(f=>{
+  const v=rows.map(r=>isNum(r[f])?num(r[f]):null),a=v.filter(x=>x!==null).sort((a,b)=>a-b),n=a.length,mean=n?a.reduce((p,z)=>p+z,0)/n:0,med=n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2,sd=n>1?Math.sqrt(a.reduce((s,z)=>s+(z-mean)**2,0)/(n-1)):0;
+  return `<tr><td>${esc(f)}</td><td>${n}</td><td>${mean.toFixed(2)}</td><td>${med.toFixed(2)}</td><td>${sd.toFixed(2)}</td><td>${n?Math.min(...a):"—"}</td><td>${n?Math.max(...a):"—"}</td><td>${rows.length-n}</td></tr>`}).join("")+"</tbody></table>";
 }
 function renderInsights(){
- const ns=numCols(), arr=[];
- arr.push(`Dataset contains <b>${data.length.toLocaleString()}</b> records and <b>${headers.length}</b> variables.`);
- if(ns.length) arr.push(`Detected <b>${ns.length}</b> numeric variables suitable for statistical analysis.`);
- let top=ns[0];if(top){let a=data.map(r=>Number(r[top])).filter(Number.isFinite);arr.push(`<b>${esc(top)}</b>: mean <b>${ss.mean(a).toFixed(2)}</b>, median <b>${ss.median(a).toFixed(2)}</b>.`);}
- $('insights').innerHTML=arr.map(x=>`<div class="insight">${x}</div>`).join('');
+ const nums=fields.filter(f=>types[f]==="number"),ins=[];
+ if(rows.length)ins.push(`The dataset contains <b>${rows.length.toLocaleString()}</b> records across <b>${fields.length}</b> variables.`);
+ if(nums.length)ins.push(`<b>${nums.length}</b> numeric variables are available for quantitative analysis.`);
+ const miss=Number($("missing").textContent.replace(/,/g,""));ins.push(miss?`There are <b>${miss.toLocaleString()}</b> missing cells to review.`:"No missing cells were detected in the loaded values.");
+ if(nums.length){const f=nums[0],v=rows.map(r=>isNum(r[f])?num(r[f]):null).filter(x=>x!==null);if(v.length)ins.push(`<b>${esc(f)}</b> ranges from <b>${Math.min(...v)}</b> to <b>${Math.max(...v)}</b>, with an average of <b>${(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2)}</b>.`)}
+ $("insights").innerHTML=ins.map(x=>`<div class="insight">${x}</div>`).join("");
 }
-function labels(){return data.slice(0,100).map((_,i)=>i+1)}
-function values(h){return data.slice(0,100).map(r=>Number(r[h])).map(v=>Number.isFinite(v)?v:null)}
-function base(type,label,labels,data){return {type,data:{labels,datasets:[{label,data,borderWidth:2,tension:.3,fill:type==='line'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}},scales:{x:{ticks:{color:'#8290a4'},grid:{color:'#202838'}},y:{ticks:{color:'#8290a4'},grid:{color:'#202838'}}}}}}
-function destroy(c){if(c)c.destroy()}
-function drawAuto(){const h=numCols()[0];if(!h){destroy(mainChart);return;}destroy(mainChart);mainChart=new Chart($('mainChart'),base('line',h,labels(),values(h)))}
-function drawCustom(){
- const x=$('xCol').value,y=$('yCol').value,type=$('chartType').value.toLowerCase(),xs=data.slice(0,100).map(r=>r[x]),ys=values(y);destroy(customChart);
- if(type==='scatter') customChart=new Chart($('customChart'),{type:'scatter',data:{datasets:[{label:`${y} vs ${x}`,data:data.slice(0,100).map(r=>({x:Number(r[x]),y:Number(r[y])})),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}},scales:{x:{ticks:{color:'#8290a4'},grid:{color:'#202838'}},y:{ticks:{color:'#8290a4'},grid:{color:'#202838'}}}}});
- else if(type==='pie') customChart=new Chart($('customChart'),{type:'doughnut',data:{labels:xs,datasets:[{data:ys}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}}}});
- else customChart=new Chart($('customChart'),base(type,y,xs,ys));
-}
-function drawTS(){
- const h=$('valueCol').value;if(!h)return;const n=Number($('window').value), vals=values(h), ma=vals.map((_,i)=>i<n-1?null:vals.slice(i-n+1,i+1).reduce((a,b)=>a+b,0)/n);destroy(tsChart);
- tsChart=new Chart($('tsChart'),{type:'line',data:{labels:labels(),datasets:[{label:h,data:vals,borderWidth:2,tension:.25},{label:`${n}-period Moving Average`,data:ma,borderWidth:2,borderDash:[6,4],tension:.25}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}},scales:{x:{ticks:{color:'#8290a4'},grid:{color:'#202838'}},y:{ticks:{color:'#8290a4'},grid:{color:'#202838'}}}}});
-}
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.view').forEach(x=>x.style.display='none');$(b.dataset.tab).style.display='block'});
-$('draw').onclick=drawCustom;$('tsDraw').onclick=drawTS;
+$("search").addEventListener("input",e=>renderTable(e.target.value));
+$("updateBtn").onclick=renderBuilder;
+["xField","yField","chartType","aggregation","sort","topN"].forEach(id=>$(id).addEventListener("change",renderBuilder));
+$("pngBtn").onclick=()=>{const c=charts.builderChart;if(!c)return;const a=document.createElement("a");a.download="sinsigma-visualization.png";a.href=c.toBase64Image();a.click()};
+document.querySelectorAll(".tab").forEach(btn=>btn.onclick=()=>{document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));$(btn.dataset.tab).classList.remove("hidden")});
+$("tsBtn").onclick=()=>{
+ const df=$("dateField").value,y=$("tsY").value,ma=Number($("ma").value);if(!df||!y)return;
+ const a=rows.map(r=>({d:new Date(r[df]),v:isNum(r[y])?num(r[y]):null})).filter(o=>!isNaN(o.d)&&o.v!==null).sort((a,b)=>a.d-b.d);
+ if(!a.length)return;
+ if(charts.tsChart)charts.tsChart.destroy();$("tsEmpty").classList.add("hidden");$("tsChart").classList.remove("hidden");
+ const datasets=[{label:y,data:a.map(o=>({x:o.d,y:o.v})),borderColor:"#fff",backgroundColor:"rgba(255,255,255,.08)",tension:.2}];
+ if(ma){datasets.push({label:`${ma}-period moving average`,data:a.map((o,i)=>{const z=a.slice(Math.max(0,i-ma+1),i+1).map(q=>q.v);return{x:o.d,y:z.reduce((p,q)=>p+q,0)/z.length}}),borderColor:"#999",borderDash:[5,5],tension:.2})}
+ charts.tsChart=new Chart($("tsChart"),{type:"line",data:{datasets},options:{responsive:true,maintainAspectRatio:false,parsing:false,scales:{x:{type:"time",time:{unit:"day"},ticks:{color:"#888"},grid:{color:"#222"}},y:{ticks:{color:"#888"},grid:{color:"#222"}}}}});
+};
+// Chart.js time scale needs an adapter; use category labels fallback if no adapter.
+$("tsBtn").addEventListener("click",()=>{ /* handled above; adapter-independent fallback is installed below */});
+})();
+</script>
+
+<script>
+/* SinSigma time-series fallback: works without a date adapter. */
+document.getElementById("tsBtn").onclick=function(){
+ const df=document.getElementById("dateField").value,y=document.getElementById("tsY").value,ma=Number(document.getElementById("ma").value);
+ if(!df||!y)return;
+ const a=rows.map(r=>({d:new Date(r[df]),v:isNum(r[y])?num(r[y]):null})).filter(o=>!isNaN(o.d)&&o.v!==null).sort((a,b)=>a.d-b.d);
+ if(!a.length)return;
+ if(charts.tsChart)charts.tsChart.destroy();
+ document.getElementById("tsEmpty").classList.add("hidden");document.getElementById("tsChart").classList.remove("hidden");
+ const labels=a.map(o=>o.d.toLocaleDateString()), datasets=[{label:y,data:a.map(o=>o.v),borderColor:"#fff",backgroundColor:"rgba(255,255,255,.08)",fill:true,tension:.2}];
+ if(ma)datasets.push({label:ma+"-period moving average",data:a.map((o,i)=>{const z=a.slice(Math.max(0,i-ma+1),i+1).map(q=>q.v);return z.reduce((p,q)=>p+q,0)/z.length}),borderColor:"#999",borderDash:[5,5],tension:.2});
+ charts.tsChart=new Chart(document.getElementById("tsChart"),{type:"line",data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,scales:{x:{ticks:{color:"#888"},grid:{color:"#222"}},y:{ticks:{color:"#888"},grid:{color:"#222"}}}}});
+};
 </script>
 </body>
 </html>
