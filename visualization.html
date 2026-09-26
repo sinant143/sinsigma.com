@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SinSigma | Data Analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.3/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.8/dist/simple-statistics.min.js"></script>
+<style>
+:root{--bg:#080b12;--panel:#101521;--panel2:#151b29;--line:#273044;--text:#edf2f7;--muted:#8995a7;--accent:#7c5cff;--accent2:#00d4ff;--good:#2dd4a7;--danger:#ff667d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#1c1642 0,#080b12 38%);color:var(--text);font:14px Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(8,11,18,.88);position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:20px;letter-spacing:.4px}.logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 0 24px #7055ff55}.logo:after{content:"Σ";font-size:22px}.brand small{display:block;font-size:10px;color:var(--muted);font-weight:500;letter-spacing:1.5px}
+main{max-width:1500px;margin:auto;padding:28px}.hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:22px}.hero h1{font-size:32px;margin:0 0 7px}.hero p{margin:0;color:var(--muted)}.privacy{color:#9cebd8;font-size:12px;border:1px solid #2b6b60;padding:8px 12px;border-radius:20px;background:#10251f}
+.upload{border:1px dashed #46516a;border-radius:18px;padding:28px;text-align:center;background:linear-gradient(145deg,#111827,#0d111a);transition:.2s}.upload.drag{border-color:var(--accent2);background:#11182a}.upload strong{font-size:16px}.upload input{display:none}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;padding:11px 16px;background:linear-gradient(135deg,var(--accent),#5d43d9);color:#fff;font-weight:700;cursor:pointer}.btn.secondary{background:#1b2231;border:1px solid var(--line)}.hint{color:var(--muted);font-size:12px;margin-top:9px}
+.tabs{display:flex;gap:8px;overflow:auto;margin:22px 0}.tab{padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:#0d121c;color:#9ba7b8;cursor:pointer;white-space:nowrap}.tab.active{background:#211a49;color:#fff;border-color:#5542aa}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.card,.panel{background:linear-gradient(145deg,#111722,#0e131d);border:1px solid var(--line);border-radius:16px}.card{padding:18px}.card .label{color:var(--muted);font-size:12px}.card .value{font-size:26px;font-weight:800;margin-top:8px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}.panel{padding:18px}.panel h3{margin:0 0 15px;font-size:15px}.chartbox{height:370px;position:relative}.controls{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px}.select,.input{background:#0a0f17;color:#e8edf5;border:1px solid var(--line);border-radius:9px;padding:9px 11px;outline:none}.select{min-width:150px}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 8px;border-bottom:1px solid #202838;text-align:left;white-space:nowrap}th{color:#aeb9ca;background:#121927;position:sticky;top:0}td{color:#dbe2ec}.tablewrap{overflow:auto;max-height:470px;border:1px solid var(--line);border-radius:10px}
+.insights{display:grid;gap:10px}.insight{padding:12px;border-radius:10px;background:#121927;border-left:3px solid var(--accent)}.muted{color:var(--muted)}.empty{text-align:center;padding:50px;color:var(--muted)}
+footer{padding:28px;text-align:center;color:#687386;font-size:11px}
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}}
+@media(max-width:560px){main{padding:16px}.cards{grid-template-columns:1fr 1fr}.hero h1{font-size:25px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo"></div><div>SinSigma<small>DATA ANALYTICS</small></div></div>
+  <div class="muted">Client-side analytics</div>
+</header>
+
+<main>
+<section class="hero">
+  <div><h1>Your Data In. Your Results Out.</h1><p>Interactive analytics and visualizations — designed for private, browser-based analysis.</p></div>
+  <div class="privacy">● Nothing Stored</div>
+</section>
+
+<section id="drop" class="upload">
+  <strong>Upload your dataset</strong><br><br>
+  <label class="btn" for="file">Choose CSV / Excel</label>
+  <input id="file" type="file" accept=".csv,.xlsx,.xls">
+  <div class="hint">CSV, XLSX, XLS • Your file is processed in this browser only.</div>
+</section>
+
+<div id="app" style="display:none">
+  <div class="tabs">
+    <button class="tab active" data-tab="dashboard">Overview</button>
+    <button class="tab" data-tab="data">Data</button>
+    <button class="tab" data-tab="visualize">Visualize</button>
+    <button class="tab" data-tab="stats">Statistics</button>
+    <button class="tab" data-tab="timeseries">Time Series</button>
+  </div>
+
+  <section id="dashboard" class="view">
+    <div class="cards">
+      <div class="card"><div class="label">Records</div><div id="rows" class="value">0</div></div>
+      <div class="card"><div class="label">Variables</div><div id="cols" class="value">0</div></div>
+      <div class="card"><div class="label">Numeric Variables</div><div id="nums" class="value">0</div></div>
+      <div class="card"><div class="label">Missing Cells</div><div id="missing" class="value">0</div></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h3>Automatic Visualization</h3><div class="chartbox"><canvas id="mainChart"></canvas></div></div>
+      <div class="panel"><h3>Dataset Insights</h3><div id="insights" class="insights"></div></div>
+    </div>
+  </section>
+
+  <section id="data" class="view" style="display:none">
+    <div class="panel"><h3>Data Preview</h3><div id="table" class="tablewrap"></div></div>
+  </section>
+
+  <section id="visualize" class="view" style="display:none">
+    <div class="panel">
+      <h3>Visualization Builder</h3>
+      <div class="controls">
+        <select id="chartType" class="select"><option>Line</option><option>Bar</option><option>Scatter</option><option>Area</option><option>Histogram</option><option>Pie</option></select>
+        <select id="xCol" class="select"></select><select id="yCol" class="select"></select><button id="draw" class="btn">Update Chart</button>
+      </div>
+      <div class="chartbox"><canvas id="customChart"></canvas></div>
+    </div>
+  </section>
+
+  <section id="stats" class="view" style="display:none">
+    <div class="panel"><h3>Descriptive Statistics</h3><div id="statsTable" class="tablewrap"></div></div>
+  </section>
+
+  <section id="timeseries" class="view" style="display:none">
+    <div class="panel">
+      <h3>Time Series & Moving Average</h3>
+      <div class="controls"><select id="dateCol" class="select"></select><select id="valueCol" class="select"></select><select id="window" class="select"><option value="3">3-period MA</option><option value="5" selected>5-period MA</option><option value="10">10-period MA</option><option value="20">20-period MA</option></select><button id="tsDraw" class="btn">Analyze</button></div>
+      <div class="chartbox"><canvas id="tsChart"></canvas></div>
+    </div>
+  </section>
+</div>
+</main>
+<footer>SinSigma • Browser-based analytics • No server upload • No database</footer>
+
+<script>
+let data=[], headers=[], mainChart, customChart, tsChart;
+const $=id=>document.getElementById(id);
+const numeric=h=>data.filter(r=>r[h]!==''&&r[h]!=null&&!isNaN(Number(r[h]))).length>Math.max(3,data.length*.6);
+function numCols(){return headers.filter(numeric)}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+
+$('file').onchange=e=>loadFile(e.target.files[0]);
+const drop=$('drop');
+['dragenter','dragover'].forEach(x=>drop.addEventListener(x,e=>{e.preventDefault();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(x=>drop.addEventListener(x,e=>{e.preventDefault();drop.classList.remove('drag')}));
+drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
+
+function loadFile(file){
+ if(!file)return;
+ const done=rows=>{data=rows.filter(r=>Object.values(r).some(v=>String(v??'').trim()!==''));
+ headers=[...new Set(data.flatMap(Object.keys))]; renderAll();};
+ if(/\.csv$/i.test(file.name)){Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>done(r.data)});}
+ else {const rd=new FileReader();rd.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];done(XLSX.utils.sheet_to_json(ws,{defval:''}));};rd.readAsArrayBuffer(file);}
+}
+
+function renderAll(){
+ $('app').style.display='block';$('rows').textContent=data.length.toLocaleString();$('cols').textContent=headers.length;
+ $('nums').textContent=numCols().length;
+ let miss=0;data.forEach(r=>headers.forEach(h=>{if(r[h]===''||r[h]==null)miss++}));$('missing').textContent=miss.toLocaleString();
+ renderTable();fillSelects();renderStats();renderInsights();drawAuto();drawCustom();drawTS();
+}
+function fillSelects(){
+ const nums=numCols(), all=headers;
+ ['xCol','yCol','dateCol','valueCol'].forEach(id=>{$(id).innerHTML='';});
+ all.forEach(h=>['xCol','dateCol'].forEach(id=>$(id).insertAdjacentHTML('beforeend',`<option>${esc(h)}</option>`)));
+ nums.forEach(h=>['yCol','valueCol'].forEach(id=>$(id).insertAdjacentHTML('beforeend',`<option>${esc(h)}</option>`)));
+}
+function renderTable(){
+ let s='<table><thead><tr>'+headers.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr></thead><tbody>';
+ data.slice(0,500).forEach(r=>s+='<tr>'+headers.map(h=>`<td>${esc(r[h])}</td>`).join('')+'</tr>');
+ $('table').innerHTML=s+'</tbody></table>';
+}
+function renderStats(){
+ const ns=numCols();let s='<table><thead><tr><th>Variable</th><th>N</th><th>Mean</th><th>Median</th><th>Std Dev</th><th>Min</th><th>Max</th></tr></thead><tbody>';
+ ns.forEach(h=>{let a=data.map(r=>Number(r[h])).filter(Number.isFinite),mean=a.reduce((x,y)=>x+y,0)/a.length,med=ss.median(a),sd=ss.standardDeviation(a);
+ s+=`<tr><td>${esc(h)}</td><td>${a.length}</td><td>${mean.toFixed(3)}</td><td>${med.toFixed(3)}</td><td>${sd.toFixed(3)}</td><td>${Math.min(...a).toFixed(3)}</td><td>${Math.max(...a).toFixed(3)}</td></tr>`});
+ $('statsTable').innerHTML=s+'</tbody></table>';
+}
+function renderInsights(){
+ const ns=numCols(), arr=[];
+ arr.push(`Dataset contains <b>${data.length.toLocaleString()}</b> records and <b>${headers.length}</b> variables.`);
+ if(ns.length) arr.push(`Detected <b>${ns.length}</b> numeric variables suitable for statistical analysis.`);
+ let top=ns[0];if(top){let a=data.map(r=>Number(r[top])).filter(Number.isFinite);arr.push(`<b>${esc(top)}</b>: mean <b>${ss.mean(a).toFixed(2)}</b>, median <b>${ss.median(a).toFixed(2)}</b>.`);}
+ $('insights').innerHTML=arr.map(x=>`<div class="insight">${x}</div>`).join('');
+}
+function labels(){return data.slice(0,100).map((_,i)=>i+1)}
+function values(h){return data.slice(0,100).map(r=>Number(r[h])).map(v=>Number.isFinite(v)?v:null)}
+function base(type,label,labels,data){return {type,data:{labels,datasets:[{label,data,borderWidth:2,tension:.3,fill:type==='line'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}},scales:{x:{ticks:{color:'#8290a4'},grid:{color:'#202838'}},y:{ticks:{color:'#8290a4'},grid:{color:'#202838'}}}}}}
+function destroy(c){if(c)c.destroy()}
+function drawAuto(){const h=numCols()[0];if(!h)return;destroy(mainChart);mainChart=new Chart($('mainChart'),base('line',h,labels(),values(h)))}
+function drawCustom(){
+ const x=$('xCol').value,y=$('yCol').value,type=$('chartType').value.toLowerCase(),xs=data.slice(0,100).map(r=>r[x]),ys=values(y);destroy(customChart);
+ if(type==='scatter') customChart=new Chart($('customChart'),{type:'scatter',data:{datasets:[{label:`${y} vs ${x}`,data:data.slice(0,100).map(r=>({x:Number(r[x]),y:Number(r[y])})),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}},scales:{x:{ticks:{color:'#8290a4'},grid:{color:'#202838'}},y:{ticks:{color:'#8290a4'},grid:{color:'#202838'}}}}});
+ else if(type==='pie') customChart=new Chart($('customChart'),{type:'doughnut',data:{labels:xs,datasets:[{data:ys}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}}}});
+ else customChart=new Chart($('customChart'),base(type,y,xs,ys));
+}
+function drawTS(){
+ const h=$('valueCol').value;if(!h)return;const n=Number($('window').value), vals=values(h), ma=vals.map((_,i)=>i<n-1?null:vals.slice(i-n+1,i+1).reduce((a,b)=>a+b,0)/n);destroy(tsChart);
+ tsChart=new Chart($('tsChart'),{type:'line',data:{labels:labels(),datasets:[{label:h,data:vals,borderWidth:2,tension:.25},{label:`${n}-period Moving Average`,data:ma,borderWidth:2,borderDash:[6,4],tension:.25}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}},scales:{x:{ticks:{color:'#8290a4'},grid:{color:'#202838'}},y:{ticks:{color:'#8290a4'},grid:{color:'#202838'}}}}});
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.view').forEach(x=>x.style.display='none');$(b.dataset.tab).style.display='block'});
+$('draw').onclick=drawCustom;$('tsDraw').onclick=drawTS;
+</script>
+</body>
+</html>
