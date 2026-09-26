@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SinSigma — Visual Analytics</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Ctext x='32' y='45' text-anchor='middle' font-size='39' fill='white'%3EΣ%3C/text%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#080808;--panel:#111;--panel2:#171717;--line:#292929;--text:#f4f4f4;--muted:#9b9b9b;--accent:#fff;--green:#79e2a8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}.top{height:68px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;gap:22px;background:#050505;position:sticky;top:0;z-index:20}.brand{font-weight:800;font-size:20px;letter-spacing:-.5px}.brand span{font-size:27px;margin-right:5px}.top .sub{color:var(--muted);font-size:12px}.actions{margin-left:auto;display:flex;gap:8px}.btn{background:#fff;color:#000;border:0;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer}.btn.dark{background:#1c1c1c;color:#fff;border:1px solid #333}.layout{display:grid;grid-template-columns:255px 1fr;min-height:calc(100vh - 68px)}aside{border-right:1px solid var(--line);padding:18px;background:#0b0b0b}.main{padding:20px;min-width:0}.section-title{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#777;margin:4px 0 11px}.drop{border:1px dashed #444;border-radius:9px;padding:12px;margin-bottom:12px;color:#aaa;line-height:1.5}.file{width:100%;padding:10px;border:1px solid #333;background:#151515;color:#fff;border-radius:8px}.field-list{max-height:52vh;overflow:auto}.field{background:#171717;border:1px solid #292929;padding:9px 10px;border-radius:7px;margin:6px 0;cursor:pointer;display:flex;justify-content:space-between;gap:8px}.field:hover{border-color:#666}.type{font-size:10px;color:#777}.hint{color:#777;font-size:11px;margin-top:8px}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.toolbar select,.toolbar input{background:#111;border:1px solid #333;color:#fff;border-radius:7px;padding:8px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}.card small{color:#888}.card strong{display:block;font-size:23px;margin-top:6px}.workspace{display:grid;grid-template-columns:1fr 315px;gap:14px}.chartbox,.config,.data{background:var(--panel);border:1px solid var(--line);border-radius:10px}.chartbox{padding:14px;min-height:530px}.charthead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.charthead b{font-size:15px}.canvaswrap{height:455px;position:relative}.config{padding:15px}.config h3{margin:0 0 14px}.config label{display:block;color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.7px;margin:13px 0 6px}.config select{width:100%;background:#0b0b0b;border:1px solid #333;color:#fff;border-radius:7px;padding:9px}.config .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.toggle{display:flex;gap:8px;align-items:center;color:#aaa;font-size:12px;margin-top:12px}.data{margin-top:14px;padding:14px;overflow:auto}.data table{border-collapse:collapse;width:100%;font-size:12px}.data th,.data td{padding:8px;border-bottom:1px solid #252525;text-align:left;white-space:nowrap}.data th{color:#aaa;position:sticky;top:0;background:#151515}.empty{text-align:center;color:#777;padding:100px 20px}.status{color:#777;font-size:12px;margin-left:4px}.notice{padding:12px;background:#101810;border:1px solid #213b2c;color:#a7d7b9;border-radius:8px;margin-bottom:14px}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}.workspace{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}.field-list{max-height:180px}}
+</style>
+</head>
+<body>
+<header class="top">
+ <div class="brand"><span>Σ</span>SinSigma</div><div class="sub">Visual Analytics</div>
+ <div class="actions"><button class="btn dark" onclick="demo()">Load Demo</button><button class="btn" onclick="downloadPNG()">Export PNG</button></div>
+</header>
+<div class="layout">
+<aside>
+ <div class="section-title">Data source</div>
+ <input class="file" id="file" type="file" accept=".csv,.xlsx,.xls,.json">
+ <div class="hint">CSV, Excel or JSON. Processing happens locally in your browser.</div>
+ <div style="height:18px"></div>
+ <div class="section-title">Fields</div>
+ <div id="fields" class="field-list"><div class="drop">Import a dataset to begin.</div></div>
+ <div class="hint">Click a field to use it as the X-axis. Use the controls on the right for Y-axis and chart type.</div>
+</aside>
+<main class="main">
+ <div class="notice" id="privacy">Your data stays in this browser session. This tool sends dataset contents to no SinSigma server.</div>
+ <div class="toolbar">
+   <select id="filterField"><option value="">Filter field…</option></select>
+   <input id="filterValue" placeholder="Filter value / contains…" style="min-width:210px">
+   <button class="btn dark" onclick="applyFilter()">Apply filter</button>
+   <button class="btn dark" onclick="clearFilter()">Clear</button>
+   <span class="status" id="status">No dataset loaded</span>
+ </div>
+ <div class="cards">
+  <div class="card"><small>Rows</small><strong id="rows">—</strong></div>
+  <div class="card"><small>Columns</small><strong id="cols">—</strong></div>
+  <div class="card"><small>Numeric fields</small><strong id="nums">—</strong></div>
+  <div class="card"><small>Missing cells</small><strong id="missing">—</strong></div>
+ </div>
+ <div class="workspace">
+  <section class="chartbox">
+   <div class="charthead"><b id="chartTitle">Visualization</b><span class="status" id="selection">Select a field</span></div>
+   <div class="canvaswrap"><canvas id="chart"></canvas><div class="empty" id="empty">Import data or load the demo dataset to create a visualization.</div></div>
+  </section>
+  <section class="config">
+   <h3>Build view</h3>
+   <label>Chart type</label>
+   <select id="chartType">
+    <option value="bar">Bar</option><option value="line">Line</option><option value="area">Area</option>
+    <option value="pie">Pie</option><option value="doughnut">Doughnut</option><option value="scatter">Scatter</option>
+   </select>
+   <label>X / Category</label><select id="xField"></select>
+   <label>Y / Measure</label><select id="yField"></select>
+   <label>Aggregation</label><select id="agg"><option value="sum">Sum</option><option value="avg">Average</option><option value="min">Minimum</option><option value="max">Maximum</option><option value="count">Count</option></select>
+   <div class="row"><div><label>Top N</label><input id="topN" type="number" min="1" max="100" value="20" style="width:100%;background:#0b0b0b;border:1px solid #333;color:#fff;border-radius:7px;padding:9px"></div><div><label>Sort</label><select id="sort"><option value="desc">High → Low</option><option value="asc">Low → High</option><option value="none">Original</option></select></div></div>
+   <label class="toggle"><input id="legend" type="checkbox" checked> Show legend</label>
+   <button class="btn" style="width:100%;margin-top:18px" onclick="renderChart()">Update visualization</button>
+  </section>
+ </div>
+ <section class="data"><div class="charthead"><b>Data preview</b><span class="status">First 100 rows</span></div><div id="table"><div class="empty" style="padding:40px">No data.</div></div></section>
+</main>
+</div>
+<script>
+let data=[], allData=[], fields=[], chart=null, selectedX='';
+const $=id=>document.getElementById(id);
+$("file").addEventListener("change",e=>{const f=e.target.files[0];if(f)readFile(f)});
+["chartType","xField","yField","agg","sort","topN","legend"].forEach(id=>$(id).addEventListener("change",renderChart));
+function infer(v){if(v===null||v===undefined||String(v).trim()==="")return null;let s=String(v).trim();let n=Number(s.replace(/,/g,''));return s!==""&&isFinite(n)?n:s}
+function normalize(rows){return rows.map(r=>{let o={};fields.forEach(f=>o[f]=infer(r[f]));return o})}
+function load(rows,name="Dataset"){if(!rows.length)return;fields=[...new Set(rows.flatMap(r=>Object.keys(r)))];allData=normalize(rows);data=[...allData];$("status").textContent=name+" loaded";buildFields();updateStats();renderTable();renderChart()}
+function readFile(f){let ext=f.name.split(".").pop().toLowerCase();let reader=new FileReader();reader.onload=e=>{try{if(ext==="json"){let j=JSON.parse(e.target.result);if(!Array.isArray(j))throw Error("JSON must be an array of objects");load(j,f.name)}else{let wb=XLSX.read(e.target.result,{type:"array"});let ws=wb.Sheets[wb.SheetNames[0]];load(XLSX.utils.sheet_to_json(ws,{defval:""}),f.name)}}catch(err){alert("Could not read file: "+err.message)}};ext==="json"?reader.readAsText(f):reader.readAsArrayBuffer(f)}
+function buildFields(){let nums=fields.filter(f=>allData.some(r=>typeof r[f]==="number"));$("fields").innerHTML=fields.map(f=>`<div class="field" onclick="chooseX('${esc(f)}')"><span>${esc(f)}</span><span class="type">${nums.includes(f)?"NUM":"TEXT"}</span></div>`).join("");let opts=fields.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join("");$("xField").innerHTML=opts;$("filterField").innerHTML='<option value="">Filter field…</option>'+opts;let yopts=nums.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join("");$("yField").innerHTML=yopts||'<option value="">No numeric field</option>';if(fields.length)$("xField").value=fields[0];if(nums.length)$("yField").value=nums[0];}
+function chooseX(f){$("xField").value=f;selectedX=f;renderChart()}
+function updateStats(){let miss=0;data.forEach(r=>fields.forEach(f=>{if(r[f]===null)miss++}));$("rows").textContent=data.length.toLocaleString();$("cols").textContent=fields.length;$("nums").textContent=fields.filter(f=>allData.some(r=>typeof r[f]==="number")).length;$("missing").textContent=miss.toLocaleString()}
+function applyFilter(){let f=$("filterField").value,v=$("filterValue").value.toLowerCase();data=!f||!v?[...allData]:allData.filter(r=>String(r[f]??"").toLowerCase().includes(v));updateStats();renderTable();renderChart()}
+function clearFilter(){$("filterField").value="";$("filterValue").value="";data=[...allData];updateStats();renderTable();renderChart()}
+function renderTable(){if(!data.length){$("table").innerHTML='<div class="empty" style="padding:40px">No rows match the filter.</div>';return}let show=data.slice(0,100);$("table").innerHTML="<table><thead><tr>"+fields.map(f=>`<th>${esc(f)}</th>`).join("")+"</tr></thead><tbody>"+show.map(r=>"<tr>"+fields.map(f=>`<td>${esc(r[f]??"")}</td>`).join("")+"</tr>").join("")+"</tbody></table>"}
+function aggregate(){let x=$("xField").value,y=$("yField").value,a=$("agg").value;if(!x)return [];let map=new Map();data.forEach(r=>{let k=String(r[x]??"Missing");if(!map.has(k))map.set(k,[]);if(y&&typeof r[y]==="number")map.get(k).push(r[y])});let out=[...map].map(([label,vals])=>{let value=a==="count"?vals.length:(vals.length?({sum:vals.reduce((p,n)=>p+n,0),avg:vals.reduce((p,n)=>p+n,0)/vals.length,min:Math.min(...vals),max:Math.max(...vals)}[a]):0);return{label,value}});if($("sort").value!=="none")out.sort((p,q)=>$("sort").value==="desc"?q.value-p.value:p.value-q.value);return out.slice(0,Math.max(1,Number($("topN").value)||20))}
+function renderChart(){if(!data.length||!fields.length){$("empty").style.display="block";return}$("empty").style.display="none";let type=$("chartType").value,x=$("xField").value,y=$("yField").value;let ag=aggregate();$("selection").textContent=`${x||"—"} × ${y||"count"}`;$("chartTitle").textContent=`${$("agg").value==="count"?"Count":$("agg").value.charAt(0).toUpperCase()+$("agg").value.slice(1)} of ${y||"records"} by ${x}`;if(chart)chart.destroy();let labels=ag.map(o=>o.label),vals=ag.map(o=>o.value);let ctx=$("chart").getContext("2d");let ds={label:y||"Count",data:vals,borderWidth:2,backgroundColor:type==="area"?"rgba(255,255,255,.13)":type==="bar"?"rgba(255,255,255,.78)":["rgba(255,255,255,.8)","rgba(121,226,168,.8)","rgba(160,160,255,.8)","rgba(255,190,120,.8)","rgba(220,150,255,.8)","rgba(130,210,255,.8)"]};if(type==="area"){type="line";ds.fill=true;ds.backgroundColor="rgba(255,255,255,.12)";ds.borderColor="#fff"}else if(type==="line"){ds.borderColor="#fff";ds.backgroundColor="rgba(255,255,255,.15)";ds.tension=.25}let config={type,data:{labels,datasets:[ds]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:$("legend").checked,labels:{color:"#bbb"}},tooltip:{mode:"index",intersect:false}},scales:{x:{ticks:{color:"#999"},grid:{color:"#222"}},y:{ticks:{color:"#999"},grid:{color:"#222"}}}}};if(type==="pie"||type==="doughnut"){config.options.scales={};config.options.plugins.legend.position="right"}if(type==="scatter"){let points=data.filter(r=>typeof r[x]==="number"&&typeof r[y]==="number").map(r=>({x:r[x],y:r[y]}));config={type:"scatter",data:{datasets:[{label:`${y} vs ${x}`,data:points,backgroundColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:$("legend").checked}},scales:{x:{title:{display:true,text:x,color:"#aaa"},ticks:{color:"#999"},grid:{color:"#222"}},y:{title:{display:true,text:y,color:"#aaa"},ticks:{color:"#999"},grid:{color:"#222"}}}}}chart=new Chart(ctx,config)}
+function downloadPNG(){if(!chart)return alert("Create a visualization first.");let a=document.createElement("a");a.download="sinsigma-visualization.png";a.href=chart.toBase64Image();a.click()}
+function demo(){load([{Region:"West",Product:"A",Sales:125000,Profit:22000},{Region:"West",Product:"B",Sales:92000,Profit:17000},{Region:"North",Product:"A",Sales:148000,Profit:29000},{Region:"North",Product:"B",Sales:113000,Profit:21000},{Region:"South",Product:"A",Sales:97000,Profit:18000},{Region:"South",Product:"B",Sales:121000,Profit:25000},{Region:"East",Product:"A",Sales:136000,Profit:27000},{Region:"East",Product:"B",Sales:109000,Profit:19000}],"SinSigma demo dataset")}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+</script>
+</body>
+</html>
