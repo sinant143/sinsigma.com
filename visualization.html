@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SinSigma | Data Analytics</title>
+<title>SinSigma | Data Visualization</title>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.3/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -22,26 +22,56 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 8px;b
 footer{padding:28px;text-align:center;color:#687386;font-size:11px}
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}}
 @media(max-width:560px){main{padding:16px}.cards{grid-template-columns:1fr 1fr}.hero h1{font-size:25px}}
+
+
+.uploadStatus{margin:16px auto 0;max-width:720px;padding:13px 15px;border-radius:11px;text-align:left;font-size:13px;background:#111927;border:1px solid #2c3a50}
+.uploadStatus.ok{border-color:#286d5f;background:#0d211d;color:#9cebd8}
+.uploadStatus.error{border-color:#733347;background:#26121b;color:#ff9caf}
+.uploadStatus.warn{border-color:#76622d;background:#241f0f;color:#f2d98a}
+.featureShowcase{margin:20px 0 24px;padding:20px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(145deg,#101622,#0c111a)}
+.featureTitle{font-size:16px;font-weight:800;margin-bottom:14px}
+.featureGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.feature{min-height:105px;padding:15px;border:1px solid #202a3c;border-radius:12px;background:#0d131e;display:flex;flex-direction:column;gap:6px;font-size:20px}
+.feature b{font-size:13px}.feature span{font-size:11px;color:var(--muted);line-height:1.4}
+@media(max-width:900px){.featureGrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.featureGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header>
   <div class="brand"><div class="logo"></div><div>SinSigma<small>DATA ANALYTICS</small></div></div>
-  <div class="muted">Client-side analytics</div>
+  <div class="muted">Visual Analytics</div>
 </header>
 
 <main>
 <section class="hero">
-  <div><h1>Your Data In. Your Results Out.</h1><p>Interactive analytics and visualizations — designed for private, browser-based analysis.</p></div>
+  <div><h1>Your Data In. Your Results Out.</h1><p>Interactive analytics and visualizations — See Trends. Discover Insights. Make Smarter Decisions.</p></div>
   <div class="privacy">● Nothing Stored</div>
 </section>
 
 <section id="drop" class="upload">
-  <strong>Upload your dataset</strong><br><br>
+  <div style="font-size:30px;margin-bottom:8px">📊</div>
+  <strong>Upload your dataset</strong>
+  <div class="hint" style="margin:7px 0 15px">CSV, XLSX or XLS • Processed securely in your browser.</div>
   <label class="btn" for="file">Choose CSV / Excel</label>
+  <button id="demoBtn" class="btn secondary" style="margin-left:8px">Try Demo Dataset</button>
   <input id="file" type="file" accept=".csv,.xlsx,.xls">
-  <div class="hint">CSV, XLSX, XLS • Your file is processed in this browser only.</div>
+  <div id="uploadStatus" class="uploadStatus" style="display:none"></div>
 </section>
+
+<div id="featureShowcase" class="featureShowcase">
+  <div class="featureTitle">What you can do with SinSigma</div>
+  <div class="featureGrid">
+    <div class="feature">📈 <b>Interactive Charts</b><span>Line, Bar, Area, Scatter, Pie & Histogram</span></div>
+    <div class="feature">🎛️ <b>Filters & Dashboard</b><span>Explore data dynamically</span></div>
+    <div class="feature">📊 <b>Statistics</b><span>Mean, Median, SD, Min, Max & Missing</span></div>
+    <div class="feature">🔗 <b>Correlation</b><span>Discover relationships between variables</span></div>
+    <div class="feature">⏱️ <b>Time Series</b><span>Trend, moving average & forecasting-ready views</span></div>
+    <div class="feature">🧪 <b>Advanced Analytics</b><span>Regression, ANOVA, PCA & diagnostics</span></div>
+    <div class="feature">🤖 <b>Smart Insights</b><span>Automatic dataset profiling & observations</span></div>
+    <div class="feature">🔒 <b>Nothing Stored</b><span>No upload server, no database</span></div>
+  </div>
+</div>
 
 <div id="app" style="display:none">
   <div class="tabs">
@@ -93,7 +123,7 @@ footer{padding:28px;text-align:center;color:#687386;font-size:11px}
   </section>
 </div>
 </main>
-<footer>SinSigma • Browser-based analytics • No server upload • No database</footer>
+<footer>SinSigma • Powerful Business Intelligence Without the Complexity.</footer>
 
 <script>
 let data=[], headers=[], mainChart, customChart, tsChart;
@@ -102,18 +132,64 @@ const numeric=h=>data.filter(r=>r[h]!==''&&r[h]!=null&&!isNaN(Number(r[h]))).len
 function numCols(){return headers.filter(numeric)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 
-$('file').onchange=e=>loadFile(e.target.files[0]);
+$('file').onchange=e=>loadFile(e.target.files[0]); $('demoBtn').onclick=loadDemo;
 const drop=$('drop');
 ['dragenter','dragover'].forEach(x=>drop.addEventListener(x,e=>{e.preventDefault();drop.classList.add('drag')}));
 ['dragleave','drop'].forEach(x=>drop.addEventListener(x,e=>{e.preventDefault();drop.classList.remove('drag')}));
 drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
 
+function setUploadStatus(type, title, detail){
+ const el=$('uploadStatus'); el.style.display='block'; el.className='uploadStatus '+type;
+ el.innerHTML='<b>'+title+'</b><br><span style="opacity:.9">'+detail+'</span>';
+}
 function loadFile(file){
- if(!file)return;
- const done=rows=>{data=rows.filter(r=>Object.values(r).some(v=>String(v??'').trim()!==''));
- headers=[...new Set(data.flatMap(Object.keys))]; renderAll();};
- if(/\.csv$/i.test(file.name)){Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>done(r.data)});}
- else {const rd=new FileReader();rd.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];done(XLSX.utils.sheet_to_json(ws,{defval:''}));};rd.readAsArrayBuffer(file);}
+ if(!file){setUploadStatus('warn','No file selected','Please choose a CSV or Excel file.');return;}
+ const name=file.name.toLowerCase();
+ if(!/\.(csv|xlsx|xls)$/.test(name)){
+   setUploadStatus('error','Unsupported file type','Please upload a CSV, XLSX or XLS file.');
+   return;
+ }
+ if(file.size===0){setUploadStatus('error','Empty file','The selected file contains no data.');return;}
+ setUploadStatus('warn','Checking dataset…','Reading and validating the file locally. Nothing is being uploaded to a server.');
+ const done=rows=>{
+   try{
+     rows=rows.filter(r=>r && Object.keys(r).some(k=>String(r[k]??'').trim()!==''));
+     if(!rows.length){setUploadStatus('error','No usable rows found','The file was read, but no non-empty data rows were found.');return;}
+     data=rows; headers=[...new Set(data.flatMap(Object.keys))].filter(Boolean);
+     if(headers.length<1){setUploadStatus('error','No columns detected','Please check that the first row contains column names.');return;}
+     renderAll();
+     const bad=data.filter(r=>Object.keys(r).length===0).length;
+     setUploadStatus('ok','✓ Dataset uploaded and validated',
+       `<b>${data.length.toLocaleString()}</b> rows • <b>${headers.length}</b> columns • <b>${numCols().length}</b> numeric variables • <b>${bad}</b> invalid rows removed. Your data remains in this browser only.`);
+   }catch(err){setUploadStatus('error','Dataset validation failed',err.message||'Please check the file format.');}
+ };
+ if(/\.csv$/i.test(name)){
+   Papa.parse(file,{header:true,skipEmptyLines:'greedy',dynamicTyping:false,complete:r=>{
+     if(r.errors && r.errors.length){setUploadStatus('error','CSV parsing error',r.errors.slice(0,3).map(x=>`Row ${x.row}: ${x.message}`).join('<br>'));return;}
+     done(r.data);
+   },error:err=>setUploadStatus('error','Could not read CSV',err.message||'Unknown file error')});
+ } else {
+   const rd=new FileReader();
+   rd.onload=e=>{try{
+     const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+     if(!wb.SheetNames.length)throw new Error('No worksheet found.');
+     const ws=wb.Sheets[wb.SheetNames[0]];
+     done(XLSX.utils.sheet_to_json(ws,{defval:'',raw:false}));
+   }catch(err){setUploadStatus('error','Excel validation failed',err.message||'The workbook could not be read.');}};
+   rd.onerror=()=>setUploadStatus('error','Could not read Excel file','Please try the file again.');
+   rd.readAsArrayBuffer(file);
+ }
+}
+function loadDemo(){
+ const rows=[];
+ for(let i=0;i<60;i++){
+   const d=new Date(2022,0,1); d.setMonth(d.getMonth()+i);
+   const trend=100+i*2.1+Math.sin(i/3)*10;
+   rows.push({Date:d.toISOString().slice(0,7),Revenue:Math.round(trend*1000),Orders:Math.round(180+i*3+Math.sin(i/2)*20),Customers:Math.round(80+i*2),Marketing_Spend:Math.round(12000+i*180+Math.cos(i/3)*1200),Region:['North','South','West','East'][i%4]});
+ }
+ data=rows; headers=Object.keys(rows[0]); renderAll();
+ setUploadStatus('ok','✓ Demo dataset loaded','60 monthly records • 6 variables • Try the Visualization, Statistics and Time Series tabs.');
+ $('app').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function renderAll(){
@@ -150,7 +226,7 @@ function labels(){return data.slice(0,100).map((_,i)=>i+1)}
 function values(h){return data.slice(0,100).map(r=>Number(r[h])).map(v=>Number.isFinite(v)?v:null)}
 function base(type,label,labels,data){return {type,data:{labels,datasets:[{label,data,borderWidth:2,tension:.3,fill:type==='line'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}},scales:{x:{ticks:{color:'#8290a4'},grid:{color:'#202838'}},y:{ticks:{color:'#8290a4'},grid:{color:'#202838'}}}}}}
 function destroy(c){if(c)c.destroy()}
-function drawAuto(){const h=numCols()[0];if(!h)return;destroy(mainChart);mainChart=new Chart($('mainChart'),base('line',h,labels(),values(h)))}
+function drawAuto(){const h=numCols()[0];if(!h){destroy(mainChart);return;}destroy(mainChart);mainChart=new Chart($('mainChart'),base('line',h,labels(),values(h)))}
 function drawCustom(){
  const x=$('xCol').value,y=$('yCol').value,type=$('chartType').value.toLowerCase(),xs=data.slice(0,100).map(r=>r[x]),ys=values(y);destroy(customChart);
  if(type==='scatter') customChart=new Chart($('customChart'),{type:'scatter',data:{datasets:[{label:`${y} vs ${x}`,data:data.slice(0,100).map(r=>({x:Number(r[x]),y:Number(r[y])})),pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#b9c4d4'}}},scales:{x:{ticks:{color:'#8290a4'},grid:{color:'#202838'}},y:{ticks:{color:'#8290a4'},grid:{color:'#202838'}}}}});
