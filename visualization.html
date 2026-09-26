@@ -39,7 +39,7 @@ footer{padding:28px;text-align:center;color:#687386;font-size:11px}
 </head>
 <body>
 <header>
-  <div class="brand"><div class="logo"></div><div>SinSigma<small>DATA VISUALIZATION</small></div></div>
+  <div class="brand"><div class="logo"></div><div>SinSigma<small>DATA ANALYTICS</small></div></div>
   <div class="muted">Dashboard 4.0</div>
 </header>
 
@@ -69,7 +69,7 @@ footer{padding:28px;text-align:center;color:#687386;font-size:11px}
     <div class="feature">⏱️ <b>Time Series</b><span>Trend, moving average & forecasting-ready views</span></div>
     <div class="feature">🧪 <b>Advanced Analytics</b><span>Regression, ANOVA, PCA & diagnostics</span></div>
     <div class="feature">🤖 <b>Smart Insights</b><span>Automatic dataset profiling & observations</span></div>
-    <div class="feature">🔒 <b>Nothing Stored</b><span>Your Research. Your Privacy.</span></div>
+    <div class="feature">🔒 <b>Nothing Stored</b><span>No upload server, no database</span></div>
   </div>
 </div>
 
@@ -123,7 +123,7 @@ footer{padding:28px;text-align:center;color:#687386;font-size:11px}
   </section>
 </div>
 </main>
-<footer>SinSigma • Powerful Business Intelligence Without the Complexity.</footer>
+<footer>SinSigma | Powered by SINANT • Powerful Business Intelligence Without the Complexity.</footer>
 
 <script>
 let data=[], headers=[], mainChart, customChart, tsChart;
@@ -142,44 +142,38 @@ function setUploadStatus(type, title, detail){
  const el=$('uploadStatus'); el.style.display='block'; el.className='uploadStatus '+type;
  el.innerHTML='<b>'+title+'</b><br><span style="opacity:.9">'+detail+'</span>';
 }
+function fileSizeText(bytes){if(bytes<1024)return bytes+' B';if(bytes<1048576)return (bytes/1024).toFixed(1)+' KB';if(bytes<1073741824)return (bytes/1048576).toFixed(1)+' MB';return (bytes/1073741824).toFixed(2)+' GB';}
+function finishDataset(rows,file){
+ try{
+  rows=rows.filter(r=>r&&Object.keys(r).some(k=>String(r[k]??'').trim()!==''));
+  if(!rows.length){setUploadStatus('error','No usable rows found','The file was read, but no non-empty data rows were found.');return;}
+  data=rows; headers=[...new Set(data.flatMap(Object.keys))].filter(Boolean);
+  if(!headers.length){setUploadStatus('error','No columns detected','Please check that the first row contains column names.');return;}
+  renderAll();
+  setUploadStatus('ok','✓ Dataset uploaded and validated',`<b>${data.length.toLocaleString()}</b> rows • <b>${headers.length}</b> columns • <b>${numCols().length}</b> numeric variables • File size <b>${fileSizeText(file.size)}</b>.<br><span style="color:#7de1c9">✓ No server upload • ✓ No database • ✓ Processed in this browser</span>`);
+  $('app').scrollIntoView({behavior:'smooth',block:'start'});
+ }catch(err){console.error(err);setUploadStatus('error','Dataset validation failed',err.message||'Please check the file format.');}
+}
 function loadFile(file){
  if(!file){setUploadStatus('warn','No file selected','Please choose a CSV or Excel file.');return;}
  const name=file.name.toLowerCase();
- if(!/\.(csv|xlsx|xls)$/.test(name)){
-   setUploadStatus('error','Unsupported file type','Please upload a CSV, XLSX or XLS file.');
-   return;
- }
+ if(!/\.(csv|xlsx|xls)$/.test(name)){setUploadStatus('error','Unsupported file type','Please upload a CSV, XLSX or XLS file.');return;}
  if(file.size===0){setUploadStatus('error','Empty file','The selected file contains no data.');return;}
- setUploadStatus('warn','Checking dataset…','Reading and validating the file locally. Nothing is being uploaded to a server.');
- const done=rows=>{
-   try{
-     rows=rows.filter(r=>r && Object.keys(r).some(k=>String(r[k]??'').trim()!==''));
-     if(!rows.length){setUploadStatus('error','No usable rows found','The file was read, but no non-empty data rows were found.');return;}
-     data=rows; headers=[...new Set(data.flatMap(Object.keys))].filter(Boolean);
-     if(headers.length<1){setUploadStatus('error','No columns detected','Please check that the first row contains column names.');return;}
-     renderAll();
-     const bad=data.filter(r=>Object.keys(r).length===0).length;
-     setUploadStatus('ok','✓ Dataset uploaded and validated',
-       `<b>${data.length.toLocaleString()}</b> rows • <b>${headers.length}</b> columns • <b>${numCols().length}</b> numeric variables • <b>${bad}</b> invalid rows removed. Your data remains in this browser only.`);
-   }catch(err){setUploadStatus('error','Dataset validation failed',err.message||'Please check the file format.');}
- };
+ setUploadStatus('warn','Reading dataset…','Starting local file processing. Your file is <b>not</b> being uploaded anywhere.');
  if(/\.csv$/i.test(name)){
-   Papa.parse(file,{header:true,skipEmptyLines:'greedy',dynamicTyping:false,complete:r=>{
-     if(r.errors && r.errors.length){setUploadStatus('error','CSV parsing error',r.errors.slice(0,3).map(x=>`Row ${x.row}: ${x.message}`).join('<br>'));return;}
-     done(r.data);
-   },error:err=>setUploadStatus('error','Could not read CSV',err.message||'Unknown file error')});
- } else {
-   const rd=new FileReader();
-   rd.onload=e=>{try{
-     const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-     if(!wb.SheetNames.length)throw new Error('No worksheet found.');
-     const ws=wb.Sheets[wb.SheetNames[0]];
-     done(XLSX.utils.sheet_to_json(ws,{defval:'',raw:false}));
-   }catch(err){setUploadStatus('error','Excel validation failed',err.message||'The workbook could not be read.');}};
-   rd.onerror=()=>setUploadStatus('error','Could not read Excel file','Please try the file again.');
-   rd.readAsArrayBuffer(file);
+  Papa.parse(file,{header:true,skipEmptyLines:'greedy',dynamicTyping:false,worker:true,chunkSize:1048576,
+   chunk:r=>{if(r?.meta?.cursor){const pct=Math.min(99,Math.round(r.meta.cursor/file.size*100));setUploadStatus('warn','Reading dataset…',`CSV processing: <b>${pct}%</b> complete. Please keep this tab open.`);}},
+   complete:r=>{if(r.errors?.length){setUploadStatus('error','CSV parsing error',r.errors.slice(0,5).map(x=>`Row ${x.row??'?'}: ${x.message}`).join('<br>'));return;}setUploadStatus('warn','Validating dataset…','CSV read successfully. Checking columns, rows and numeric fields…');setTimeout(()=>finishDataset(r.data,file),0);},
+   error:err=>setUploadStatus('error','Could not read CSV',err.message||'The CSV could not be processed.')
+  });
+ }else{
+  const rd=new FileReader();
+  rd.onprogress=e=>{if(e.lengthComputable)setUploadStatus('warn','Reading Excel file…',`Loading file: <b>${Math.round(e.loaded/e.total*100)}%</b> complete.`);};
+  rd.onload=e=>{setUploadStatus('warn','Processing Excel…','Workbook loaded. Reading the first worksheet…');setTimeout(()=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true,cellNF:false,cellHTML:false});if(!wb.SheetNames.length)throw new Error('No worksheet found.');const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});setUploadStatus('warn','Validating dataset…','Excel worksheet read successfully. Checking columns and rows…');setTimeout(()=>finishDataset(rows,file),0);}catch(err){console.error(err);setUploadStatus('error','Excel validation failed',err.message||'The workbook could not be read.');}},0);};
+  rd.onerror=()=>setUploadStatus('error','Could not read Excel file','Please try the file again or save it as CSV.');rd.readAsArrayBuffer(file);
  }
 }
+
 function loadDemo(){
  const rows=[];
  for(let i=0;i<60;i++){
