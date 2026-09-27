@@ -2,12 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Load SheetJS locally from your own domain -->
-<script src="./xlsx.full.min.js"></script>
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>SinSigma | Smart Data Cleaner</title>
-  <link rel="icon" type="image/png" href="favicon.png">
+
+    <!-- SheetJS (pinned CDN build, was previously a broken local path) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,8 +14,8 @@
     <!-- PapaParse for Client-Side CSV Parsing -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons (pinned CDN build, was previously loaded from an unsupported host) -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.js"></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
@@ -27,7 +26,7 @@
 
             <div class="flex items-center space-x-3">
                 <div class="bg-black text-white w-10 h-10 rounded-lg flex items-center justify-center shadow-sm">
-    <span class="text-2xl font-Calibri font-bold">Σ</span>
+    <span class="text-2xl font-serif font-bold">Σ</span>
 </div>
 
                 <div>
@@ -85,7 +84,7 @@
 
         <div>
             <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">2. Target Format</label>
-            <select id="conv-target-format" class="w-full text-sm text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 font-medium shadow-xs focus:border-indigo-500 outline-hidden">
+            <select id="conv-target-format" class="w-full text-sm text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 font-medium shadow-sm focus:border-indigo-500 outline-none">
                 <option value="csv">Convert to CSV (.csv)</option>
                 <option value="json">Convert to JSON (.json)</option>
                 <option value="xlsx">Convert to Excel (.xlsx)</option>
@@ -476,10 +475,10 @@ SinSigma | Simple tools for better research. Powered by SINANT
 
 
         // =========================================================
-        // FILE SIZE LIMIT
+        // FILE SIZE LIMIT (50MB, matches the alert text below)
         // =========================================================
 
-        const MAX_FILE_SIZE = 1024 * 1024 * 1024;
+        const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 
         // =========================================================
@@ -765,6 +764,8 @@ SinSigma | Simple tools for better research. Powered by SINANT
 
 
             tableContainer.innerHTML = html;
+
+            lucide.createIcons();
 
         }
 
