@@ -66,16 +66,15 @@
                 Your data strictly private, fully secured. 
             </p>
         </div>
-        
-<!-- ========================================== -->
-<!-- START OF UNIVERSAL DATA CONVERTER ADDON -->
+ <!-- ========================================== -->
+<!-- START OF UNIVERSAL DATA CONVERTER ADDON (STABLE REVISED v2) -->
 <!-- ========================================== -->
 <section class="mt-12 bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-7xl mx-auto w-full">
     <div class="mb-6 border-b border-slate-100 pb-4">
         <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <i data-lucide="shuffle" class="w-5 h-5 text-indigo-600"></i> Data File Converter
+            <i data-lucide="shuffle" class="w-5 h-5 text-indigo-600"></i> Universal Data Converter (Universal)
         </h2>
-        <p class="text-sm text-slate-500 mt-1">Convert files seamlessly (CSV, JSON, XLSX, XML). 100% private</p>
+        <p class="text-sm text-slate-500 mt-1">Convert files seamlessly inside the browser (CSV, JSON, XLSX, XML). 100% private, client-side processing.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
@@ -105,7 +104,9 @@
     
     <!-- Real-time Status Alert Tracker -->
     <div id="conv-status-message" class="mt-4 text-xs font-medium text-slate-500 hidden bg-slate-50 p-2.5 rounded-lg border border-slate-100 items-center gap-2"></div>
-</section> <script>
+</section>
+
+<script>
     (function() {
         const fileInput = document.getElementById('conv-input-file');
         const targetFormat = document.getElementById('conv-target-format');
@@ -118,14 +119,34 @@
             statusMsg.innerHTML = isError ? `⚠️ ${text}` : `⚡ ${text}`;
         }
 
+        // Helper helper logic to map flat XML elements into clean object sets
+        function xmlToObjects(xmlDoc) {
+            const items = [];
+            const rootChildren = xmlDoc.documentElement.children;
+            for (let i = 0; i < rootChildren.length; i++) {
+                const child = rootChildren[i];
+                const obj = {};
+                let hasGrandchildren = false;
+                for (let j = 0; j < child.children.length; j++) {
+                    const grandChild = child.children[j];
+                    obj[grandChild.nodeName] = grandChild.textContent;
+                    hasGrandchildren = true;
+                }
+                if (!hasGrandchildren) {
+                    obj[child.nodeName] = child.textContent;
+                }
+                items.push(obj);
+            }
+            return items;
+        }
+
         btnTrigger.addEventListener('click', () => {
-            // Check if XLSX library is defined on window runtime context
             if (typeof XLSX === 'undefined') {
                 logStatus('Converter library is loading or blocked by network. Please refresh the page.', true);
                 return;
             }
 
-            const file = fileInput.files[0]; // Fixed missing [0] file array index pointer
+            const file = fileInput.files[0]; 
             if (!file) {
                 logStatus('Please select a valid source dataset file first.', true);
                 return;
@@ -148,12 +169,29 @@
                     }
                 };
                 reader.readAsText(file);
+            } else if (extension === 'xml') {
+                reader.onload = function(e) {
+                    try {
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+                        if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                            throw new Error("Invalid structure formatting syntax encountered inside XML stream.");
+                        }
+                        const dataset = xmlToObjects(xmlDoc);
+                        if(dataset.length === 0) throw new Error("Could not extract any data structures from root nodes.");
+                        const targetWorksheet = XLSX.utils.json_to_sheet(dataset);
+                        processAndDownload(targetWorksheet, target, file.name);
+                    } catch (err) {
+                        logStatus(`XML Parsing Error: ${err.message}`, true);
+                    }
+                };
+                reader.readAsText(file);
             } else {
                 reader.onload = function(e) {
                     try {
                         const dataBuffer = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(dataBuffer, { type: 'array', cellDates: true });
-                        const firstSheetName = workbook.SheetNames[0]; // Explicitly target array base offset pointer
+                        const firstSheetName = workbook.SheetNames[0]; 
                         const targetWorksheet = workbook.Sheets[firstSheetName];
                         
                         processAndDownload(targetWorksheet, target, file.name);
@@ -196,11 +234,11 @@
             }
         }
     })();
-</script> 
-
+</script>
 <!-- ========================================== -->
 <!-- END OF UNIVERSAL DATA CONVERTER ADDON -->
 <!-- ========================================== -->
+
         <!-- Tool Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
