@@ -12,7 +12,6 @@
 
     <!-- PapaParse for Client-Side CSV Parsing -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -88,8 +87,8 @@
 
                         <input
                             type="file"
-                            id="data-file"
-                            accept=".csv,.xlsx,.xls,.json,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                            id="csv-file"
+                            accept=".csv,text/csv"
                             class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         >
 
@@ -319,44 +318,28 @@ Powered by SINANT
         // PROCESS CSV FILE
         // =========================================================
 
-        async function processExcel(file) {
-  const arrayBuffer = await file.arrayBuffer();
+        function processCSVFile(file) {
 
-  const workbook = XLSX.read(arrayBuffer, {
-    type: "array",
-    cellDates: true,
-    dense: true
-  });
+            if (!file) return;
 
-  if (!workbook.SheetNames.length) {
-    throw new Error("No worksheet found.");
-  }
+            if (file.size > MAX_FILE_SIZE) {
 
-  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                alert("File is larger than the 50MB limit.");
 
-  const data = XLSX.utils.sheet_to_json(firstSheet, {
-    header: 1,
-    defval: "",
-    raw: false
-  });
+                csvFileInput.value = "";
 
-  normalizeDataset(data);
-}
-        const extension = file.name.split(".").pop().toLowerCase();
+                return;
+            }
 
-if (extension === "csv") {
-  const data = await parseCSV(file);
-  normalizeDataset(data);
 
-} else if (extension === "xlsx" || extension === "xls") {
-  await processExcel(file);
+            if (!file.name.toLowerCase().endsWith(".csv")) {
 
-} else if (extension === "json") {
-  await processJSON(file);
+                alert("Please upload a CSV file.");
 
-} else {
-  throw new Error("Unsupported file type.");
-}
+                csvFileInput.value = "";
+
+                return;
+            }
 
 
             fileStatus.innerText = `Loading: ${file.name}`;
@@ -378,7 +361,7 @@ if (extension === "csv") {
 
                     if (!results.data || results.data.length === 0) {
 
-                        alert("The uploaded file appears to be empty.");
+                        alert("The uploaded CSV file appears to be empty.");
 
                         return;
                     }
