@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Alternative Stable CDN Injection -->
-<script src="https://cloudflare.com"></script>
+    <!-- Load SheetJS locally from your own domain -->
+<script src="./xlsx.full.min.js"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SinSigma | Smart Data Cleaner</title>
@@ -67,24 +67,22 @@
             </p>
         </div>
  <!-- ========================================== -->
-<!-- START OF UNIVERSAL DATA CONVERTER ADDON (STABLE REVISED v2) -->
+<!-- START OF UNIVERSAL DATA CONVERTER (LOCAL STABLE) -->
 <!-- ========================================== -->
 <section class="mt-12 bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-7xl mx-auto w-full">
     <div class="mb-6 border-b border-slate-100 pb-4">
         <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <i data-lucide="shuffle" class="w-5 h-5 text-indigo-600"></i> Universal Data Converter (Universal)
+            <i data-lucide="shuffle" class="w-5 h-5 text-indigo-600"></i> Universal Data Converter
         </h2>
         <p class="text-sm text-slate-500 mt-1">Convert files seamlessly inside the browser (CSV, JSON, XLSX, XML). 100% private, client-side processing.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-        <!-- Input File Upload Slot -->
         <div>
             <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">1. Choose Source File</label>
             <input type="file" id="conv-input-file" accept=".csv, .json, .xlsx, .xls, .xml" class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1 bg-slate-50">
         </div>
 
-        <!-- Target Format Select Dropdown -->
         <div>
             <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">2. Target Format</label>
             <select id="conv-target-format" class="w-full text-sm text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 font-medium shadow-xs focus:border-indigo-500 outline-hidden">
@@ -94,7 +92,6 @@
             </select>
         </div>
 
-        <!-- Convert and Download Trigger Button -->
         <div>
             <button id="conv-btn-trigger" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-sm">
                 <i data-lucide="file-check" class="w-4 h-4"></i> Convert & Download
@@ -102,7 +99,6 @@
         </div>
     </div>
     
-    <!-- Real-time Status Alert Tracker -->
     <div id="conv-status-message" class="mt-4 text-xs font-medium text-slate-500 hidden bg-slate-50 p-2.5 rounded-lg border border-slate-100 items-center gap-2"></div>
 </section>
 
@@ -119,7 +115,6 @@
             statusMsg.innerHTML = isError ? `⚠️ ${text}` : `⚡ ${text}`;
         }
 
-        // Helper helper logic to map flat XML elements into clean object sets
         function xmlToObjects(xmlDoc) {
             const items = [];
             const rootChildren = xmlDoc.documentElement.children;
@@ -141,33 +136,10 @@
         }
 
         btnTrigger.addEventListener('click', () => {
-    // AUTOMATIC FAIL-SAFE: If library is missing, dynamically inject fallback CDNs instantly
-    if (typeof XLSX === 'undefined') {
-        logStatus('Library missing. Attempting to inject live fail-safe mirrors. Please wait 2 seconds...', true);
-        
-        const fallbackUrls = [
-            'https://jsdelivr.net',
-            'https://cloudflare.com',
-            'https://unpkg.com'
-        ];
-        
-        fallbackUrls.forEach(url => {
-            const script = document.createElement('script');
-            script.src = url;
-            script.async = true;
-            document.head.appendChild(script);
-        });
-
-        setTimeout(() => {
-            if (typeof XLSX !== 'undefined') {
-                logStatus('Library connected successfully via dynamic mirror! Please re-click Convert button.');
-            } else {
-                logStatus('All global content networks are blocked. Please check your internet connection or firewall.', true);
+            if (typeof XLSX === 'undefined') {
+                logStatus('Local engine asset is initializing. Please wait 1 second and re-click.', true);
+                return;
             }
-        }, 2000);
-        
-        return;
-    }
 
             const file = fileInput.files[0]; 
             if (!file) {
@@ -198,14 +170,14 @@
                         const parser = new DOMParser();
                         const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
                         if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
-                            throw new Error("Invalid structure formatting syntax encountered inside XML stream.");
+                            throw new Error("Invalid structure syntax inside XML stream.");
                         }
                         const dataset = xmlToObjects(xmlDoc);
-                        if(dataset.length === 0) throw new Error("Could not extract any data structures from root nodes.");
+                        if(dataset.length === 0) throw new Error("No data nodes extracted.");
                         const targetWorksheet = XLSX.utils.json_to_sheet(dataset);
                         processAndDownload(targetWorksheet, target, file.name);
                     } catch (err) {
-                        logStatus(`XML Parsing Error: ${err.message}`, true);
+                        logStatus(`XML Error: ${err.message}`, true);
                     }
                 };
                 reader.readAsText(file);
@@ -219,7 +191,7 @@
                         
                         processAndDownload(targetWorksheet, target, file.name);
                     } catch (err) {
-                        logStatus(`Parsing array error mapping target file: ${err.message}`, true);
+                        logStatus(`Parsing error: ${err.message}`, true);
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -253,13 +225,13 @@
                 triggerLink.click();
                 document.body.removeChild(triggerLink);
                 
-                logStatus(`Conversion complete! File saved as ${cleanBaseName}_converted.${fileExt}`);
+                logStatus(`Conversion complete! Saved as ${cleanBaseName}_converted.${fileExt}`);
             }
         }
     })();
 </script>
 <!-- ========================================== -->
-<!-- END OF UNIVERSAL DATA CONVERTER ADDON -->
+<!-- END OF UNIVERSAL DATA CONVERTER (LOCAL STABLE) -->
 <!-- ========================================== -->
 
         <!-- Tool Grid -->
