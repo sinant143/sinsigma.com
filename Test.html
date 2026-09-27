@@ -12,6 +12,7 @@
 
     <!-- PapaParse for Client-Side CSV Parsing -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -87,8 +88,8 @@
 
                         <input
                             type="file"
-                            id="csv-file"
-                            accept=".csv,text/csv"
+                            id="data-file"
+                            accept=".csv,.xlsx,.xls,.json,text/csv,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                             class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         >
 
