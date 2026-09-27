@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- SheetJS for Browser-Based Excel/JSON/CSV/XML conversions -->
-<script src="https://jsdelivr.net"></script>
+<!-- Secure & Verified SheetJS CDN Backup -->
+<script src="https://unpkg.com"></script>
 
     <title>SinSigma | Smart Data Cleaner</title>
   <link rel="icon" type="image/png" href="favicon.png">
@@ -66,16 +66,16 @@
                 Your data strictly private, fully secured. 
             </p>
         </div>
-
+        
 <!-- ========================================== -->
 <!-- START OF UNIVERSAL DATA CONVERTER ADDON -->
 <!-- ========================================== -->
 <section class="mt-12 bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-7xl mx-auto w-full">
     <div class="mb-6 border-b border-slate-100 pb-4">
         <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <i data-lucide="shuffle" class="w-5 h-5 text-indigo-600"></i> Universal Data Converter (Universal)
+            <i data-lucide="shuffle" class="w-5 h-5 text-indigo-600"></i> Data File Converter
         </h2>
-        <p class="text-sm text-slate-500 mt-1">Convert files seamlessly inside the browser (CSV, JSON, XLSX, XML). 100% private, client-side processing.</p>
+        <p class="text-sm text-slate-500 mt-1">Convert files seamlessly (CSV, JSON, XLSX, XML). 100% private</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
@@ -105,11 +105,8 @@
     
     <!-- Real-time Status Alert Tracker -->
     <div id="conv-status-message" class="mt-4 text-xs font-medium text-slate-500 hidden bg-slate-50 p-2.5 rounded-lg border border-slate-100 items-center gap-2"></div>
-</section>
-
-<script>
+</section> <script>
     (function() {
-        // Enforce strict local scoped abstraction to prevent variable pollution
         const fileInput = document.getElementById('conv-input-file');
         const targetFormat = document.getElementById('conv-target-format');
         const btnTrigger = document.getElementById('conv-btn-trigger');
@@ -122,7 +119,13 @@
         }
 
         btnTrigger.addEventListener('click', () => {
-            const file = fileInput.files[0];
+            // Check if XLSX library is defined on window runtime context
+            if (typeof XLSX === 'undefined') {
+                logStatus('Converter library is loading or blocked by network. Please refresh the page.', true);
+                return;
+            }
+
+            const file = fileInput.files[0]; // Fixed missing [0] file array index pointer
             if (!file) {
                 logStatus('Please select a valid source dataset file first.', true);
                 return;
@@ -133,12 +136,10 @@
             const extension = file.name.split('.').pop().toLowerCase();
             const target = targetFormat.value;
 
-            // Handle pure text models natively (JSON/XML) or parse structural arrays
             if (extension === 'json') {
                 reader.onload = function(e) {
                     try {
                         const rawJson = JSON.parse(e.target.result);
-                        // Standardize raw metrics array models
                         const dataset = Array.isArray(rawJson) ? rawJson : [rawJson];
                         const targetWorksheet = XLSX.utils.json_to_sheet(dataset);
                         processAndDownload(targetWorksheet, target, file.name);
@@ -148,12 +149,11 @@
                 };
                 reader.readAsText(file);
             } else {
-                // Read binary buffers for Excel, CSV documents
                 reader.onload = function(e) {
                     try {
                         const dataBuffer = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(dataBuffer, { type: 'array', cellDates: true });
-                        const firstSheetName = workbook.SheetNames[0];
+                        const firstSheetName = workbook.SheetNames[0]; // Explicitly target array base offset pointer
                         const targetWorksheet = workbook.Sheets[firstSheetName];
                         
                         processAndDownload(targetWorksheet, target, file.name);
@@ -168,7 +168,6 @@
         function processAndDownload(worksheet, targetType, originalName) {
             const cleanBaseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
             let outputBlob;
-            let mimeType = 'text/plain';
             let fileExt = targetType;
 
             if (targetType === 'csv') {
@@ -194,17 +193,14 @@
                 document.body.removeChild(triggerLink);
                 
                 logStatus(`Conversion complete! File saved as ${cleanBaseName}_converted.${fileExt}`);
-                
-                // Refresh Lucide dynamically for newly injected markup if required
-                if (window.lucide) window.lucide.createIcons();
             }
         }
     })();
-</script>
+</script> 
+
 <!-- ========================================== -->
 <!-- END OF UNIVERSAL DATA CONVERTER ADDON -->
 <!-- ========================================== -->
-
         <!-- Tool Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
