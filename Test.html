@@ -141,10 +141,33 @@
         }
 
         btnTrigger.addEventListener('click', () => {
-            if (typeof XLSX === 'undefined') {
-                logStatus('Converter library is loading or blocked by network. Please refresh the page.', true);
-                return;
+    // AUTOMATIC FAIL-SAFE: If library is missing, dynamically inject fallback CDNs instantly
+    if (typeof XLSX === 'undefined') {
+        logStatus('Library missing. Attempting to inject live fail-safe mirrors. Please wait 2 seconds...', true);
+        
+        const fallbackUrls = [
+            'https://jsdelivr.net',
+            'https://cloudflare.com',
+            'https://unpkg.com'
+        ];
+        
+        fallbackUrls.forEach(url => {
+            const script = document.createElement('script');
+            script.src = url;
+            script.async = true;
+            document.head.appendChild(script);
+        });
+
+        setTimeout(() => {
+            if (typeof XLSX !== 'undefined') {
+                logStatus('Library connected successfully via dynamic mirror! Please re-click Convert button.');
+            } else {
+                logStatus('All global content networks are blocked. Please check your internet connection or firewall.', true);
             }
+        }, 2000);
+        
+        return;
+    }
 
             const file = fileInput.files[0]; 
             if (!file) {
