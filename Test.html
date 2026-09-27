@@ -319,28 +319,44 @@ Powered by SINANT
         // PROCESS CSV FILE
         // =========================================================
 
-        function processCSVFile(file) {
+        async function processExcel(file) {
+  const arrayBuffer = await file.arrayBuffer();
 
-            if (!file) return;
+  const workbook = XLSX.read(arrayBuffer, {
+    type: "array",
+    cellDates: true,
+    dense: true
+  });
 
-            if (file.size > MAX_FILE_SIZE) {
+  if (!workbook.SheetNames.length) {
+    throw new Error("No worksheet found.");
+  }
 
-                alert("File is larger than the 50MB limit.");
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
 
-                csvFileInput.value = "";
+  const data = XLSX.utils.sheet_to_json(firstSheet, {
+    header: 1,
+    defval: "",
+    raw: false
+  });
 
-                return;
-            }
+  normalizeDataset(data);
+}
+        const extension = file.name.split(".").pop().toLowerCase();
 
+if (extension === "csv") {
+  const data = await parseCSV(file);
+  normalizeDataset(data);
 
-            if (!file.name.toLowerCase().endsWith(".csv")) {
+} else if (extension === "xlsx" || extension === "xls") {
+  await processExcel(file);
 
-                alert("Please upload a CSV file.");
+} else if (extension === "json") {
+  await processJSON(file);
 
-                csvFileInput.value = "";
-
-                return;
-            }
+} else {
+  throw new Error("Unsupported file type.");
+}
 
 
             fileStatus.innerText = `Loading: ${file.name}`;
@@ -362,7 +378,7 @@ Powered by SINANT
 
                     if (!results.data || results.data.length === 0) {
 
-                        alert("The uploaded CSV file appears to be empty.");
+                        alert("The uploaded file appears to be empty.");
 
                         return;
                     }
