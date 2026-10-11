@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SinSigma | Data Visualization Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.45.1/apexcharts.min.js"></script>
+<style>
+  :root {
+    --bg:#f3f5fa; --panel:#ffffff; --panel2:#eceff7; --line:#dce2ef;
+    --text:#0e1a33; --muted:#5b6b8c; --accent:#2f6df6; --good:#0f9d6b; --bad:#d6334a;
+    --font-head:'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body:'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0a1020; --panel:#111a2e; --panel2:#17223b; --line:#233253;
+      --text:#e7edfb; --muted:#8c9cc0; --accent:#5b95ff; --good:#34d399; --bad:#fb7185;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0a1020; --panel:#111a2e; --panel2:#17223b; --line:#233253;
+    --text:#e7edfb; --muted:#8c9cc0; --accent:#5b95ff; --good:#34d399; --bad:#fb7185;
+    color-scheme: dark;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+    padding: 24px clamp(14px, 3vw, 36px) 48px;
+  }
+  body.fs-open { overflow: hidden; }
+  h1, h2, h3 { font-family: var(--font-head); margin: 0; letter-spacing: -0.01em; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button {
+    background: var(--panel); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 7px 13px; cursor: pointer; font-weight: 500;
+    transition: border-color .15s, background .15s;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { filter: brightness(1.08); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .wrap { max-width: 1480px; margin: 0 auto; }
+
+  /* Header */
+  .top { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; }
+  .top h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; }
+  .top p { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* Hero (live stream) */
+  .hero {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 0; overflow: hidden; margin-bottom: 18px;
+  }
+  .hero-side { padding: 22px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; }
+  .hero-side h2 { font-size: 20px; }
+  .live-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); animation: pulse 1.6s ease-out infinite; }
+  .paused .dot { background: var(--muted); animation: none; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55); } 100% { box-shadow: 0 0 0 9px rgba(52,211,153,0); } }
+  .big { font-family: var(--font-head); font-size: 54px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 16px; font-weight: 600; color: var(--muted); margin-left: 6px; }
+  .stat-row { display: flex; gap: 22px; }
+  .stat b { display: block; font-size: 22px; font-family: var(--font-head); font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 13px; color: var(--muted); }
+  .hero-chart { position: relative; height: 330px; padding: 16px 18px 12px; }
+
+  /* KPI strip */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .kpi .label { color: var(--muted); font-size: 13px; }
+  .kpi .val { font-family: var(--font-head); font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kpi .delta { font-size: 13px; font-weight: 600; }
+  .delta.good { color: var(--good); } .delta.bad { color: var(--bad); }
+  .spark { position: relative; width: 110px; height: 40px; flex: none; }
+
+  .insights { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+  .insights li { background: var(--panel2); border-radius: 8px; padding: 8px 12px; font-size: 14px; color: var(--text); }
+
+  /* Editor */
+  details.editor { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 22px; }
+  details.editor summary { cursor: pointer; padding: 13px 16px; font-weight: 600; font-family: var(--font-head); font-size: 17px; }
+  .editor-body { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr); gap: 22px; padding: 4px 16px 18px; }
+  .editor-body h3 { font-size: 15px; margin-bottom: 8px; }
+  .table-scroll { overflow-x: auto; max-height: 300px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { position: sticky; top: 0; background: var(--panel2); font-weight: 600; }
+  td input { width: 100%; min-width: 70px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 7px; }
+  textarea { width: 100%; min-height: 110px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px; resize: vertical; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+
+  /* Filters */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .filters button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* Chart grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; grid-auto-flow: dense; }
+  @media (min-width: 800px) { .card.wide { grid-column: span 2; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; min-width: 0; }
+  .card header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .card h3 { font-size: 16px; font-weight: 600; }
+  .card header p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+  .tools { display: flex; gap: 4px; flex: none; }
+  .tools button { padding: 3px 8px; font-size: 12px; background: transparent; color: var(--muted); }
+  .tools button:hover { color: var(--text); }
+  .box { position: relative; height: 280px; width: 100%; }
+  .card.full { position: fixed; z-index: 60; inset: calc(env(safe-area-inset-top, 0px) + 12px) 12px calc(env(safe-area-inset-bottom, 0px) + 12px) 12px; grid-column: auto; }
+  .card.full .box { flex: 1; height: auto; min-height: 0; }
+  #scrim { position: fixed; inset: 0; z-index: 59; background: rgba(5,9,20,.7); }
+
+  .lib-error { background: #5a1420; color: #fff; padding: 14px 16px; border-radius: 8px; margin-bottom: 16px; }
+  footer { margin-top: 30px; color: var(--muted); font-size: 13px; }
+  #toast {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); z-index: 80;
+    background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 14px;
+    opacity: 0; pointer-events: none; transition: opacity .2s; max-width: 90vw;
+  }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 820px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-side { border-right: 0; border-bottom: 1px solid var(--line); }
+    .editor-body { grid-template-columns: 1fr; }
+    .hero-chart { height: 260px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="libError" class="lib-error" hidden>
+    The chart libraries failed to load. Check your internet connection and reload the page.
+  </div>
+
+  <header class="top">
+    <div>
+      <h1>SinSigma</h1>
+      <p>Visualization studio: a live data stream, 19 chart types, and your own CSV, all running in your browser.</p>
+    </div>
+    <div class="actions">
+      <button class="primary" id="btnRandom">Randomize data</button>
+      <button id="btnTheme">Switch theme</button>
+    </div>
+  </header>
+
+  <!-- Live stream hero -->
+  <section class="hero" id="hero" aria-label="Live traffic stream">
+    <div class="hero-side">
+      <div>
+        <h2>Live traffic</h2>
+        <span class="live-pill" id="livePill"><span class="dot"></span><span id="liveText">Streaming (simulated)</span></span>
+      </div>
+      <div class="big"><span id="heroRps">0</span><small>req/s</small></div>
+      <div class="stat-row">
+        <div class="stat"><b id="heroLat">0</b><span>p95 latency, ms</span></div>
+        <div class="stat"><b id="heroSpikes">0</b><span>latency spikes</span></div>
+      </div>
+      <div class="row" style="margin-top:auto">
+        <button id="btnLive">Pause stream</button>
+      </div>
+    </div>
+    <div class="hero-chart"><canvas id="liveChart" role="img" aria-label="Live requests per second and latency"></canvas></div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="Key metrics"></section>
+  <ul class="insights" id="insights"></ul>
+
+  <!-- Data editor -->
+  <details class="editor" id="editor">
+    <summary>Edit data or load your own CSV</summary>
+    <div class="editor-body">
+      <div>
+        <h3>Weekly table (feeds the bar and line charts)</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Label</th><th>Visits</th><th>Conversion %</th></tr></thead>
+            <tbody id="editorRows"></tbody>
+          </table>
+        </div>
+        <div class="row">
+          <button id="btnExportTable">Export table as CSV</button>
+        </div>
+      </div>
+      <div>
+        <h3>Load a CSV</h3>
+        <div class="row" style="margin-top:0">
+          <input type="file" id="csvFile" accept=".csv,.tsv,.txt" aria-label="Choose a CSV file">
+        </div>
+        <p class="hint">Or paste rows below. Column 1 is the label, column 2 is visits, column 3 (optional) is conversion %. Up to 24 rows.</p>
+        <textarea id="csvPaste" spellcheck="false" aria-label="Paste CSV rows" placeholder="Label,Visits,Conversion
+Jan,420,3.1
+Feb,515,3.8
+Mar,610,4.2"></textarea>
+        <div class="row">
+          <button class="primary" id="btnApplyCsv">Apply to charts</button>
+          <button id="btnTemplate">Download template</button>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <nav class="filters" id="filters" aria-label="Chart categories"></nav>
+  <main class="grid" id="grid"></main>
+
+  <footer>All data is simulated in your browser until you load a CSV. Nothing is sent anywhere.</footer>
+</div>
+
+<div id="scrim" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+  if (typeof Chart === 'undefined' || typeof ApexCharts === 'undefined') {
+    document.getElementById('libError').hidden = false;
+    return;
+  }
+
+  /* ---------- Helpers ---------- */
+  const $ = id => document.getElementById(id);
+  const root = document.documentElement;
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const css = n => getComputedStyle(root).getPropertyValue(n).trim();
+  const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+  const arr = (n, a, b) => Array.from({ length: n }, () => rnd(a, b));
+  const sum = a => a.reduce((s, v) => s + v, 0);
+  const avg = a => sum(a) / a.length;
+  const fmt = n => Math.round(n).toLocaleString();
+  const alpha = (hex, a) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${n >> 16 & 255}, ${n >> 8 & 255}, ${n & 255}, ${a})`;
+  };
+  const C = { blue:'#4f8cff', cyan:'#22d3ee', violet:'#a78bfa', amber:'#f5b83d', rose:'#fb7185', green:'#34d399', orange:'#fb923c', teal:'#2dd4bf' };
+  const PAL = [C.blue, C.cyan, C.violet, C.amber, C.rose, C.green, C.orange, C.teal];
+  const FONT = "'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif";
+  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const theme = () => root.dataset.theme || (mq.matches ? 'dark' : 'light');
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  /* ---------- File saving (works in published pages and locally) ---------- */
+  async function saveFile(filename, data) {
+    try {
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+      if (dl) {
+        await dl.save({ filename, data });
+        toast('Saved ' + filename);
+        return;
+      }
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast('Saved ' + filename);
+    } catch (e) {
+      if (e && e.code === 'declined') return;
+      toast('Could not save the file.');
+    }
+  }
+  const csvCell = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const toCSV = rows => rows.map(r => r.map(csvCell).join(',')).join('\n');
+  function dataUrlToBlob(u) {
+    const [h, b] = u.split(',');
+    const mime = h.match(/:(.*?);/)[1];
+    const bin = atob(b);
+    const a = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return new Blob([a], { type: mime });
+  }
+
+  /* ---------- Data model ---------- */
+  let D = {};
+  function gen(custom) {
+    const labels = custom ? custom.labels : DAYS;
+    const n = labels.length;
+    const price = [];
+    let p = 100;
+    const start = Date.now() - 24 * 86400000;
+    for (let i = 0; i < 24; i++) {
+      const o = p, c = o + (Math.random() - 0.48) * 10;
+      const h = Math.max(o, c) + Math.random() * 4, l = Math.min(o, c) - Math.random() * 4;
+      price.push({ x: start + i * 86400000, y: [o, h, l, c].map(v => +v.toFixed(2)) });
+      p = c;
+    }
+    let f = rnd(300, 500);
+    const forecast = Array.from({ length: 12 }, () => (f = f * (1 + Math.random() * 0.1)));
+    const stages = ['Visits', 'Signups', 'Activated', 'Trial', 'Paid'];
+    let fv = rnd(8000, 12000);
+    const funnel = stages.map((s, i) => { if (i) fv = Math.round(fv * (0.45 + Math.random() * 0.35)); return fv; });
+    const xs = arr(30, 2, 50);
+    D = {
+      labels,
+      traffic: custom ? custom.traffic : arr(n, 120, 900),
+      conv: custom ? custom.conv : Array.from({ length: n }, () => +(Math.random() * 4 + 1.5).toFixed(2)),
+      channels: arr(5, 10, 60), devices: arr(3, 15, 70), regions: arr(6, 20, 100),
+      radarNow: arr(6, 45, 95), radarTarget: arr(6, 70, 95),
+      pages: arr(4, 100, 800).sort((a, b) => b - a),
+      newU: arr(n, 50, 200), retU: arr(n, 80, 300),
+      bubble: Array.from({ length: 12 }, () => ({ x: rnd(0, 100), y: rnd(0, 100), r: rnd(5, 20) })),
+      scatter: xs.map(x => ({ x, y: Math.max(0, +(x * 0.8 + rnd(-12, 12)).toFixed(1)) })),
+      area: arr(n, 30, 250), mixBar: arr(n, 100, 500), mixLine: arr(n, 50, 600),
+      heat: DAYS.map(d => ({ name: d, data: ['00-04','04-08','08-12','12-16','16-20','20-24'].map(s => ({ x: s, y: rnd(5, 100) })) })),
+      radial: arr(3, 40, 95),
+      tree: [['JS scripts', 100, 500], ['CSS styles', 50, 250], ['Images', 200, 700], ['HTML', 20, 120], ['Fonts', 30, 180], ['Video', 150, 600], ['API payloads', 60, 300]]
+              .map(([x, a, b]) => ({ x, y: rnd(a, b) })),
+      candles: price, forecast, stages, funnel,
+      box: ['Home','Docs','Pricing','Blog','Checkout'].map(x => {
+        const mn = rnd(80, 150), q1 = mn + rnd(40, 80), md = q1 + rnd(30, 60), q3 = md + rnd(40, 90), mx = q3 + rnd(60, 200);
+        return { x, y: [mn, q1, md, q3, mx] };
+      }),
+      kpiSpark: [0,1,2,3].map(() => arr(12, 20, 100))
+    };
+  }
+
+  /* ---------- Chart.js defaults ---------- */
+  function setDefaults() {
+    Chart.defaults.color = css('--muted');
+    Chart.defaults.borderColor = css('--line');
+    Chart.defaults.font.family = FONT;
+    Chart.defaults.font.size = 12;
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
+    Chart.defaults.animation = reduceMotion ? false : { duration: 600 };
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.boxWidth = 8;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#0b1220';
+    Chart.defaults.plugins.tooltip.titleColor = '#fff';
+    Chart.defaults.plugins.tooltip.bodyColor = '#dbe4fb';
+  }
+
+  function apx(type, opts) {
+    const base = {
+      chart: {
+        type, height: '100%', background: 'transparent', toolbar: { show: false },
+        fontFamily: FONT, foreColor: css('--muted'), animations: { enabled: !reduceMotion }
+      },
+      theme: { mode: theme() },
+      grid: { borderColor: css('--line') },
+      tooltip: { theme: theme() },
+      dataLabels: { enabled: false }
+    };
+    const o = Object.assign({}, base, opts);
+    o.chart = Object.assign({}, base.chart, opts.chart || {}, { type });
+    return o;
+  }
+  const cjLegendBottom = { plugins: { legend: { position: 'bottom' } } };
+
+  /* ---------- Chart registry ---------- */
+  const CHARTS = [
+    { id:'bar', cat:'compare', lib:'cj', title:'Monthly traffic', desc:'Visits per period (editable below)',
+      build: el => new Chart(el, { type:'bar',
+        data:{ labels:D.labels, datasets:[{ label:'Visits', data:D.traffic, backgroundColor:alpha(C.blue,.85), borderRadius:6, maxBarThickness:38 }] },
+        options:{ plugins:{ legend:{ display:false } } } }) },
+    { id:'line', cat:'trend', lib:'cj', title:'Conversion rate trend', desc:'Percent of visits that convert',
+      build: el => new Chart(el, { type:'line',
+        data:{ labels:D.labels, datasets:[{ label:'Conversion %', data:D.conv, borderColor:C.green, backgroundColor:alpha(C.green,.15), tension:.35, borderWidth:2.5, pointRadius:4, pointBackgroundColor:C.green }] },
+        options:{ plugins:{ legend:{ display:false } } } }) },
+    { id:'pie', cat:'dist', lib:'cj', title:'Traffic channels', desc:'Where visitors come from',
+      build: el => new Chart(el, { type:'pie',
+        data:{ labels:['Organic','Direct','Referral','Social','Email'], datasets:[{ label:'Share', data:D.channels, backgroundColor:PAL, borderColor:css('--panel'), borderWidth:2 }] },
+        options:cjLegendBottom }) },
+    { id:'doughnut', cat:'dist', lib:'cj', title:'Device share', desc:'Sessions by device type',
+      build: el => new Chart(el, { type:'doughnut',
+        data:{ labels:['Mobile','Desktop','Tablet'], datasets:[{ label:'Share', data:D.devices, backgroundColor:[C.blue,C.violet,C.cyan], borderColor:css('--panel'), borderWidth:3 }] },
+        options:Object.assign({ cutout:'66%' }, cjLegendBottom) }) },
+    { id:'polar', cat:'dist', lib:'cj', title:'Regional popularity', desc:'Relative demand by region',
+      build: el => new Chart(el, { type:'polarArea',
+        data:{ labels:['North','South','East','West','Central','Islands'], datasets:[{ label:'Popularity', data:D.regions, backgroundColor:PAL.map(c => alpha(c,.65)), borderColor:css('--panel') }] },
+        options:Object.assign({ scales:{ r:{ ticks:{ display:false } } } }, cjLegendBottom) }) },
+    { id:'radar', cat:'compare', lib:'cj', title:'Tool quality metrics', desc:'Current score against target',
+      build: el => new Chart(el, { type:'radar',
+        data:{ labels:['Speed','Accuracy','Coverage','Recall','Stability','Cost'], datasets:[
+          { label:'Current', data:D.radarNow, borderColor:C.cyan, backgroundColor:alpha(C.cyan,.22), borderWidth:2, pointBackgroundColor:C.cyan },
+          { label:'Target', data:D.radarTarget, borderColor:C.amber, backgroundColor:alpha(C.amber,.1), borderWidth:2, borderDash:[5,4], pointBackgroundColor:C.amber }] },
+        options:Object.assign({ scales:{ r:{ suggestedMin:0, suggestedMax:100, ticks:{ display:false }, pointLabels:{ color:css('--text') } } } }, cjLegendBottom) }) },
+    { id:'hbar', cat:'compare', lib:'cj', title:'Top pages', desc:'Hits per route',
+      build: el => new Chart(el, { type:'bar',
+        data:{ labels:['/','/citation','/analytics','/forecast'], datasets:[{ label:'Hits', data:D.pages, backgroundColor:alpha(C.violet,.85), borderRadius:5 }] },
+        options:{ indexAxis:'y', plugins:{ legend:{ display:false } } } }) },
+    { id:'stacked', cat:'compare', lib:'cj', title:'New vs returning users', desc:'Stacked by period',
+      build: el => new Chart(el, { type:'bar',
+        data:{ labels:D.labels, datasets:[
+          { label:'New', data:D.newU, backgroundColor:alpha(C.blue,.85), borderRadius:3 },
+          { label:'Returning', data:D.retU, backgroundColor:alpha(C.teal,.85), borderRadius:3 }] },
+        options:Object.assign({ scales:{ x:{ stacked:true }, y:{ stacked:true } } }, cjLegendBottom) }) },
+    { id:'bubble', cat:'rel', lib:'cj', title:'Data clusters', desc:'Bubble size shows volume',
+      build: el => new Chart(el, { type:'bubble',
+        data:{ datasets:[{ label:'Clusters', data:D.bubble, backgroundColor:alpha(C.orange,.6), borderColor:C.orange }] },
+        options:{ plugins:{ legend:{ display:false } } } }) },
+    { id:'scatter', cat:'rel', lib:'cj', title:'Sessions with trend line', desc:'Least-squares fit and correlation',
+      build: el => {
+        const pts = D.scatter, n = pts.length;
+        const mx = avg(pts.map(p => p.x)), my = avg(pts.map(p => p.y));
+        const sxy = sum(pts.map(p => (p.x - mx) * (p.y - my)));
+        const sxx = sum(pts.map(p => (p.x - mx) ** 2)), syy = sum(pts.map(p => (p.y - my) ** 2));
+        const slope = sxy / sxx, icpt = my - slope * mx, r = sxy / Math.sqrt(sxx * syy);
+        const x0 = Math.min(...pts.map(p => p.x)), x1 = Math.max(...pts.map(p => p.x));
+        return new Chart(el, { type:'scatter',
+          data:{ datasets:[
+            { label:'User sessions', data:pts, backgroundColor:alpha(C.green,.75) },
+            { type:'line', label:`Trend (r = ${r.toFixed(2)})`, data:[{ x:x0, y:slope*x0+icpt }, { x:x1, y:slope*x1+icpt }], borderColor:C.rose, borderDash:[6,4], borderWidth:2, pointRadius:0 }] },
+          options:cjLegendBottom });
+      } },
+    { id:'area', cat:'trend', lib:'cj', title:'Outbound bandwidth', desc:'MB/s over the period',
+      build: el => new Chart(el, { type:'line',
+        data:{ labels:D.labels, datasets:[{ fill:true, label:'MB/s outbound', data:D.area, borderColor:C.blue, backgroundColor:alpha(C.blue,.2), tension:.4, borderWidth:2.5, pointRadius:0 }] },
+        options:{ plugins:{ legend:{ display:false } } } }) },
+    { id:'mixed', cat:'trend', lib:'cj', title:'Volume and spike ratio', desc:'Bars with an overlaid line',
+      build: el => new Chart(el, { type:'bar',
+        data:{ labels:D.labels, datasets:[
+          { type:'bar', label:'Volume', data:D.mixBar, backgroundColor:alpha(C.violet,.55), borderRadius:5 },
+          { type:'line', label:'Spike ratio', data:D.mixLine, borderColor:C.amber, backgroundColor:C.amber, tension:.3, borderWidth:2.5, pointRadius:3 }] },
+        options:cjLegendBottom }) },
+    { id:'heat', cat:'adv', lib:'ax', wide:true, title:'Activity by weekday and time block', desc:'Darker cells mean more activity',
+      build: el => new ApexCharts(el, apx('heatmap', {
+        series:[...D.heat].reverse(), colors:[C.blue],
+        plotOptions:{ heatmap:{ radius:4, shadeIntensity:.6 } },
+        stroke:{ width:2, colors:[css('--panel')] }, legend:{ show:false } })) },
+    { id:'radial', cat:'adv', lib:'ax', title:'System gauges', desc:'CPU, memory and disk',
+      build: el => new ApexCharts(el, apx('radialBar', {
+        series:D.radial, labels:['CPU load','RAM usage','Disk I/O'], colors:[C.green, C.amber, C.rose],
+        plotOptions:{ radialBar:{ hollow:{ size:'36%' }, track:{ background:css('--panel2') },
+          dataLabels:{ name:{ fontSize:'13px' }, value:{ fontSize:'18px', color:css('--text'), formatter:v => v + '%' },
+            total:{ show:true, label:'Average', color:css('--muted'), formatter:() => Math.round(avg(D.radial)) + '%' } } } },
+        stroke:{ lineCap:'round' } })) },
+    { id:'tree', cat:'dist', lib:'ax', title:'Page weight by asset type', desc:'Area is size in KB',
+      build: el => new ApexCharts(el, apx('treemap', {
+        series:[{ data:D.tree }], colors:PAL,
+        plotOptions:{ treemap:{ distributed:true, enableShades:false } },
+        dataLabels:{ enabled:true, style:{ fontSize:'13px', colors:['#0b1220'] } }, legend:{ show:false } })) },
+    { id:'candle', cat:'trend', lib:'ax', wide:true, title:'Candlestick price action', desc:'Open, high, low and close, 24 days',
+      build: el => new ApexCharts(el, apx('candlestick', {
+        series:[{ name:'Price', data:D.candles }],
+        plotOptions:{ candlestick:{ colors:{ upward:C.green, downward:C.rose } } },
+        xaxis:{ type:'datetime' }, yaxis:{ labels:{ formatter:v => Math.round(v) } } })) },
+    { id:'funnel', cat:'adv', lib:'ax', title:'Conversion funnel', desc:'Drop-off from visit to paid',
+      build: el => {
+        const top = D.funnel[0];
+        return new ApexCharts(el, apx('bar', {
+          series:[{ name:'Users', data:D.funnel }],
+          colors:[C.blue, C.cyan, C.teal, C.green, C.amber],
+          plotOptions:{ bar:{ horizontal:true, distributed:true, isFunnel:true, borderRadius:0, barHeight:'82%' } },
+          dataLabels:{ enabled:true, formatter:(v, o) => `${o.w.globals.labels[o.dataPointIndex]}: ${fmt(v)} (${Math.round(v / top * 100)}%)`, style:{ colors:['#0b1220'], fontSize:'12px' } },
+          legend:{ show:false }, grid:{ show:false }, yaxis:{ labels:{ show:false } }, xaxis:{ labels:{ show:false }, categories:D.stages } }));
+      } },
+    { id:'box', cat:'dist', lib:'ax', title:'Load time spread', desc:'Box plot of milliseconds per page',
+      build: el => new ApexCharts(el, apx('boxPlot', {
+        series:[{ type:'boxPlot', name:'Load time (ms)', data:D.box }],
+        plotOptions:{ boxPlot:{ colors:{ upper:C.blue, lower:C.cyan } } },
+        stroke:{ colors:[css('--muted')] } })) },
+    { id:'forecast', cat:'trend', lib:'ax', wide:true, title:'Forecast with confidence band', desc:'Band widens as the horizon grows',
+      build: el => {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return new ApexCharts(el, apx('rangeArea', {
+          series:[
+            { type:'rangeArea', name:'Confidence band', data:months.map((m, i) => { const v = D.forecast[i], s = 0.04 + i * 0.012; return { x:m, y:[Math.round(v * (1 - s)), Math.round(v * (1 + s))] }; }) },
+            { type:'line', name:'Forecast', data:months.map((m, i) => ({ x:m, y:Math.round(D.forecast[i]) })) }],
+          colors:[C.violet, C.violet], stroke:{ curve:'smooth', width:[0, 3] }, fill:{ opacity:[0.28, 1] },
+          legend:{ position:'bottom' }, tooltip:{ theme:theme(), shared:true, intersect:false } }));
+      } }
+  ];
+  const CATS = [['all','All charts'],['compare','Compare'],['dist','Distribution'],['rel','Relationship'],['trend','Trend'],['adv','Advanced']];
+  const inst = {};
+
+  /* ---------- Exporters ---------- */
+  function rowsCJ(ch) {
+    const rows = [['series','x','y','size']];
+    ch.data.datasets.forEach(ds => ds.data.forEach((v, i) => {
+      if (v && typeof v === 'object') rows.push([ds.label, v.x, v.y, v.r ?? '']);
+      else rows.push([ds.label, (ch.data.labels || [])[i] ?? i, v, '']);
+    }));
+    return rows;
+  }
+  function rowsAX(ch) {
+    const cfg = ch.w.config, s = cfg.series, rows = [['series','x','y']];
+    if (typeof s[0] === 'number') { s.forEach((v, i) => rows.push([cfg.labels[i], '', v])); return rows; }
+    const cats = (cfg.xaxis && cfg.xaxis.categories) || [];
+    const isDate = cfg.xaxis && cfg.xaxis.type === 'datetime';
+    s.forEach(se => (se.data || []).forEach((p, i) => {
+      if (p && typeof p === 'object' && !Array.isArray(p)) {
+        const x = isDate && typeof p.x === 'number' ? new Date(p.x).toISOString().slice(0, 10) : p.x;
+        rows.push([se.name, x, Array.isArray(p.y) ? p.y.join(' | ') : p.y]);
+      } else rows.push([se.name, cats[i] ?? i, p]);
+    }));
+    return rows;
+  }
+  async function exportPNG(c) {
+    const chart = inst[c.id];
+    try {
+      if (c.lib === 'cj') {
+        const src = chart.canvas, tmp = document.createElement('canvas');
+        tmp.width = src.width; tmp.height = src.height;
+        const ctx = tmp.getContext('2d');
+        ctx.fillStyle = css('--panel'); ctx.fillRect(0, 0, tmp.width, tmp.height);
+        ctx.drawImage(src, 0, 0);
+        const blob = await new Promise(res => tmp.toBlob(res, 'image/png'));
+        await saveFile(c.id + '.png', blob);
+      } else {
+        const out = await chart.dataURI();
+        await saveFile(c.id + '.png', dataUrlToBlob(out.imgURI));
+      }
+    } catch (e) { toast('Could not export the image.'); }
+  }
+  const exportCSV = c => saveFile(c.id + '.csv', toCSV(c.lib === 'cj' ? rowsCJ(inst[c.id]) : rowsAX(inst[c.id])));
+
+  /* ---------- Grid ---------- */
+  function renderGrid() {
+    $('grid').innerHTML = CHARTS.map(c => `
+      <article class="card ${c.wide ? 'wide' : ''}" data-cat="${c.cat}" id="card-${c.id}">
+        <header>
+          <div><h3>${c.title}</h3><p>${c.desc}</p></div>
+          <div class="tools">
+            <button data-act="full" data-id="${c.id}" aria-label="Expand ${c.title}">Expand</button>
+            <button data-act="png" data-id="${c.id}" aria-label="Save ${c.title} as image">PNG</button>
+            <button data-act="csv" data-id="${c.id}" aria-label="Save ${c.title} data as CSV">CSV</button>
+          </div>
+        </header>
+        <div class="box">${c.lib === 'cj'
+          ? `<canvas id="c-${c.id}" role="img" aria-label="${c.title}: ${c.desc}"></canvas>`
+          : `<div id="c-${c.id}"></div>`}</div>
+      </article>`).join('');
+  }
+  function buildChart(c) {
+    if (inst[c.id]) { inst[c.id].destroy(); inst[c.id] = null; }
+    const el = $('c-' + c.id);
+    if (c.lib === 'ax') el.innerHTML = '';
+    inst[c.id] = c.build(el);
+    if (c.lib === 'ax') inst[c.id].render();
+  }
+  const buildAllCharts = () => CHARTS.forEach(buildChart);
+
+  $('grid').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const c = CHARTS.find(x => x.id === b.dataset.id);
+    if (b.dataset.act === 'png') exportPNG(c);
+    if (b.dataset.act === 'csv') exportCSV(c);
+    if (b.dataset.act === 'full') toggleFull(c);
+  });
+
+  let fullId = null;
+  function toggleFull(c) {
+    const card = $('card-' + c.id);
+    const opening = fullId !== c.id;
+    if (fullId) closeFull();
+    if (opening) {
+      fullId = c.id;
+      card.classList.add('full');
+      $('scrim').hidden = false; document.body.classList.add('fs-open');
+      card.querySelector('[data-act="full"]').textContent = 'Close';
+      setTimeout(() => buildChart(c), 60);
+    }
+  }
+  function closeFull() {
+    if (!fullId) return;
+    const c = CHARTS.find(x => x.id === fullId), card = $('card-' + fullId);
+    card.classList.remove('full');
+    card.querySelector('[data-act="full"]').textContent = 'Expand';
+    $('scrim').hidden = true; document.body.classList.remove('fs-open');
+    fullId = null;
+    setTimeout(() => buildChart(c), 60);
+  }
+  $('scrim').addEventListener('click', closeFull);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFull(); });
+
+  /* ---------- Filters ---------- */
+  function renderFilters() {
+    $('filters').innerHTML = CATS.map(([k, l], i) => `<button data-cat="${k}" aria-pressed="${i === 0}">${l}</button>`).join('');
+  }
+  $('filters').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#filters button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    document.querySelectorAll('.card').forEach(card => { card.hidden = b.dataset.cat !== 'all' && card.dataset.cat !== b.dataset.cat; });
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+  });
+
+  /* ---------- KPIs and insights ---------- */
+  const sparks = [];
+  function renderKpis() {
+    sparks.forEach(s => s.destroy()); sparks.length = 0;
+    const items = [
+      { label:'Visitors', val:fmt(sum(D.traffic)), up:true },
+      { label:'Conversion', val:avg(D.conv).toFixed(2) + '%', up:true },
+      { label:'Avg. session', val:rnd(2, 6) + 'm ' + String(rnd(0, 59)).padStart(2, '0') + 's', up:true },
+      { label:'Error rate', val:(Math.random() * 1.5 + 0.1).toFixed(2) + '%', up:false }
+    ];
+    $('kpis').innerHTML = items.map((k, i) => {
+      const d = (Math.random() * 12 + 1).toFixed(1), rising = Math.random() > 0.4;
+      const good = k.up ? rising : !rising;
+      return `<div class="kpi"><div><div class="label">${k.label}</div><div class="val">${k.val}</div>
+        <div class="delta ${good ? 'good' : 'bad'}">${rising ? 'Up' : 'Down'} ${d}% vs last period</div></div>
+        <div class="spark"><canvas id="spark-${i}" aria-hidden="true"></canvas></div></div>`;
+    }).join('');
+    items.forEach((k, i) => {
+      sparks.push(new Chart($('spark-' + i), { type:'line',
+        data:{ labels:D.kpiSpark[i].map((_, j) => j), datasets:[{ data:D.kpiSpark[i], borderColor:css('--accent'), backgroundColor:alpha('#4f8cff', .15), fill:true, tension:.4, borderWidth:2, pointRadius:0 }] },
+        options:{ animation:false, events:[], plugins:{ legend:{ display:false }, tooltip:{ enabled:false } }, scales:{ x:{ display:false }, y:{ display:false } } } }));
+    });
+  }
+  function renderInsights() {
+    const avgT = avg(D.traffic), mi = D.traffic.indexOf(Math.max(...D.traffic));
+    const ci = D.conv.indexOf(Math.max(...D.conv));
+    const names = ['Organic','Direct','Referral','Social','Email'];
+    const ti = D.channels.indexOf(Math.max(...D.channels));
+    const share = Math.round(D.channels[ti] / sum(D.channels) * 100);
+    $('insights').innerHTML = [
+      `Traffic peaks at ${D.labels[mi]} with ${fmt(D.traffic[mi])} visits, ${Math.round((D.traffic[mi] / avgT - 1) * 100)}% above average.`,
+      `Conversion is best at ${D.labels[ci]} (${D.conv[ci].toFixed(2)}%).`,
+      `${names[ti]} is the largest channel at ${share}% of traffic.`
+    ].map(t => `<li>${t}</li>`).join('');
+  }
+
+  /* ---------- Live stream hero ---------- */
+  const L = { t: [], rps: [], lat: [] };
+  const THRESH = 220, WINDOW = 45;
+  let heroChart = null, live = true;
+  const stamp = ms => new Date(ms).toLocaleTimeString([], { hour12: false });
+  function seedLive() {
+    let r = 420, l = 110;
+    for (let i = WINDOW; i > 0; i--) {
+      r = Math.max(200, Math.min(800, r + rnd(-40, 40)));
+      l = 90 + rnd(0, 40) + (Math.random() < 0.06 ? rnd(120, 200) : 0);
+      L.t.push(stamp(Date.now() - i * 1000)); L.rps.push(r); L.lat.push(l);
+    }
+  }
+  function buildHero() {
+    if (heroChart) heroChart.destroy();
+    heroChart = new Chart($('liveChart'), { type:'line',
+      data:{ labels:L.t, datasets:[
+        { label:'Requests / s', data:L.rps, borderColor:C.blue, backgroundColor:alpha(C.blue,.16), fill:true, tension:.35, borderWidth:2, pointRadius:0, yAxisID:'y' },
+        { label:'p95 latency (ms)', data:L.lat, borderColor:C.amber, tension:.35, borderWidth:2, yAxisID:'y1',
+          pointRadius:ctx => ctx.raw > THRESH ? 4 : 0, pointBackgroundColor:C.rose, pointBorderColor:C.rose }] },
+      options:{ animation:false, interaction:{ mode:'index', intersect:false },
+        scales:{ x:{ ticks:{ maxTicksLimit:6 }, grid:{ display:false } },
+          y:{ beginAtZero:true, title:{ display:true, text:'req/s' } },
+          y1:{ position:'right', beginAtZero:true, grid:{ drawOnChartArea:false }, title:{ display:true, text:'ms' } } },
+        plugins:{ legend:{ position:'bottom' } } } });
+    heroStats();
+  }
+  function heroStats() {
+    $('heroRps').textContent = fmt(L.rps[L.rps.length - 1]);
+    $('heroLat').textContent = fmt(L.lat[L.lat.length - 1]);
+    $('heroSpikes').textContent = L.lat.filter(v => v > THRESH).length;
+  }
+  function tick() {
+    if (!live || document.hidden || !heroChart) return;
+    const r = Math.max(200, Math.min(800, L.rps[L.rps.length - 1] + rnd(-40, 40)));
+    const l = 90 + rnd(0, 40) + (Math.random() < 0.06 ? rnd(120, 200) : 0);
+    L.t.push(stamp(Date.now())); L.rps.push(r); L.lat.push(l);
+    if (L.t.length > WINDOW) { L.t.shift(); L.rps.shift(); L.lat.shift(); }
+    heroChart.update('none');
+    heroStats();
+  }
+  $('btnLive').addEventListener('click', () => {
+    live = !live;
+    $('btnLive').textContent = live ? 'Pause stream' : 'Resume stream';
+    $('liveText').textContent = live ? 'Streaming (simulated)' : 'Paused';
+    $('livePill').classList.toggle('paused', !live);
+  });
+
+  /* ---------- Data editor and CSV ---------- */
+  function renderEditor() {
+    $('editorRows').innerHTML = D.labels.map((l, i) => `<tr>
+      <td>${l}</td>
+      <td><input type="number" min="0" step="1" data-i="${i}" data-k="traffic" value="${D.traffic[i]}" aria-label="Visits for ${l}"></td>
+      <td><input type="number" min="0" step="0.01" data-i="${i}" data-k="conv" value="${D.conv[i]}" aria-label="Conversion for ${l}"></td></tr>`).join('');
+  }
+  $('editorRows').addEventListener('input', e => {
+    const inp = e.target; if (!inp.dataset.k) return;
+    const v = parseFloat(inp.value);
+    if (isNaN(v)) return;
+    D[inp.dataset.k][+inp.dataset.i] = v;
+    ['bar', 'line'].forEach(id => inst[id] && inst[id].update('none'));
+    renderInsights();
+  });
+  function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) throw new Error('The CSV is empty.');
+    const split = l => l.split(/[,;\t]/).map(s => s.trim().replace(/^"|"$/g, ''));
+    let rows = lines.map(split);
+    if (rows[0].length > 1 && isNaN(parseFloat(rows[0][1]))) rows.shift();
+    rows = rows.filter(r => r.length >= 2 && !isNaN(parseFloat(r[1]))).slice(0, 24);
+    if (rows.length < 2) throw new Error('Add at least 2 rows with a label and a number in column 2.');
+    return {
+      labels: rows.map(r => r[0] || '-'),
+      traffic: rows.map(r => Math.max(0, parseFloat(r[1]))),
+      conv: rows.map(r => isNaN(parseFloat(r[2])) ? +(Math.random() * 4 + 1.5).toFixed(2) : parseFloat(r[2]))
+    };
+  }
+  function applyCSV(text) {
+    try {
+      gen(parseCSV(text));
+      renderAll(false);
+      toast('Loaded ' + D.labels.length + ' rows into the charts.');
+    } catch (err) { toast(err.message); }
+  }
+  $('btnApplyCsv').addEventListener('click', () => applyCSV($('csvPaste').value));
+  $('csvFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const text = await f.text(); $('csvPaste').value = text; applyCSV(text); }
+    catch (err) { toast('Could not read that file.'); }
+  });
+  $('btnExportTable').addEventListener('click', () =>
+    saveFile('sinsigma-table.csv', toCSV([['Label','Visits','Conversion'], ...D.labels.map((l, i) => [l, D.traffic[i], D.conv[i]])])));
+  $('btnTemplate').addEventListener('click', () =>
+    saveFile('sinsigma-template.csv', 'Label,Visits,Conversion\nJan,420,3.1\nFeb,515,3.8\nMar,610,4.2\nApr,580,3.9\n'));
+
+  /* ---------- Orchestration ---------- */
+  function renderAll(fresh) {
+    setDefaults();
+    renderKpis(); renderInsights(); renderEditor();
+    buildAllCharts();
+    buildHero();
+    updateThemeBtn();
+  }
+  function updateThemeBtn() { $('btnTheme').textContent = theme() === 'dark' ? 'Use light theme' : 'Use dark theme'; }
+  $('btnRandom').addEventListener('click', () => { gen(); renderAll(); toast('Generated a new random dataset.'); });
+  $('btnTheme').addEventListener('click', () => {
+    const next = theme() === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem('sinsigma-theme', next); } catch (e) {}
+    renderAll(false);
+  });
+  mq.addEventListener && mq.addEventListener('change', () => { if (!root.dataset.theme) renderAll(false); });
+
+  try { const t = localStorage.getItem('sinsigma-theme'); if (t === 'dark' || t === 'light') root.dataset.theme = t; } catch (e) {}
+
+  gen();
+  seedLive();
+  renderFilters();
+  renderGrid();
+  renderAll();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
