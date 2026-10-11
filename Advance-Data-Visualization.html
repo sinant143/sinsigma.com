@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SinSigma | Data Visualization Studio</title>
+<title>SinSigma | Advance Data Visualization</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.45.1/apexcharts.min.js"></script>
@@ -165,7 +165,7 @@
     .hero-chart { height: 260px; }
   }
   @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
-  #hero { display: none; }
+  #hero, #kpis, #insights { display: none; }
 </style>
 </head>
 <body>
@@ -178,7 +178,7 @@
   <header class="top">
     <div>
       <h1><a class="brand" href="https://sinsigma.com/" aria-label="SinSigma home"><span class="logo" aria-hidden="true">Σ</span><span class="brand-name">SinSigma<small>DATA VISUALIZATION</small></span></a></h1>
-      <p>Visualization studio: 19 chart types built from your CSV, labelled with your own column names, plus a live replay of your own rows. Everything runs in your browser.</p>
+      <p>Visualization studio: 19 chart types built from your Data file CSV, TSV, TXT, XLSX, XLS, Paste Your data directly. Labelled with your own column names. Your Data is Private</p>
     </div>
     <div class="actions">
       <button class="primary" id="btnDemo">Load demo data</button>
@@ -254,7 +254,7 @@
   <nav class="filters" id="filters" aria-label="Chart categories"></nav>
   <main class="grid" id="grid"></main>
 
-  <footer>All data is simulated in your browser until you load a CSV. Nothing is sent anywhere.</footer>
+  <footer>SinSigma · Powered by SINANT · Simple tools for better research.</footer>
 </div>
 
 <div id="scrim" hidden></div>
