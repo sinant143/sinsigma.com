@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Browser-based interactive data visualization and analytics by SinSigma.">
+<title>SinSigma | Data Visualization</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Libraries (pinned versions) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  /* =====================================================================
+     THEME TOKENS. Change these to match your live sinsigma.com colours.
+     ===================================================================== */
+  :root {
+    --bg:#070b1a;
+    --bg-glow-1:rgba(99,102,241,.22);
+    --bg-glow-2:rgba(34,211,238,.12);
+    --panel:#0e1530;
+    --panel-2:#131c3d;
+    --line:#212c52;
+    --text:#eaf0ff;
+    --muted:#93a1c9;
+    --accent:#6366f1;      /* primary (indigo) */
+    --accent-2:#22d3ee;    /* secondary (cyan) */
+    --ok:#34d399; --warn:#fbbf24; --bad:#fb7185;
+    --radius:14px;
+    --font:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#f5f7ff; --bg-glow-1:rgba(99,102,241,.14); --bg-glow-2:rgba(34,211,238,.10);
+      --panel:#ffffff; --panel-2:#eef1fb; --line:#dbe1f3;
+      --text:#10193a; --muted:#5a678c; --accent:#4f46e5; --accent-2:#0891b2;
+      --ok:#0f9d6b; --warn:#b7791f; --bad:#d6334a;
+      color-scheme: light;
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; font-family: var(--font); color: var(--text); line-height: 1.55;
+    background:
+      radial-gradient(900px 480px at 12% -8%, var(--bg-glow-1), transparent 60%),
+      radial-gradient(800px 460px at 92% 4%, var(--bg-glow-2), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  a { color: inherit; text-decoration: none; }
+  button, input, select { font: inherit; color: inherit; }
+  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, .drop:focus-visible {
+    outline: 2px solid var(--accent-2); outline-offset: 2px;
+  }
+  .container { width: min(1240px, 100% - 32px); margin-inline: auto; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel); cursor: pointer; font-weight: 600; font-size: 14px;
+    transition: transform .12s, border-color .15s, background .15s;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.small { padding: 6px 12px; font-size: 13px; }
+
+  /* Header */
+  .site-header { position: sticky; top: 0; z-index: 30; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid var(--line); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 20px; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .brand-name { font-weight: 800; font-size: 18px; letter-spacing: -.01em; line-height: 1.1; }
+  .brand-name small { display: block; font-size: 10.5px; font-weight: 600; letter-spacing: .14em; color: var(--muted); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); }
+  .nav-links { display: flex; gap: 18px; color: var(--muted); font-size: 14px; font-weight: 500; }
+  .nav-links a:hover { color: var(--text); }
+
+  /* Hero */
+  .hero { padding: 64px 0 28px; text-align: center; }
+  .eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-2); padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+  .hero h1 { font-size: clamp(34px, 6vw, 62px); line-height: 1.06; letter-spacing: -.03em; font-weight: 800; margin: 18px 0 14px; }
+  .grad { background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p.lead { max-width: 640px; margin: 0 auto; color: var(--muted); font-size: 17px; }
+  .secure { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; font-size: 13px; color: var(--ok); font-weight: 600; }
+  .secure::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+
+  /* Upload card */
+  .upload { margin: 26px auto 0; max-width: 820px; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px; text-align: left; }
+  .upload h2 { font-size: 16px; margin: 0 0 4px; }
+  .upload .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .drop { border: 2px dashed var(--line); border-radius: 14px; padding: 30px 18px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .drop .ico { font-size: 30px; }
+  .drop b { display: block; margin: 6px 0 2px; }
+  .drop span { color: var(--muted); font-size: 14px; }
+  .upload-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  #fileStatus { color: var(--muted); font-size: 14px; margin-left: auto; }
+  #fileStatus.ok { color: var(--ok); font-weight: 600; }
+
+  /* Feature cards */
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 34px 0 10px; }
+  .feature { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; gap: 12px; }
+  .feature .fi { font-size: 22px; line-height: 1; }
+  .feature b { display: block; font-size: 15px; }
+  .feature span { color: var(--muted); font-size: 13px; }
+
+  /* Workspace */
+  .workspace { padding: 28px 0 60px; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 16px; border: 1px dashed var(--line); border-radius: var(--radius); }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 5px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; width: fit-content; max-width: 100%; margin-bottom: 20px; }
+  .tab { background: transparent; border: 0; padding: 9px 18px; border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .stat b { display: block; font-size: 30px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 18px; }
+  .panel h2 { font-size: 18px; margin: 0 0 2px; letter-spacing: -.01em; }
+  .panel .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+  .two { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; }
+  .chart-box { position: relative; height: 340px; }
+  .chart-box.tall { height: 420px; }
+
+  .insights { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .insights li { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; font-size: 14px; border-left: 3px solid var(--accent); }
+
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; margin-bottom: 14px; }
+  .controls label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  select, input[type="search"] { background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; width: 100%; }
+  .note { color: var(--muted); font-size: 13.5px; margin: 10px 0 0; }
+
+  .table-wrap { overflow: auto; max-height: 520px; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--panel-2); font-weight: 700; cursor: pointer; user-select: none; }
+  td.num, th.num { text-align: right; }
+  td.na { color: var(--bad); }
+  tbody tr:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .type-tag { font-size: 10.5px; font-weight: 600; color: var(--muted); margin-left: 6px; }
+  .corr td { text-align: center; min-width: 64px; }
+
+  footer { border-top: 1px solid var(--line); padding: 22px 0 30px; color: var(--muted); font-size: 13px; text-align: center; }
+  #toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 60; max-width: 90vw; }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 880px) { .two { grid-template-columns: 1fr; } .nav-links { display: none; } .hero { padding-top: 40px; } #fileStatus { margin-left: 0; width: 100%; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="https://sinsigma.com/" aria-label="SinSigma home">
+      <div class="logo">Σ</div>
+      <div class="brand-name">SinSigma<small>DATA VISUALIZATION</small></div>
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="https://sinsigma.com/analytics">Statistics</a>
+      <a href="https://sinsigma.com/forecasting">Forecasting</a>
+      <a href="https://sinsigma.com/data-cleaning">Data Cleaning</a>
+      <a href="https://sinsigma.com/citation">Citing</a>
+    </nav>
+    <div class="nav-right">
+      <span class="badge">Dashboard 4.0</span>
+      <button class="btn primary small" id="btnDemoTop">Try Demo</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero container">
+    <span class="eyebrow">Turn complexity into clarity</span>
+    <h1>Your Data In. <span class="grad">Your Results Out.</span></h1>
+    <p class="lead">Interactive analytics and visualizations. See trends, discover insights and make smarter decisions.</p>
+    <div class="secure">Data secured: everything runs in your browser</div>
+
+    <div class="upload">
+      <h2>Upload your dataset</h2>
+      <p class="sub">CSV, XLSX or XLS. Your data is private and never leaves this device.</p>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Drop a dataset here or press Enter to choose a file">
+        <div class="ico" aria-hidden="true">📊</div>
+        <b>Drop your dataset here</b>
+        <span>or choose a CSV / Excel file from your computer</span>
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.tsv,.txt,.xlsx,.xls" hidden>
+      <div class="upload-actions">
+        <button class="btn primary" id="btnChoose">Choose CSV / Excel</button>
+        <button class="btn" id="btnDemo">Try Demo</button>
+        <button class="btn" id="btnSample">Download sample CSV</button>
+        <span id="fileStatus" role="status">No dataset loaded</span>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature"><div class="fi">📈</div><div><b>Interactive Charts</b><span>Line, Bar, Area, Scatter, Pie &amp; Histogram</span></div></div>
+      <div class="feature"><div class="fi">🎛️</div><div><b>Filters &amp; Dashboard</b><span>Explore data dynamically</span></div></div>
+      <div class="feature"><div class="fi">🧮</div><div><b>Statistics</b><span>Mean, Median, SD, Quartiles &amp; Missing</span></div></div>
+      <div class="feature"><div class="fi">🔗</div><div><b>Correlation</b><span>Discover relationships between variables</span></div></div>
+      <div class="feature"><div class="fi">⏱️</div><div><b>Time Series</b><span>Trend, moving average and forecast views</span></div></div>
+      <div class="feature"><div class="fi">🤖</div><div><b>Smart Insights</b><span>Automatic dataset profiling</span></div></div>
+    </div>
+  </section>
+
+  <section class="workspace container" id="workspace" aria-label="Analysis workspace">
+    <div class="empty" id="emptyState">No dataset loaded. Upload a file or try the demo to generate your first visualization.</div>
+
+    <div id="appBody" hidden>
+      <div class="tabs" role="tablist" aria-label="Analysis views">
+        <button class="tab" role="tab" aria-selected="true" data-tab="overview">Overview</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="data">Data</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="visualize">Visualize</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="stats">Statistics</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="ts">Time Series</button>
+      </div>
+
+      <!-- Overview -->
+      <div data-panel="overview">
+        <div class="stats">
+          <div class="stat"><span>Records</span><b id="sRecords">0</b></div>
+          <div class="stat"><span>Variables</span><b id="sVars">0</b></div>
+          <div class="stat"><span>Numeric Variables</span><b id="sNum">0</b></div>
+          <div class="stat"><span>Missing Cells</span><b id="sMiss">0</b></div>
+        </div>
+        <div class="two">
+          <div class="panel">
+            <h2>Automatic Visualization</h2>
+            <p class="sub" id="autoSub">SinSigma chooses a useful first view from your dataset.</p>
+            <div class="chart-box"><canvas id="autoChart" role="img" aria-label="Automatic visualization"></canvas></div>
+          </div>
+          <div class="panel">
+            <h2>Dataset Insights</h2>
+            <p class="sub">Local profile generated from the loaded data.</p>
+            <ul class="insights" id="insights"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data -->
+      <div data-panel="data" hidden>
+        <div class="panel">
+          <h2>Data Preview</h2>
+          <p class="sub">Search and inspect your dataset without uploading it anywhere. Click a header to sort.</p>
+          <div class="controls">
+            <label>Search<input type="search" id="dataSearch" placeholder="Type to filter rows"></label>
+          </div>
+          <div class="table-wrap"><table id="dataTable"></table></div>
+          <p class="note" id="dataNote"></p>
+        </div>
+      </div>
+
+      <!-- Visualize -->
+      <div data-panel="visualize" hidden>
+        <div class="panel">
+          <h2>Visualization Builder</h2>
+          <p class="sub">Build a chart from any categorical and numeric fields.</p>
+          <div class="controls">
+            <label>X / Category<select id="vizX"></select></label>
+            <label>Y / Measure<select id="vizY"></select></label>
+            <label>Chart type
+              <select id="vizType">
+                <option value="bar">Bar</option><option value="line">Line</option><option value="area">Area</option>
+                <option value="scatter">Scatter</option><option value="pie">Pie</option><option value="doughnut">Doughnut</option>
+                <option value="histogram">Histogram</option>
+              </select></label>
+            <label>Aggregation
+              <select id="vizAgg"><option value="sum">Sum</option><option value="avg">Average</option><option value="min">Minimum</option><option value="max">Maximum</option><option value="count">Count</option></select></label>
+            <label>Sort
+              <select id="vizSort"><option value="orig">Original order</option><option value="desc">Sort High → Low</option><option value="asc">Sort Low → High</option></select></label>
+            <div style="display:flex;gap:8px">
+              <button class="btn primary" id="btnViz">Update Chart</button>
+              <button class="btn" id="btnPng">Export PNG</button>
+            </div>
+          </div>
+          <div class="chart-box tall"><canvas id="vizChart" role="img" aria-label="Custom chart"></canvas></div>
+          <p class="note" id="vizNote">Choose fields after loading a dataset.</p>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div data-panel="stats" hidden>
+        <div class="panel">
+          <h2>Descriptive Statistics</h2>
+          <p class="sub">Calculated locally from numeric variables.</p>
+          <div class="table-wrap"><table id="statsTable"></table></div>
+        </div>
+        <div class="panel">
+          <h2>Correlation Matrix</h2>
+          <p class="sub">Pearson correlation. Indigo is positive, red is negative.</p>
+          <div class="table-wrap"><table id="corrTable" class="corr"></table></div>
+        </div>
+      </div>
+
+      <!-- Time series -->
+      <div data-panel="ts" hidden>
+        <div class="panel">
+          <h2>Time Series, Moving Average &amp; Forecast</h2>
+          <p class="sub">Select a date field and a numeric measure.</p>
+          <div class="controls">
+            <label>Date / Time field<select id="tsDate"></select></label>
+            <label>Measure<select id="tsMeasure"></select></label>
+            <label>Combine same dates
+              <select id="tsAgg"><option value="sum">Sum</option><option value="avg">Average</option></select></label>
+            <label>Moving average
+              <select id="tsMA"><option value="0">No moving average</option><option value="3">3-period moving average</option><option value="5">5-period moving average</option><option value="7" selected>7-period moving average</option></select></label>
+            <label>Forecast
+              <select id="tsFC"><option value="0">No forecast</option><option value="7" selected>Next 7 periods</option><option value="14">Next 14 periods</option><option value="30">Next 30 periods</option></select></label>
+            <button class="btn primary" id="btnTS">Analyze</button>
+          </div>
+          <div class="chart-box tall"><canvas id="tsChart" role="img" aria-label="Time series chart"></canvas></div>
+          <p class="note" id="tsNote">Select a date field and measure.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">SinSigma · Powered by SINANT · Simple tools for better research.</div>
+</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- Demo dataset: identical to sinsigma-demo-data.csv -->
+<script type="text/plain" id="demoCsv">Date,Region,Channel,Product,Visitors,Orders,Revenue,Conversion_Rate,Satisfaction,Returns
+2025-01-01,East,Direct,Starter,1020,35,1053.4,3.44,3.6,0
+2025-01-02,West,Organic,Starter,844,32,857.7,3.81,4.7,1
+2025-01-03,South,Social,Pro,970,26,2155.69,2.69,5,1
+2025-01-04,East,Referral,Starter,646,28,759.09,4.39,4.0,0
+2025-01-05,North,Social,Pro,695,18,1529.64,2.6,3.6,1
+2025-01-06,Central,Referral,Pro,1159,40,3022.43,3.52,4.0,1
+2025-01-07,North,Social,Starter,1140,44,1303.7,3.91,3.8,1
+2025-01-08,East,Organic,Pro,1156,49,3662.52,4.29,4.8,2
+2025-01-09,Central,Direct,Pro,1239,43,3583.35,3.52,4.2,0
+2025-01-10,East,Social,Starter,1013,41,1260.6,4.12,5,1
+2025-01-11,West,Direct,Starter,630,17,473.01,2.85,3.7,1
+2025-01-12,Central,Social,Starter,651,26,753.22,4.09,4.1,1
+2025-01-13,South,Social,Pro,1150,36,2791.56,3.2,3.6,1
+2025-01-14,Central,Organic,Pro,1044,52,4272.9,5.01,4.8,3
+2025-01-15,South,Social,Starter,1071,45,1351.37,4.23,3.8,3
+2025-01-16,Central,Organic,Team,832,26,3941.54,3.21,4.8,0
+2025-01-17,Central,Organic,Pro,1145,28,2207.97,2.48,4.5,2
+2025-01-18,East,Direct,Starter,736,38,1028.94,5.17,3.3,
+2025-01-19,South,Direct,Pro,805,34,2878.04,4.24,4.4,2
+2025-01-20,South,Email,Team,1274,46,6743.23,3.68,3.4,3
+2025-01-21,West,Organic,Starter,985,49,1321.88,4.98,4.7,2
+2025-01-22,North,Organic,Team,1184,46,6340.13,3.91,4.2,1
+2025-01-23,West,Direct,Pro,1077,38,3109.28,3.54,4.6,1
+2025-01-24,West,Social,Starter,1073,47,1346.33,4.38,4.4,2
+2025-01-25,North,Organic,Pro,706,15,1154.53,2.27,4.3,0
+2025-01-26,West,Direct,Pro,682,23,1940.05,3.48,4.5,1
+2025-01-27,North,Email,Team,1293,43,6887.78,3.33,5.0,1
+2025-01-28,West,Social,Starter,1098,36,1023.78,3.35,4.2,3
+2025-01-29,West,Referral,Pro,1188,61,5171.61,5.17,4.7,4
+2025-01-30,South,Direct,Starter,1210,57,1664.16,4.76,4.0,4
+2025-01-31,Central,Email,Starter,1372,63,1961.69,4.62,4.4,3
+2025-02-01,South,Social,Starter,770,31,912.6,4.12,3.9,1
+2025-02-02,Central,Referral,Enterprise,664,27,10263.24,4.18,,1
+2025-02-03,East,Social,Starter,1150,41,1181.06,3.6,3.9,3
+2025-02-04,South,Email,Starter,1294,54,1674.56,4.19,4.9,2
+2025-02-05,South,Social,Team,1077,34,5460.93,3.24,3.4,2
+2025-02-06,East,Organic,Enterprise,1490,54,20285.27,3.68,4.3,3
+2025-02-07,East,Referral,Pro,1304,45,3631.35,3.48,3.8,1
+2025-02-08,North,Organic,Pro,606,22,1829.59,3.74,4.5,0
+2025-02-09,East,Direct,Team,796,21,2883.52,2.7,3.9,0
+2025-02-10,Central,Organic,Team,1489,34,5132.88,2.29,4.3,1
+2025-02-11,North,Referral,Starter,1343,48,1454.39,3.6,4.3,3
+2025-02-12,South,Direct,Team,1145,49,7857.28,4.3,4.5,1
+2025-02-13,East,Social,Team,1052,49,7028.59,4.68,3.4,3
+2025-02-14,West,Direct,Starter,1514,71,2196.85,4.75,3.6,5
+2025-02-15,South,Organic,Pro,920,27,1986.05,3.02,4.3,2
+2025-02-16,Central,Referral,Enterprise,746,33,12356.63,4.46,4.4,2
+2025-02-17,East,Organic,Starter,1311,29,815.93,2.27,4.4,1
+2025-02-18,Central,Direct,Starter,1201,42,1258.69,3.54,5,2
+2025-02-19,South,Referral,Pro,1342,74,5961.19,5.52,3.7,4
+2025-02-20,Central,Referral,Pro,1550,76,5837.02,4.96,3.9,2
+2025-02-21,West,Direct,Pro,1189,38,2762.03,3.24,4.7,1
+2025-02-22,East,Social,Pro,728,29,2355.38,4.11,3.2,2
+2025-02-23,South,Organic,Starter,819,24,650.72,2.96,3.5,2
+2025-02-24,South,Direct,Starter,1381,60,1668.96,4.37,3.1,1
+2025-02-25,West,Email,Starter,1418,54,1501.85,3.85,3.5,3
+2025-02-26,North,Social,Starter,1613,58,1763.84,3.65,3.9,3
+2025-02-27,North,Social,Starter,1242,31,907.48,2.52,4.2,1
+2025-02-28,Central,Social,Team,1400,36,5405.09,2.63,4.8,1
+2025-03-01,East,Direct,Team,768,25,3715.82,3.33,5.0,0
+2025-03-02,South,Referral,Starter,730,30,924.71,4.12,4.4,1
+2025-03-03,South,Direct,Starter,1453,38,1087.15,2.66,4.4,1
+2025-03-04,Central,Organic,Team,1149,52,8077.25,4.54,4.1,2
+2025-03-05,West,Social,Pro,1436,49,4117.39,3.44,3.2,2
+2025-03-06,West,Referral,Pro,1408,65,5379.95,4.63,3.9,5
+2025-03-07,Central,Email,Starter,1166,38,1018.62,3.29,4.5,2
+2025-03-08,North,Referral,Starter,943,41,1134.15,4.35,3.7,1
+2025-03-09,West,Referral,Team,1015,21,2904.76,2.13,4.3,1
+2025-03-10,North,Organic,Enterprise,1466,57,21649.01,3.93,4.4,1
+2025-03-11,North,Email,Enterprise,1474,51,19922.14,3.52,4.2,3
+2025-03-12,South,Referral,Starter,1697,55,1473.95,3.28,3.8,4
+2025-03-13,West,Direct,Starter,1681,52,1411.95,3.14,3.4,3
+2025-03-14,North,Email,Team,1600,51,7413.22,3.22,3.7,2
+2025-03-15,East,Organic,Team,943,35,5599.48,3.79,3.9,2
+2025-03-16,West,Direct,Team,977,23,3682.23,2.36,4.0,1
+2025-03-17,West,Social,Pro,1771,62,5173.63,3.52,3.7,4
+2025-03-18,South,Social,Pro,1773,80,6490.07,4.56,3.8,3
+2025-03-19,West,Direct,Starter,1664,59,1737.32,3.56,4.5,4
+2025-03-20,South,Organic,Starter,1347,43,1228.33,3.23,3.8,2
+2025-03-21,West,Social,Team,1487,61,9367.9,4.13,4.3,2
+2025-03-22,Central,Referral,Pro,840,26,2134.82,3.1,3.7,
+2025-03-23,East,Direct,Starter,1063,39,1137.49,3.76,4.3,2
+2025-03-24,West,Referral,Team,1586,66,10583.91,4.18,3.7,1
+2025-03-25,South,Referral,Starter,1530,56,1632.87,3.67,4.2,2
+2025-03-26,South,Social,Starter,1751,59,1577.48,3.42,,2
+2025-03-27,North,Referral,Enterprise,1737,33,12957.82,1.94,4.2,0
+2025-03-28,South,Email,Enterprise,1533,61,22723.59,3.98,,2
+2025-03-29,Central,Email,Starter,1081,34,976.96,3.22,,2
+2025-03-30,Central,Organic,Pro,1044,37,3035.28,3.55,4.4,1
+2025-03-31,North,Direct,Starter,1552,48,1371.63,3.1,4.0,3
+2025-04-01,East,Referral,Team,1553,56,8282.63,3.64,3.7,4
+2025-04-02,Central,Direct,Pro,1264,29,2440.71,2.35,3.9,2
+2025-04-03,East,Email,Team,1693,75,11298.74,4.44,,5
+2025-04-04,West,Referral,Pro,1693,54,3951.93,3.23,4.1,2
+2025-04-05,North,Direct,Enterprise,952,40,16817.9,4.21,3.0,3
+2025-04-06,East,Email,Starter,878,37,1099.01,4.24,3.5,3
+2025-04-07,West,Organic,Pro,1721,80,6227.32,4.69,,2
+2025-04-08,West,Social,Starter,1706,87,2543.22,5.15,3.8,4
+2025-04-09,West,Email,Team,1586,78,10694.38,4.93,,1
+2025-04-10,Central,Referral,Pro,1515,39,2859.96,2.63,4.1,1
+2025-04-11,West,Organic,Starter,1748,72,2131.44,4.14,4.3,3
+2025-04-12,North,Email,Pro,860,38,2816.34,4.47,5,3
+2025-04-13,East,Email,Team,980,37,5438.46,3.78,3.5,1
+2025-04-14,South,Social,Starter,1695,40,1092.54,2.39,3.6,0
+2025-04-15,East,Email,Starter,1727,42,1121.06,2.45,4.0,2
+2025-04-16,West,Direct,Pro,1369,38,3128.26,2.79,4.1,1
+2025-04-17,South,Email,Starter,2005,69,2114.98,3.46,3.7,3
+2025-04-18,West,Social,Enterprise,1778,70,26375.33,3.94,3.4,
+2025-04-19,East,Organic,Team,1227,64,9444.92,5.26,3.6,4
+2025-04-20,West,Direct,Starter,1023,38,1123.73,3.74,3.7,1
+2025-04-21,Central,Social,Enterprise,1852,73,29717.92,3.99,4.5,4
+2025-04-22,Central,Organic,Starter,1594,52,1442.25,3.3,3.7,1
+2025-04-23,North,Social,Starter,2020,68,1908.73,3.39,4.5,1
+2025-04-24,East,Referral,Pro,1764,64,5203.07,3.63,4.6,2
+2025-04-25,West,Email,Pro,1851,98,7739.11,5.3,3.8,6
+2025-04-26,West,Referral,Pro,1026,45,3434.2,4.41,3.8,2
+2025-04-27,Central,Referral,Pro,1298,59,4604.55,4.57,4.1,2
+2025-04-28,West,Social,Starter,2101,62,1739.28,2.98,4.4,4
+2025-04-29,West,Referral,Starter,2097,80,2455.51,3.83,4.3,6
+2025-04-30,West,Referral,Team,1303,49,6972.75,3.8,5.0,1</script>
+
+<script>
+(function () {
+  'use strict';
+  if (typeof Chart === 'undefined') {
+    document.getElementById('emptyState').textContent = 'The chart library failed to load. Check your connection and reload.';
+    return;
+  }
+
+  /* ---------- Helpers ---------- */
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const PAL = ['#6366f1', '#22d3ee', '#a78bfa', '#fbbf24', '#fb7185', '#34d399', '#fb923c', '#2dd4bf', '#60a5fa', '#f472b6'];
+  const alpha = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; };
+  const fmtN = (v, d = 2) => v == null || isNaN(v) ? '' : Number(v).toLocaleString(undefined, { maximumFractionDigits: d });
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800); }
+  function download(name, blob) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  }
+
+  /* ---------- CSV parsing and type inference ---------- */
+  function parseCSV(text) {
+    text = text.replace(/^\uFEFF/, '');
+    const first = text.split(/\r?\n/, 1)[0] || '';
+    const counts = { ',': 0, ';': 0, '\t': 0 };
+    let q = false;
+    for (const ch of first) { if (ch === '"') q = !q; else if (!q && counts[ch] !== undefined) counts[ch]++; }
+    const delim = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    const rows = []; let row = [], cell = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQ) {
+        if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+        else if (c === '"') inQ = false;
+        else cell += c;
+      } else if (c === '"') inQ = true;
+      else if (c === delim) { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell); cell = ''; rows.push(row); row = [];
+      } else cell += c;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+  const isNum = v => v !== '' && !isNaN(Number(String(v).replace(/,/g, '').replace(/%$/, '')));
+  const toNum = v => { const n = Number(String(v).replace(/,/g, '').replace(/%$/, '')); return isNaN(n) ? null : n; };
+  const DATE_RE = /^(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})([ T]\d{1,2}:\d{2}(:\d{2})?)?/;
+  const isDate = v => DATE_RE.test(v) && !isNaN(Date.parse(v));
+
+  function inferType(vals) {
+    const nz = vals.filter(v => v !== '');
+    if (!nz.length) return 'text';
+    if (nz.filter(isNum).length / nz.length >= 0.9) return 'number';
+    if (nz.filter(isDate).length / nz.length >= 0.9) return 'date';
+    return 'text';
+  }
+
+  let DS = null;
+  function buildDataset(name, grid) {
+    const body = grid.slice(1).filter(r => r.some(c => String(c).trim() !== '')).slice(0, 50000);
+    const seen = {};
+    const cols = grid[0].map((h, i) => {
+      let n = String(h).trim() || 'Column ' + (i + 1);
+      if (seen[n]) n += ' (' + (++seen[n]) + ')'; else seen[n] = 1;
+      const type = inferType(body.map(r => String(r[i] ?? '').trim()));
+      return { name: n, type, i };
+    });
+    if (!cols.length || body.length < 2) throw new Error('The file needs a header row and at least 2 data rows.');
+    const rows = body.map(r => {
+      const o = {};
+      cols.forEach(c => {
+        const raw = String(r[c.i] ?? '').trim();
+        if (raw === '') o[c.name] = null;
+        else if (c.type === 'number') o[c.name] = toNum(raw);
+        else if (c.type === 'date') { const t = Date.parse(raw); o[c.name] = isNaN(t) ? null : t; }
+        else o[c.name] = raw;
+      });
+      return o;
+    });
+    return { name, cols, rows };
+  }
+  const fmtVal = (c, v) => v == null ? '' : c.type === 'date' ? new Date(v).toISOString().slice(0, 10) : c.type === 'number' ? fmtN(v, 4) : String(v);
+  const colByName = n => DS.cols.find(c => c.name === n);
+  const numCols = () => DS.cols.filter(c => c.type === 'number');
+  const dateCols = () => DS.cols.filter(c => c.type === 'date');
+
+  /* ---------- Statistics ---------- */
+  const nums = col => DS.rows.map(r => r[col]).filter(v => v != null);
+  function quantile(sorted, p) {
+    if (!sorted.length) return NaN;
+    const idx = (sorted.length - 1) * p, lo = Math.floor(idx), hi = Math.ceil(idx);
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  }
+  function describe(col) {
+    const v = nums(col).sort((a, b) => a - b), n = v.length;
+    const mean = v.reduce((s, x) => s + x, 0) / n;
+    const sd = n > 1 ? Math.sqrt(v.reduce((s, x) => s + (x - mean) ** 2, 0) / (n - 1)) : 0;
+    return { n, missing: DS.rows.length - n, mean, median: quantile(v, .5), sd, min: v[0], q1: quantile(v, .25), q3: quantile(v, .75), max: v[n - 1] };
+  }
+  function corr(a, b) {
+    const xs = [], ys = [];
+    DS.rows.forEach(r => { if (r[a] != null && r[b] != null) { xs.push(r[a]); ys.push(r[b]); } });
+    const n = xs.length; if (n < 3) return NaN;
+    const mx = xs.reduce((s, x) => s + x, 0) / n, my = ys.reduce((s, x) => s + x, 0) / n;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+    return sxx && syy ? sxy / Math.sqrt(sxx * syy) : NaN;
+  }
+  function group(xName, yName, agg) {
+    const m = new Map();
+    DS.rows.forEach(r => {
+      const k = r[xName]; if (k == null) return;
+      let e = m.get(k); if (!e) { e = { n: 0, sum: 0, c: 0, min: Infinity, max: -Infinity }; m.set(k, e); }
+      e.n++;
+      const y = yName ? r[yName] : null;
+      if (y != null) { e.sum += y; e.c++; if (y < e.min) e.min = y; if (y > e.max) e.max = y; }
+    });
+    return [...m].map(([k, e]) => ({
+      k, v: agg === 'count' ? e.n : agg === 'sum' ? e.sum : agg === 'avg' ? (e.c ? e.sum / e.c : 0) : agg === 'min' ? (e.c ? e.min : 0) : (e.c ? e.max : 0)
+    }));
+  }
+
+  /* ---------- Chart plumbing ---------- */
+  const charts = {};
+  function setDefaults() {
+    Chart.defaults.color = css('--muted'); Chart.defaults.borderColor = css('--line');
+    Chart.defaults.font.family = css('--font'); Chart.defaults.font.size = 12;
+    Chart.defaults.responsive = true; Chart.defaults.maintainAspectRatio = false;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#0b1220';
+    Chart.defaults.animation = matchMedia('(prefers-reduced-motion: reduce)').matches ? false : { duration: 500 };
+  }
+  function draw(key, canvasId, config) {
+    if (charts[key]) charts[key].destroy();
+    charts[key] = new Chart($(canvasId), config);
+    return charts[key];
+  }
+  function makeConfig(type, labels, data, label, opts = {}) {
+    const circular = type === 'pie' || type === 'doughnut';
+    const t = type === 'area' ? 'line' : type;
+    const color = PAL[0];
+    return {
+      type: t,
+      data: { labels, datasets: [{
+        label, data,
+        backgroundColor: circular ? labels.map((_, i) => PAL[i % PAL.length]) : t === 'line' ? alpha(color, type === 'area' ? .22 : 0) : alpha(color, .85),
+        borderColor: circular ? css('--panel') : color,
+        borderWidth: circular ? 2 : t === 'line' ? 2.5 : 0,
+        borderRadius: t === 'bar' ? 5 : 0, fill: type === 'area', tension: .35,
+        pointRadius: t === 'line' ? (labels.length > 40 ? 0 : 3) : 0,
+        barPercentage: opts.hist ? 1 : .8, categoryPercentage: opts.hist ? 1 : .8
+      }] },
+      options: { plugins: { legend: { display: circular, position: 'bottom' } }, scales: circular ? {} : { x: { grid: { display: false }, ticks: { maxTicksLimit: 14 } }, y: { beginAtZero: true } } }
+    };
+  }
+
+  /* ---------- Overview ---------- */
+  function renderOverview() {
+    const missing = DS.rows.reduce((s, r) => s + DS.cols.filter(c => r[c.name] == null).length, 0);
+    $('sRecords').textContent = DS.rows.length.toLocaleString();
+    $('sVars').textContent = DS.cols.length;
+    $('sNum').textContent = numCols().length;
+    $('sMiss').textContent = missing.toLocaleString();
+
+    // Auto visualization
+    const nc = numCols(), dc = dateCols();
+    const cat = DS.cols.find(c => c.type === 'text' && new Set(DS.rows.map(r => r[c.name])).size <= 30 && new Set(DS.rows.map(r => r[c.name])).size > 1);
+    if (dc.length && nc.length) {
+      const g = group(dc[0].name, nc[0].name, 'sum').sort((a, b) => a.k - b.k);
+      draw('auto', 'autoChart', makeConfig('area', g.map(x => fmtVal(dc[0], x.k)), g.map(x => x.v), nc[0].name));
+      $('autoSub').textContent = `Trend of ${nc[0].name} over ${dc[0].name}.`;
+    } else if (cat && nc.length) {
+      const g = group(cat.name, nc[0].name, 'sum').sort((a, b) => b.v - a.v);
+      draw('auto', 'autoChart', makeConfig('bar', g.map(x => x.k), g.map(x => x.v), nc[0].name));
+      $('autoSub').textContent = `Total ${nc[0].name} by ${cat.name}.`;
+    } else if (nc.length) {
+      draw('auto', 'autoChart', histConfig(nc[0].name));
+      $('autoSub').textContent = `Distribution of ${nc[0].name}.`;
+    } else {
+      if (charts.auto) { charts.auto.destroy(); charts.auto = null; }
+      $('autoSub').textContent = 'No numeric fields found to chart automatically.';
+    }
+
+    // Insights
+    const out = [];
+    out.push(`${DS.rows.length.toLocaleString()} records across ${DS.cols.length} variables (${nc.length} numeric, ${dc.length} date, ${DS.cols.length - nc.length - dc.length} text).`);
+    const miss = DS.cols.map(c => ({ c, m: DS.rows.filter(r => r[c.name] == null).length })).filter(x => x.m).sort((a, b) => b.m - a.m);
+    out.push(miss.length ? `Most missing values: ${miss.slice(0, 3).map(x => `${x.c.name} (${x.m})`).join(', ')}.` : 'No missing values found.');
+    let best = null;
+    for (let i = 0; i < nc.length; i++) for (let j = i + 1; j < nc.length; j++) {
+      const r = corr(nc[i].name, nc[j].name);
+      if (!isNaN(r) && (!best || Math.abs(r) > Math.abs(best.r))) best = { a: nc[i].name, b: nc[j].name, r };
+    }
+    if (best) out.push(`Strongest relationship: ${best.a} and ${best.b} (r = ${best.r.toFixed(2)}).`);
+    if (cat && nc.length) {
+      const g = group(cat.name, nc[0].name, 'sum').sort((a, b) => b.v - a.v);
+      out.push(`Top ${cat.name} by total ${nc[0].name}: ${g[0].k} (${fmtN(g[0].v, 0)}).`);
+    }
+    if (dc.length && nc.length) {
+      const g = group(dc[0].name, nc[0].name, 'sum').sort((a, b) => a.k - b.k).map(x => x.v);
+      if (g.length >= 6) {
+        const k = Math.max(2, Math.floor(g.length / 3));
+        const a = g.slice(0, k).reduce((s, x) => s + x, 0) / k, b = g.slice(-k).reduce((s, x) => s + x, 0) / k;
+        if (a) out.push(`${nc[0].name} is ${b >= a ? 'up' : 'down'} ${Math.abs((b / a - 1) * 100).toFixed(1)}% comparing the last third of the period with the first.`);
+      }
+    }
+    $('insights').innerHTML = out.map(t => `<li>${esc(t)}</li>`).join('');
+  }
+
+  /* ---------- Data tab ---------- */
+  let sortCol = null, sortDir = 1;
+  function renderData() {
+    const q = $('dataSearch').value.trim().toLowerCase();
+    let rows = DS.rows;
+    if (q) rows = rows.filter(r => DS.cols.some(c => fmtVal(c, r[c.name]).toLowerCase().includes(q)));
+    if (sortCol) {
+      const c = colByName(sortCol);
+      rows = [...rows].sort((a, b) => {
+        const x = a[sortCol], y = b[sortCol];
+        if (x == null) return 1; if (y == null) return -1;
+        return (c.type === 'text' ? String(x).localeCompare(String(y)) : x - y) * sortDir;
+      });
+    }
+    const shown = rows.slice(0, 200);
+    $('dataTable').innerHTML =
+      '<thead><tr>' + DS.cols.map(c => `<th class="${c.type === 'number' ? 'num' : ''}" data-col="${esc(c.name)}">${esc(c.name)}<span class="type-tag">${c.type}${sortCol === c.name ? (sortDir > 0 ? ' ▲' : ' ▼') : ''}</span></th>`).join('') + '</tr></thead><tbody>' +
+      shown.map(r => '<tr>' + DS.cols.map(c => {
+        const v = r[c.name];
+        return v == null ? '<td class="na">-</td>' : `<td class="${c.type === 'number' ? 'num' : ''}">${esc(fmtVal(c, v))}</td>`;
+      }).join('') + '</tr>').join('') + '</tbody>';
+    $('dataNote').textContent = `Showing ${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} matching rows.`;
+  }
+  $('dataTable').addEventListener('click', e => {
+    const th = e.target.closest('th'); if (!th) return;
+    const n = th.dataset.col;
+    if (sortCol === n) sortDir = -sortDir; else { sortCol = n; sortDir = 1; }
+    renderData();
+  });
+  $('dataSearch').addEventListener('input', renderData);
+
+  /* ---------- Visualize tab ---------- */
+  function histConfig(yName) {
+    const v = nums(yName), n = v.length;
+    const min = Math.min(...v), max = Math.max(...v);
+    const bins = Math.max(5, Math.min(20, Math.ceil(Math.sqrt(n))));
+    const w = (max - min) / bins || 1, counts = new Array(bins).fill(0);
+    v.forEach(x => { counts[Math.min(bins - 1, Math.floor((x - min) / w))]++; });
+    const labels = counts.map((_, i) => `${fmtN(min + i * w, 1)} to ${fmtN(min + (i + 1) * w, 1)}`);
+    return makeConfig('bar', labels, counts, 'Count of ' + yName, { hist: true });
+  }
+  function fillSelects() {
+    const all = DS.cols.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    const num = numCols().map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    $('vizX').innerHTML = all; $('vizY').innerHTML = num || '<option value="">(no numeric fields)</option>';
+    const cat = DS.cols.find(c => c.type !== 'number'); if (cat) $('vizX').value = cat.name;
+    $('tsDate').innerHTML = dateCols().map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('') || '<option value="">(no date fields)</option>';
+    $('tsMeasure').innerHTML = num || '<option value="">(no numeric fields)</option>';
+  }
+  function updateViz() {
+    const type = $('vizType').value, xN = $('vizX').value, yN = $('vizY').value, agg = $('vizAgg').value, sort = $('vizSort').value;
+    if (!yN && !(agg === 'count' && type !== 'histogram' && type !== 'scatter')) { toast('This dataset has no numeric field to measure.'); return; }
+    let cfg, note;
+    if (type === 'histogram') {
+      cfg = histConfig(yN); note = `Histogram of ${yN}.`;
+    } else if (type === 'scatter') {
+      const xc = colByName(xN);
+      if (xc.type !== 'number') { toast('Scatter needs a numeric X field. Pick one in X / Category.'); return; }
+      const pts = DS.rows.filter(r => r[xN] != null && r[yN] != null).slice(0, 3000).map(r => ({ x: r[xN], y: r[yN] }));
+      cfg = { type: 'scatter', data: { datasets: [{ label: `${yN} vs ${xN}`, data: pts, backgroundColor: alpha(PAL[1], .7) }] },
+        options: { plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: xN } }, y: { title: { display: true, text: yN } } } } };
+      note = `Scatter of ${pts.length.toLocaleString()} points. Correlation r = ${(corr(xN, yN)).toFixed(2)}.`;
+    } else {
+      const xc = colByName(xN);
+      let g = group(xN, yN || null, agg);
+      if (xc.type === 'date') g.sort((a, b) => a.k - b.k);
+      else if (xc.type === 'number') g.sort((a, b) => a.k - b.k);
+      if (sort === 'desc') g.sort((a, b) => b.v - a.v);
+      if (sort === 'asc') g.sort((a, b) => a.v - b.v);
+      const cap = type === 'pie' || type === 'doughnut' ? 12 : 200;
+      if (g.length > cap) {
+        if (cap === 12) { g.sort((a, b) => b.v - a.v); const rest = g.slice(11).reduce((s, x) => s + x.v, 0); g = g.slice(0, 11).concat([{ k: 'Other', v: rest }]); }
+        else g = g.slice(0, cap);
+      }
+      const aggLabel = { sum: 'Sum', avg: 'Average', min: 'Minimum', max: 'Maximum', count: 'Count' }[agg];
+      cfg = makeConfig(type, g.map(x => fmtVal(xc, x.k)), g.map(x => +x.v.toFixed(4)), agg === 'count' ? `Count by ${xN}` : `${aggLabel} of ${yN} by ${xN}`);
+      note = `${g.length} groups. ${aggLabel}${agg === 'count' ? '' : ' of ' + yN} by ${xN}.`;
+    }
+    draw('viz', 'vizChart', cfg);
+    $('vizNote').textContent = note;
+  }
+  $('btnViz').addEventListener('click', updateViz);
+  ['vizX', 'vizY', 'vizType', 'vizAgg', 'vizSort'].forEach(id => $(id).addEventListener('change', updateViz));
+  $('btnPng').addEventListener('click', () => {
+    const ch = charts.viz; if (!ch) { toast('Build a chart first.'); return; }
+    const src = ch.canvas, tmp = document.createElement('canvas');
+    tmp.width = src.width; tmp.height = src.height;
+    const ctx = tmp.getContext('2d'); ctx.fillStyle = css('--panel'); ctx.fillRect(0, 0, tmp.width, tmp.height); ctx.drawImage(src, 0, 0);
+    tmp.toBlob(b => download('sinsigma-chart.png', b), 'image/png');
+  });
+
+  /* ---------- Statistics tab ---------- */
+  function renderStats() {
+    const nc = numCols();
+    if (!nc.length) { $('statsTable').innerHTML = '<tbody><tr><td>No numeric data.</td></tr></tbody>'; $('corrTable').innerHTML = ''; return; }
+    $('statsTable').innerHTML = '<thead><tr><th>Variable</th>' + ['Count','Missing','Mean','Median','SD','Min','Q1','Q3','Max'].map(h => `<th class="num">${h}</th>`).join('') + '</tr></thead><tbody>' +
+      nc.map(c => { const d = describe(c.name); return `<tr><td><b>${esc(c.name)}</b></td>` + [d.n, d.missing, d.mean, d.median, d.sd, d.min, d.q1, d.q3, d.max].map(v => `<td class="num">${fmtN(v, 3)}</td>`).join('') + '</tr>'; }).join('') + '</tbody>';
+    const cs = nc.slice(0, 12);
+    $('corrTable').innerHTML = '<thead><tr><th></th>' + cs.map(c => `<th>${esc(c.name)}</th>`).join('') + '</tr></thead><tbody>' +
+      cs.map(a => `<tr><td><b>${esc(a.name)}</b></td>` + cs.map(b => {
+        const r = a === b ? 1 : corr(a.name, b.name);
+        const bg = isNaN(r) ? 'transparent' : r >= 0 ? alpha('#6366f1', Math.abs(r) * .75) : alpha('#fb7185', Math.abs(r) * .75);
+        return `<td style="background:${bg}">${isNaN(r) ? '-' : r.toFixed(2)}</td>`;
+      }).join('') + '</tr>').join('') + '</tbody>';
+  }
+
+  /* ---------- Time series tab ---------- */
+  function runTS() {
+    const dN = $('tsDate').value, mN = $('tsMeasure').value, ma = +$('tsMA').value, fc = +$('tsFC').value, agg = $('tsAgg').value;
+    if (!dN || !mN) { $('tsNote').textContent = 'This dataset needs a date field and a numeric field for time series.'; if (charts.ts) { charts.ts.destroy(); charts.ts = null; } return; }
+    const g = group(dN, mN, agg).sort((a, b) => a.k - b.k);
+    if (g.length < 3) { $('tsNote').textContent = 'Need at least 3 distinct dates.'; return; }
+    const dc = colByName(dN), n = g.length, y = g.map(x => x.v), labels = g.map(x => fmtVal(dc, x.k));
+    const maData = y.map((_, i) => i + 1 < ma ? null : y.slice(i + 1 - ma, i + 1).reduce((s, v) => s + v, 0) / ma);
+    // linear regression on index
+    const mx = (n - 1) / 2, my = y.reduce((s, v) => s + v, 0) / n;
+    let sxy = 0, sxx = 0; y.forEach((v, i) => { sxy += (i - mx) * (v - my); sxx += (i - mx) ** 2; });
+    const slope = sxx ? sxy / sxx : 0, icpt = my - slope * mx;
+    const diffs = g.slice(1).map((x, i) => x.k - g[i].k).sort((a, b) => a - b), step = diffs[Math.floor(diffs.length / 2)] || 86400000;
+    const fLabels = [], fData = new Array(n - 1).fill(null);
+    fData.push(y[n - 1]);
+    for (let i = 1; i <= fc; i++) { fLabels.push(new Date(g[n - 1].k + step * i).toISOString().slice(0, 10)); fData.push(Math.max(0, icpt + slope * (n - 1 + i))); }
+    const all = labels.concat(fLabels);
+    const pad = a => a.concat(new Array(fc).fill(null));
+    const ds = [{ label: mN, data: pad(y), borderColor: PAL[0], backgroundColor: alpha(PAL[0], .15), fill: true, tension: .3, borderWidth: 2.5, pointRadius: n > 60 ? 0 : 3 }];
+    if (ma) ds.push({ label: `${ma}-period moving average`, data: pad(maData), borderColor: PAL[3], tension: .3, borderWidth: 2.5, pointRadius: 0 });
+    if (fc) ds.push({ label: 'Linear forecast', data: fData, borderColor: PAL[4], borderDash: [7, 5], tension: 0, borderWidth: 2.5, pointRadius: 0 });
+    draw('ts', 'tsChart', { type: 'line', data: { labels: all, datasets: ds },
+      options: { interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } }, y: { beginAtZero: false } } } });
+    const peak = y.indexOf(Math.max(...y));
+    $('tsNote').textContent = `${n} periods. Trend: ${slope >= 0 ? '+' : ''}${fmtN(slope, 2)} per period. Peak ${fmtN(y[peak], 2)} on ${labels[peak]}.` + (fc ? ' The forecast is a simple linear projection, not a prediction model.' : '');
+  }
+  $('btnTS').addEventListener('click', runTS);
+  ['tsDate', 'tsMeasure', 'tsAgg', 'tsMA', 'tsFC'].forEach(id => $(id).addEventListener('change', runTS));
+
+  /* ---------- Tabs ---------- */
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === name));
+    document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== name; });
+    if (name === 'visualize' && !charts.viz) updateViz();
+    if (name === 'ts' && !charts.ts) runTS();
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 30);
+  }
+  document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
+
+  /* ---------- Loading data ---------- */
+  function loadGrid(name, grid) {
+    try {
+      DS = buildDataset(name, grid);
+    } catch (err) { toast(err.message); return; }
+    Object.keys(charts).forEach(k => { if (charts[k]) { charts[k].destroy(); charts[k] = null; } });
+    sortCol = null; $('dataSearch').value = '';
+    setDefaults(); fillSelects();
+    $('emptyState').hidden = true; $('appBody').hidden = false;
+    $('fileStatus').textContent = `${name}: ${DS.rows.length.toLocaleString()} rows, ${DS.cols.length} columns`;
+    $('fileStatus').classList.add('ok');
+    renderOverview(); renderData(); renderStats();
+    showTab('overview');
+    $('workspace').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  async function loadFile(file) {
+    if (!file) return;
+    try {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'xlsx' || ext === 'xls') {
+        if (typeof XLSX === 'undefined') { toast('Excel support did not load. Save the sheet as CSV instead.'); return; }
+        const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        loadGrid(file.name, parseCSV(XLSX.utils.sheet_to_csv(sheet, { dateNF: 'yyyy-mm-dd' })));
+      } else {
+        loadGrid(file.name, parseCSV(await file.text()));
+      }
+    } catch (err) { toast('Could not read that file.'); }
+  }
+  const demoText = () => $('demoCsv').textContent.trim();
+  const loadDemo = () => loadGrid('sinsigma-demo-data.csv', parseCSV(demoText()));
+
+  const drop = $('drop'), input = $('fileInput');
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+  $('btnChoose').addEventListener('click', () => input.click());
+  input.addEventListener('change', () => { loadFile(input.files[0]); input.value = ''; });
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => loadFile(e.dataTransfer.files[0]));
+  $('btnDemo').addEventListener('click', loadDemo);
+  $('btnDemoTop').addEventListener('click', loadDemo);
+  $('btnSample').addEventListener('click', () => download('sinsigma-demo-data.csv', new Blob([demoText() + '\n'], { type: 'text/csv' })));
+
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+    if (!DS) return;
+    setDefaults(); renderOverview(); renderStats();
+    if (charts.viz) updateViz(); if (charts.ts) runTS();
+  });
+  setDefaults();
+})();
+</script>
+</body>
+</html>
