@@ -1,160 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serverless AI Chatbot</title>
-    <!-- Tailwind CSS for Beautiful UI -->
-    <script src="https://jsdelivr.net"></script>
-    <style>
-        /* Smooth scrolling for chat window */
-        .chat-box::-webkit-scrollbar { width: 6px; }
-        .chat-box::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SinSigma AI | Chat, Create & Edit</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+ /* 🎨 Change these 6 colours to match your site exactly */
+ :root{--bg:#050b1a;--panel:rgba(15,23,42,.72);--line:rgba(148,163,184,.18);--a1:#6366f1;--a2:#22d3ee;--text:#e2e8f0}
+ html,body{height:100%}
+ body{color:var(--text);font-family:Inter,system-ui,sans-serif;background:
+   radial-gradient(900px 500px at 10% -10%,rgba(99,102,241,.28),transparent 60%),
+   radial-gradient(800px 500px at 100% 0,rgba(34,211,238,.18),transparent 60%),
+   linear-gradient(rgba(148,163,184,.05) 1px,transparent 1px) 0 0/36px 36px,
+   linear-gradient(90deg,rgba(148,163,184,.05) 1px,transparent 1px) 0 0/36px 36px,var(--bg);background-attachment:fixed}
+ body::before{content:"Σ";position:fixed;right:4%;bottom:-6%;font-size:42vmin;font-weight:800;color:rgba(99,102,241,.07);pointer-events:none;line-height:1}
+ .glass{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px)}
+ .chip{background:rgba(148,163,184,.12);border:1px solid var(--line)}
+ .grad{background:linear-gradient(135deg,var(--a1),var(--a2))}
+ .gtext{background:linear-gradient(135deg,var(--a1),var(--a2));-webkit-background-clip:text;color:transparent}
+ .scroll::-webkit-scrollbar{width:6px}.scroll::-webkit-scrollbar-thumb{background:#475569;border-radius:9px}
+ pre{background:#020617;color:#e2e8f0;padding:10px;border-radius:8px;overflow-x:auto;font-size:12px;margin:6px 0;border:1px solid var(--line)}
+ code.i{background:#64748b40;padding:1px 5px;border-radius:4px}
+ select,textarea{color:var(--text)} select option{background:#0f172a}
+ .dot{animation:b 1s infinite}.dot:nth-child(2){animation-delay:.15s}.dot:nth-child(3){animation-delay:.3s}
+ @keyframes b{0%,80%,100%{opacity:.2}40%{opacity:1}}
+</style>
 </head>
-<body class="bg-slate-100 h-screen flex flex-col justify-between font-sans">
+<body class="flex flex-col">
 
-    <!-- Header -->
-    <header class="bg-white shadow-sm p-4 text-center border-b border-slate-200">
-        <h1 class="text-xl font-bold text-slate-800 flex items-center justify-center gap-2">
-            🤖 Serverless Cloudflare AI Chatbot
-        </h1>
-        <p class="text-xs text-slate-500 mt-1">Powered by Llama 3 & Serverless JavaScript</p>
-    </header>
+<header class="glass flex items-center justify-between gap-3 px-4 py-3 border-x-0 border-t-0">
+  <a href="https://sinsigma.com/" class="text-xl font-extrabold tracking-tight"><span class="gtext">Σ</span> SinSigma <span class="text-xs font-medium text-slate-400 ml-1">AI</span></a>
+  <nav class="hidden md:flex gap-5 text-sm text-slate-300">
+    <a class="hover:text-white" href="https://sinsigma.com/citation">Citing</a>
+    <a class="hover:text-white" href="https://sinsigma.com/analytics">Statistics</a>
+    <a class="hover:text-white" href="https://sinsigma.com/forecasting">Forecasting</a>
+    <a class="hover:text-white" href="https://sinsigma.com/visualization">Visualization</a>
+  </nav>
+  <div class="flex items-center gap-2 text-sm">
+    <select id="lang" class="chip rounded-lg px-2 py-1 outline-none" title="Voice language">
+      <option value="en-IN">English</option><option value="hi-IN">हिन्दी</option><option value="en-US">English (US)</option>
+    </select>
+    <button id="autoSpeak" class="chip px-2.5 py-1 rounded-lg" title="Auto-read replies">🔇</button>
+    <button id="newChat" class="grad text-white px-3 py-1 rounded-lg font-medium">+ New</button>
+  </div>
+</header>
 
-    <!-- Chat Messages Window -->
-    <main id="chat-box" class="chat-box flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl mx-auto w-full">
-        <!-- System Greeting -->
-        <div class="flex items-start gap-2.5">
-            <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">AI</div>
-            <div class="flex flex-col w-full max-w-[450px] leading-1.5 p-4 border-gray-200 bg-white rounded-e-xl rounded-es-xl shadow-xs">
-                <p class="text-sm font-normal text-gray-900">Hello! I am your serverless AI assistant. How can I help you today?</p>
-            </div>
-        </div>
-    </main>
+<nav class="flex justify-center gap-2 p-2.5 text-sm">
+  <button data-m="chat" class="mode px-4 py-1.5 rounded-full">💬 ChatAI</button>
+  <button data-m="image" class="mode px-4 py-1.5 rounded-full">🎨 Text → Image</button>
+  <button data-m="edit" class="mode px-4 py-1.5 rounded-full">🖌️ Edit Image</button>
+</nav>
 
-    <!-- Input Footer Area -->
-    <footer class="bg-white p-4 border-t border-slate-200 sticky bottom-0">
-        <form id="chat-form" class="max-w-3xl mx-auto flex gap-2">
-            <input 
-                type="text" 
-                id="user-input" 
-                placeholder="Type your prompt here..." 
-                required 
-                class="flex-1 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 outline-none"
-            >
-            <button 
-                type="submit" 
-                id="send-btn"
-                class="text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center shadow-md transition-all"
-            >
-                Send
-            </button>
-        </form>
-    </footer>
+<main id="box" class="scroll flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl w-full mx-auto"></main>
 
-    <!-- JavaScript Logic -->
-    <script>
-        // ⚠️ अपनी डिप्लॉयड CLOUDFLARE WORKER URL यहाँ पेस्ट करें ⚠️
-        const CLOUDFLARE_WORKER_URL = "https://sinsigma.com";
+<footer class="p-3">
+  <div class="max-w-3xl mx-auto glass rounded-2xl p-2.5">
+    <div id="preview" class="hidden mb-2 items-center gap-2">
+      <img id="prevImg" class="h-16 rounded-lg border border-slate-600"><button id="rmImg" class="text-red-400 text-sm">✕ remove</button>
+    </div>
+    <form id="form" class="flex items-end gap-2">
+      <input type="file" id="file" accept="image/*" class="hidden">
+      <button type="button" id="attach" class="chip p-2.5 rounded-xl" title="Upload image">📎</button>
+      <textarea id="input" rows="1" placeholder="Type a message… (Enter = send)" class="flex-1 resize-none bg-transparent p-2.5 text-sm outline-none max-h-40 placeholder-slate-500"></textarea>
+      <button type="button" id="mic" class="chip p-2.5 rounded-xl" title="Voice to text">🎤</button>
+      <button id="send" class="grad px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50">Send</button>
+    </form>
+  </div>
+  <p class="text-center text-[11px] text-slate-500 mt-2">© SinSigma · Technology made simpler · Powered by SINANT</p>
+</footer>
 
-        const chatBox = document.getElementById('chat-box');
-        const chatForm = document.getElementById('chat-form');
-        const userInput = document.getElementById('user-input');
-        const sendBtn = document.getElementById('send-btn');
+<script>
+// ⚠️ Paste your Worker URL here (no trailing slash)
+const API = "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev";
 
-        // चैट हिस्ट्री स्टोर करने के लिए एरे (Context याद रखने के लिए)
-        let chatHistory = [];
+const $ = id => document.getElementById(id);
+const box=$('box'), input=$('input'), sendBtn=$('send');
+let mode='chat', history=JSON.parse(localStorage.getItem('hist')||'[]'), img=null, speakAuto=false, busy=false;
 
-        // स्क्रीन पर मैसेज रेंडर करने का फ़ंक्शन
-        function appendMessage(role, text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = role === 'user' ? 'flex items-start gap-2.5 justify-end' : 'flex items-start gap-2.5';
+const esc = s => s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = t => esc(t)
+  .replace(/```(\w*)\n?([\s\S]*?)```/g,(_,l,c)=>`<pre><code>${c}</code></pre>`)
+  .replace(/`([^`\n]+)`/g,'<code class="i">$1</code>')
+  .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+const scrollDown = () => box.scrollTo({top:box.scrollHeight,behavior:'smooth'});
+const save = () => localStorage.setItem('hist', JSON.stringify(history.slice(-40)));
 
-            const avatarBg = role === 'user' ? 'bg-slate-700' : 'bg-blue-600';
-            const avatarText = role === 'user' ? 'ME' : 'AI';
-            const bubbleBg = role === 'user' ? 'bg-slate-700 text-white rounded-s-xl rounded-ee-xl' : 'bg-white text-gray-900 rounded-e-xl rounded-es-xl border border-gray-200';
+function addMsg(role, html){
+  const u = role==='user', row=document.createElement('div');
+  row.className='flex gap-2.5 '+(u?'justify-end':'');
+  row.innerHTML=`${u?'':'<div class="w-8 h-8 shrink-0 rounded-full grad text-white text-sm font-bold flex items-center justify-center">Σ</div>'}
+   <div class="max-w-[85%]"><div class="body p-3.5 text-sm break-words shadow-lg ${u?'grad text-white rounded-s-2xl rounded-ee-2xl':'glass rounded-e-2xl rounded-es-2xl'}">${html}</div>
+   ${u?'':'<div class="flex gap-3 text-xs text-slate-400 mt-1 ml-1"><button class="cp">📋 Copy</button><button class="sp">🔊 Listen</button></div>'}</div>`;
+  box.appendChild(row); scrollDown();
+  if(!u){
+    row.querySelector('.cp').onclick=e=>{navigator.clipboard.writeText(row.querySelector('.body').innerText);e.target.textContent='✅ Copied'};
+    row.querySelector('.sp').onclick=()=>speak(row.querySelector('.body').innerText);
+  }
+  return row.querySelector('.body');
+}
+const typing = () => addMsg('ai','<span class="dot">●</span> <span class="dot">●</span> <span class="dot">●</span>');
 
-            messageDiv.innerHTML = `
-                ${role !== 'user' ? `<div class="w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center text-white text-sm font-bold shrink-0"> ${avatarText}</div>` : ''}
-                <div class="flex flex-col w-full max-w-[450px] leading-1.5 p-4 ${bubbleBg} shadow-xs">
-                    <p class="text-sm font-normal">${text}</p>
-                </div>
-                ${role === 'user' ? `<div class="w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center text-white text-xs font-bold shrink-0"> ${avatarText}</div>` : ''}
-            `;
+/* Text to speech (free, browser built-in) */
+function speak(t){
+  if(!('speechSynthesis' in window)) return alert('Text-to-speech not supported in this browser');
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t.replace(/[`*#]/g,'').slice(0,3000));
+  u.lang=$('lang').value; speechSynthesis.speak(u);
+}
+$('autoSpeak').onclick=e=>{speakAuto=!speakAuto;e.target.textContent=speakAuto?'🔊':'🔇';if(!speakAuto)speechSynthesis.cancel()};
 
-            chatBox.appendChild(messageDiv);
-            chatBox.scrollTop = chatBox.scrollHeight; // ऑटो स्क्रॉल नीचे की तरफ
-        }
+/* Voice to text (free, browser built-in) */
+const SR = window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null;
+$('mic').onclick=()=>{
+  if(!SR) return alert('Voice input works in Chrome / Edge / Safari.');
+  if(rec){rec.stop();return}
+  rec=new SR(); rec.lang=$('lang').value; rec.interimResults=true; rec.continuous=true;
+  const base=input.value; $('mic').textContent='🔴';
+  rec.onresult=e=>{input.value=base+' '+[...e.results].map(r=>r[0].transcript).join('');autoGrow()};
+  rec.onend=()=>{rec=null;$('mic').textContent='🎤'}; rec.start();
+};
 
-        // फॉर्म सबमिट होने पर
-        chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const prompt = userInput.value.trim();
-            if (!prompt) return;
+/* Image upload (resized to 512px) */
+$('attach').onclick=()=>$('file').click();
+$('file').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const im=new Image(); im.onload=()=>{
+    const s=Math.min(1,512/Math.max(im.width,im.height)), c=document.createElement('canvas');
+    c.width=Math.round(im.width*s/8)*8||8; c.height=Math.round(im.height*s/8)*8||8;
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+    const url=c.toDataURL('image/png'); img=url.split(',')[1];
+    $('prevImg').src=url; $('preview').classList.replace('hidden','flex');
+    if(mode==='image') setMode('edit');
+  }; im.src=URL.createObjectURL(f); e.target.value='';
+};
+$('rmImg').onclick=()=>{img=null;$('preview').classList.replace('flex','hidden')};
 
-            // 1. यूज़र का मैसेज स्क्रीन पर दिखाएँ
-            appendMessage('user', prompt);
-            userInput.value = '';
+/* Modes */
+const hints={chat:'Ask anything… (attach an image to ask about it)',image:'Describe the image to create…',edit:'Describe how to change your uploaded image…'};
+function setMode(m){
+  mode=m; input.placeholder=hints[m];
+  document.querySelectorAll('.mode').forEach(b=>b.className='mode px-4 py-1.5 rounded-full '+(b.dataset.m===m?'grad text-white font-medium':'chip text-slate-300'));
+}
+document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 
-            // हिस्ट्री अपडेट करें
-            chatHistory.push({ role: 'user', content: prompt });
+$('newChat').onclick=()=>{history=[];save();box.innerHTML='';greet()};
+function greet(){addMsg('ai','👋 Welcome to <b>SinSigma AI</b>! I can <b>chat</b>, <b>create images</b>, <b>edit your photos</b>, <b>read images</b>, listen (🎤) and speak (🔊). Pick a mode above and start!')}
 
-            // बटन को डिसेबल और लोडिंग स्टेट में डालें
-            sendBtn.disabled = true;
-            sendBtn.innerText = "Thinking...";
-            sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+function autoGrow(){input.style.height='auto';input.style.height=input.scrollHeight+'px'}
+input.oninput=autoGrow;
+input.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('form').requestSubmit()}};
 
-            // 2. लोडिंग इंडिकेटर स्क्रीन पर दिखाएँ
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'flex items-start gap-2.5';
-            loadingDiv.id = 'loading-bubble';
-            loadingDiv.innerHTML = `
-                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">AI</div>
-                <div class="flex flex-col w-full max-w-[100px] leading-1.5 p-4 bg-white rounded-e-xl rounded-es-xl border border-gray-200 shadow-xs">
-                    <p class="text-sm font-normal text-gray-500 animate-pulse">Typing...</p>
-                </div>
-            `;
-            chatBox.appendChild(loadingDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
+const post=(p,body)=>fetch(API+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+const imgHtml=src=>`<img src="${src}" class="rounded-lg max-w-full mb-2"><a href="${src}" download="sinsigma-ai.png" class="text-cyan-400 text-xs">⬇ Download</a>`;
 
-            try {
-                // 3. Cloudflare Worker API को कॉल करें
-                const response = await fetch(CLOUDFLARE_WORKER_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ messages: chatHistory })
-                });
+$('form').onsubmit=async e=>{
+  e.preventDefault(); const prompt=input.value.trim(); if(!prompt||busy) return;
+  if(mode==='edit'&&!img) return alert('Please upload an image first (📎).');
+  busy=true; sendBtn.disabled=true; if(rec) rec.stop(); speechSynthesis.cancel();
+  addMsg('user', (img?`<img src="${$('prevImg').src}" class="rounded-lg max-h-40 mb-2">`:'')+esc(prompt));
+  input.value=''; autoGrow(); const t=typing();
+  try{
+    if(mode==='image'){
+      const d=await (await post('/image',{prompt})).json(); if(d.error) throw d.error;
+      t.innerHTML=imgHtml('data:image/jpeg;base64,'+d.image);
+    } else if(mode==='edit'){
+      const r=await post('/edit',{prompt,image:img}); if(!r.ok) throw await r.text();
+      t.innerHTML=imgHtml(URL.createObjectURL(await r.blob()));
+    } else if(img){
+      const d=await (await post('/vision',{prompt,image:img})).json(); if(d.error) throw d.error;
+      t.innerHTML=fmt(d.response); history.push({role:'user',content:prompt},{role:'assistant',content:d.response}); if(speakAuto) speak(d.response);
+    } else {
+      history.push({role:'user',content:prompt});
+      const r=await post('/chat',{messages:history}); if(!r.ok) throw await r.text();
+      const rd=r.body.getReader(), dec=new TextDecoder(); let buf='', full='';
+      while(true){
+        const {done,value}=await rd.read(); if(done) break;
+        buf+=dec.decode(value,{stream:true}); const lines=buf.split('\n'); buf=lines.pop();
+        for(const l of lines){ if(!l.startsWith('data: ')||l.includes('[DONE]')) continue;
+          try{full+=JSON.parse(l.slice(6)).response||'';t.innerHTML=fmt(full);scrollDown()}catch{} }
+      }
+      if(!full) throw 'Empty reply';
+      history.push({role:'assistant',content:full}); if(speakAuto) speak(full);
+    }
+    save();
+  }catch(err){ t.innerHTML='❌ '+esc(String(err).slice(0,200)); }
+  busy=false; sendBtn.disabled=false; input.focus(); scrollDown();
+};
 
-                const data = await response.json();
-                
-                // लोडिंग बबल को हटाएँ
-                document.getElementById('loading-bubble').remove();
-
-                if (data.response || data.result?.response) {
-                    const aiReply = data.response || data.result.response;
-                    
-                    // 4. AI का रिप्लाई स्क्रीन पर दिखाएँ
-                    appendMessage('assistant', aiReply);
-                    // हिस्ट्री में AI का जवाब सेव करें
-                    chatHistory.push({ role: 'assistant', content: aiReply });
-                } else {
-                    appendMessage('assistant', '⚠️ Error: URL configuration or Invalid response structure.');
-                }
-
-            } catch (error) {
-                if (document.getElementById('loading-bubble')) document.getElementById('loading-bubble').remove();
-                appendMessage('assistant', '❌ Could not connect to your Cloudflare Worker. Please check your Worker URL.');
-                console.error(error);
-            } finally {
-                // बटन वापस नॉर्मल करें
-                sendBtn.disabled = false;
-                sendBtn.innerText = "Send";
-                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-        });
-    </script>
+setMode('chat');
+if(history.length){history.forEach(m=>addMsg(m.role==='user'?'user':'ai',fmt(m.content)))} else greet();
+</script>
 </body>
 </html>
