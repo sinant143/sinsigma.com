@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SinSigma | IPO Allotment Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f6f8fc;--surface:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:#2563eb;--brand-d:#1d4ed8;--brand-soft:#eaf1ff;--ok:#047857;--ok-soft:#e7f7f0;--bad:#b91c1c;--bad-soft:#fdecec;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
@@ -31,6 +32,7 @@ button{font:inherit;cursor:pointer;border-radius:10px;font-weight:600;font-size:
 .ghost:hover{background:var(--brand-soft);border-color:#c7d9fb}
 .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:14px 0 4px}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.hint{font-size:12px;color:var(--muted);margin:6px 2px 0}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .stat b{display:block;font-size:20px}
@@ -61,8 +63,9 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:36px;paddi
 <main>
   <section class="card">
     <h2>Setup</h2>
-    <label for="fileInput" style="margin-top:0">Upload applicant list (.txt or .csv, one ID per line)</label>
-    <input type="file" id="fileInput" accept=".txt,.csv">
+    <label for="fileInput" style="margin-top:0">Upload applicant list (any file type)</label>
+    <input type="file" id="fileInput">
+    <p class="hint">Works with TXT, CSV, TSV, JSON, XLSX, XLS, ODS and more. The first value in each row is used as the applicant ID.</p>
     <div class="or">or</div>
     <button class="ghost" id="sampleBtn" type="button">Load sample data (20 applicants)</button>
 
@@ -148,6 +151,7 @@ const SAMPLE = [
 
 let applicants = [];
 const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function setPool(list, note) {
   applicants = list;
@@ -156,42 +160,109 @@ function setPool(list, note) {
   $('sRate').textContent = '–';
   $('out').innerHTML = '<p class="msg">' + note + '</p>';
 }
+function showError(msg) {
+  $('out').innerHTML = '<p class="msg err">' + msg + '</p>';
+}
 
+// ---------- File parsing ----------
+const HEADER_RE = /^(pan|pan no\.?|pan number|id|applicant|applicant id|application no\.?|application number|app no\.?|name|client id|client|sr\.? ?no\.?|s\.? ?no\.?|sno|no\.?|number)$/i;
+
+// rows: array of arrays. Takes the first non-empty cell of every row.
+function rowsToList(rows) {
+  let list = rows.map(r => {
+    for (const c of r) {
+      const v = String(c ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
+      if (v) return v;
+    }
+    return '';
+  }).filter(Boolean);
+  if (list.length > 1 && HEADER_RE.test(list[0])) list = list.slice(1);
+  return [...new Set(list)];
+}
+
+function textToRows(text) {
+  return text.replace(/^\uFEFF/, '').split(/\r?\n/).map(l => l.split(/[,\t;|]/));
+}
+
+function pickField(obj) {
+  const keys = Object.keys(obj);
+  const k = keys.find(x => /pan|applicant|application|client|^id$|name/i.test(x)) || keys[0];
+  return obj[k];
+}
+
+function jsonToRows(data) {
+  if (!Array.isArray(data)) {
+    const arr = Object.values(data).find(Array.isArray);
+    data = arr || Object.values(data);
+  }
+  return data.map(x => (x !== null && typeof x === 'object') ? [pickField(x)] : [x]);
+}
+
+function readAsText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Could not read the file.'));
+    r.readAsText(file);
+  });
+}
+function readAsBuffer(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Could not read the file.'));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+async function parseFile(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const sheetExts = ['xlsx', 'xls', 'xlsm', 'xlsb', 'ods'];
+
+  if (sheetExts.includes(ext)) {
+    if (typeof XLSX === 'undefined') throw new Error('The Excel reader could not load. Check your internet connection, or save the sheet as CSV.');
+    const wb = XLSX.read(await readAsBuffer(file), { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    return rowsToList(XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false }));
+  }
+
+  const text = await readAsText(file);
+  if (text.includes('\u0000')) throw new Error('This looks like a binary file I can’t read. Try TXT, CSV, JSON or Excel.');
+
+  if (ext === 'json') {
+    try { return rowsToList(jsonToRows(JSON.parse(text))); }
+    catch (e) { throw new Error('This JSON file is not valid.'); }
+  }
+  return rowsToList(textToRows(text));
+}
+
+// ---------- UI ----------
 $('sampleBtn').addEventListener('click', () => {
   setPool([...SAMPLE], 'Loaded 20 sample applicant IDs. Set the lots and run the draw.');
 });
 
-$('fileInput').addEventListener('change', e => {
+$('fileInput').addEventListener('change', async e => {
   const f = e.target.files[0];
   if (!f) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    const seen = new Set();
-    ev.target.result.split(/\r?\n/).forEach(l => {
-      const v = l.split(',')[0].trim();
-      if (v) seen.add(v);
-    });
-    const list = [...seen];
-    setPool(list, 'Read ' + list.length + ' unique applicants from ' + f.name.replace(/[<>&]/g, '') + '.');
-  };
-  r.readAsText(f);
+  try {
+    const list = await parseFile(f);
+    if (!list.length) return showError('No applicant IDs found in ' + esc(f.name) + '.');
+    setPool(list, 'Read ' + list.length + ' unique applicants from ' + esc(f.name) + '.');
+  } catch (err) {
+    showError(esc(err.message));
+  }
 });
-
-const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 $('runBtn').addEventListener('click', () => {
   const out = $('out');
   const lots = parseInt($('lots').value, 10);
-  if (!applicants.length) {
-    out.innerHTML = '<p class="msg err">The applicant pool is empty. Upload a file or load the sample data first.</p>';
-    return;
-  }
-  if (!Number.isInteger(lots) || lots < 1) {
-    out.innerHTML = '<p class="msg err">Enter a whole number of lots, 1 or more.</p>';
-    return;
-  }
+  if (!applicants.length) return showError('The applicant pool is empty. Upload a file or load the sample data first.');
+  if (!Number.isInteger(lots) || lots < 1) return showError('Enter a whole number of lots, 1 or more.');
+
   const raw = $('seed').value.trim();
-  const seed = raw !== '' && /^\d+$/.test(raw) ? Number(raw) % 4294967296 : (Date.now() ^ (Math.random() * 4294967296)) >>> 0;
+  const seed = raw !== '' && /^\d+$/.test(raw)
+    ? Number(raw) % 4294967296
+    : (Date.now() ^ (Math.random() * 4294967296)) >>> 0;
   const rng = new MT19937(seed);
 
   const pool = [...applicants];
