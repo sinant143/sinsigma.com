@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="SinSigma Stock Average Calculator: average down or up, multiple buy lots, break-even, target profit and exit scenarios. Your data in. Your results out.">
+<title>SinSigma | Stock Average Calculator</title>
+<style>
+:root{
+  --bg:#0d0f12;--card:#161a22;--text:#fff;--muted:#94a3b8;
+  --blue:#38bdf8;--green:#34d399;--orange:#fb923c;--red:#f87171;
+  --border:#242b35;--input:#1e2530;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+body{background:var(--bg);color:var(--text);line-height:1.6;display:flex;flex-direction:column;min-height:100vh}
+a{color:inherit;text-decoration:none}
+header{border-bottom:1px solid var(--border);padding:1.2rem 2rem;display:flex;justify-content:space-between;align-items:center;max-width:1240px;width:100%;margin:0 auto;flex-wrap:wrap;gap:.75rem}
+.logo{font-size:1.5rem;font-weight:700;letter-spacing:.5px}.logo span{color:var(--blue)}
+nav{display:flex;gap:1.5rem;color:var(--muted);font-size:.9rem;flex-wrap:wrap}
+nav a:hover,nav a.active{color:var(--blue)}
+.main{flex:1;max-width:1240px;width:100%;margin:0 auto;padding:2.5rem 2rem;display:grid;grid-template-columns:1fr 1.45fr;gap:2.5rem;align-items:start}
+@media(max-width:992px){.main{grid-template-columns:1fr;gap:1.5rem;padding:1.5rem 1rem}header{padding:1rem}}
+.tagline{color:var(--blue);font-size:.85rem;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin-bottom:.5rem}
+h1{font-size:2.4rem;font-weight:800;line-height:1.2;margin-bottom:1rem}
+.hero-desc{color:var(--muted);font-size:1.05rem;margin-bottom:1.5rem}
+.features{list-style:none;color:var(--muted);font-size:.95rem}
+.features li{margin-bottom:.7rem;display:flex;gap:.5rem}
+.features li::before{content:"✓";color:var(--green);font-weight:700}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.75rem;box-shadow:0 10px 30px rgba(0,0,0,.3);margin-bottom:1.5rem}
+.title{font-size:1rem;color:var(--blue);margin-bottom:1rem;font-weight:600;border-bottom:1px solid var(--border);padding-bottom:.25rem;display:flex;justify-content:space-between;align-items:center}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.group{margin-bottom:1rem}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:.4rem;font-weight:500}
+input,select{width:100%;background:var(--input);border:1px solid var(--border);border-radius:6px;padding:.7rem 1rem;color:var(--text);font-size:1rem;transition:border-color .2s}
+input:focus,select:focus{outline:none;border-color:var(--blue)}
+input.bad{border-color:var(--red)}
+.err{color:var(--red);font-size:.8rem;min-height:1.1rem;margin-bottom:.5rem}
+.optional{background:rgba(30,37,48,.4);border:1px dashed var(--border);border-radius:8px;padding:1rem;margin-top:.5rem}
+.lot{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:.6rem;align-items:center;margin-bottom:.6rem}
+.lot .n{color:var(--muted);font-size:.8rem;width:1.4rem}
+.btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:.55rem 1rem;border-radius:6px;cursor:pointer;font-size:.88rem;transition:.2s}
+.btn:hover{border-color:var(--blue);color:var(--blue)}
+.btn.primary{background:var(--blue);color:#0d0f12;border-color:var(--blue);font-weight:600}
+.btn.primary:hover{opacity:.85;color:#0d0f12}
+.btn.x{padding:.4rem .7rem;color:var(--muted)}
+.btns{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.75rem}
+.res{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;gap:1rem}
+.res .l{color:var(--muted);font-size:.9rem}
+.res .v{font-size:1.05rem;font-weight:700;text-align:right}
+.v.hi{color:var(--green);font-size:1.4rem}.v.or{color:var(--orange)}.pos{color:var(--green)}.neg{color:var(--red)}
+.sep{margin-top:.9rem;padding-top:.9rem;border-top:1px dashed var(--border)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1rem}
+@media(max-width:560px){.kpis{grid-template-columns:1fr}.row{grid-template-columns:1fr}.lot{grid-template-columns:auto 1fr 1fr auto}}
+.kpi{background:var(--input);border:1px solid var(--border);border-radius:8px;padding:.8rem}
+.kpi small{color:var(--muted);font-size:.75rem;display:block}.kpi b{font-size:1.2rem}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{padding:.5rem .6rem;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px}
+tr.me td{background:rgba(56,189,248,.08)}
+.note{color:var(--muted);font-size:.8rem;margin-top:.6rem}
+.bar{height:10px;border-radius:5px;background:var(--input);overflow:hidden;display:flex;margin-top:.4rem}
+.bar i{display:block;height:100%}
+footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;color:var(--muted);font-size:.85rem;margin-top:auto}
+.hide{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="https://sinsigma.com/">Σ <span>SinSigma</span></a>
+  <nav>
+    <a href="https://sinsigma.com/Finance-Tools" class="active">Stocks &amp; Finance</a>
+    <a href="https://sinsigma.com/Advance-Analytics">Analytics</a>
+    <a href="https://sinsigma.com/forecasting">Forecasting</a>
+    <span>Privacy First</span>
+  </nav>
+</header>
+
+<main class="main">
+  <section>
+    <div class="tagline">Next-Generation Finance Tools</div>
+    <h1>Stock Average Calculator</h1>
+    <p class="hero-desc">Average down or up across multiple buy lots. See your new cost, break-even, target profit and exit scenarios instantly.</p>
+    <ul class="features">
+      <li>Your Data In. Your Results Out. Nothing Stored.</li>
+      <li>Multiple buy lots with step-by-step average tracking.</li>
+      <li>Reverse solver: how many shares to reach a target average?</li>
+      <li>Brokerage-aware break-even and profit/loss scenarios.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="card">
+      <div class="title">Settings</div>
+      <div class="row">
+        <div class="group"><label for="cur">Currency</label>
+          <select id="cur"><option value="INR">₹ INR</option><option value="USD">$ USD</option><option value="EUR">€ EUR</option><option value="GBP">£ GBP</option></select></div>
+        <div class="group"><label for="fee">Charges per trade (%) <small>optional</small></label>
+          <input type="number" id="fee" placeholder="0.00" step="any" min="0" max="100"></div>
+      </div>
+
+      <div class="title">Existing Holding</div>
+      <div class="row">
+        <div class="group"><label for="hQty">Holding Qty</label><input type="number" id="hQty" placeholder="0" step="any" min="0"></div>
+        <div class="group"><label for="hAvg">Holding Average Price</label><input type="number" id="hAvg" placeholder="0.00" step="any" min="0"></div>
+      </div>
+
+      <div class="title"><span>New Purchases</span><button class="btn" id="addLot" type="button">+ Add lot</button></div>
+      <div id="lots"></div>
+      <div class="err" id="err"></div>
+
+      <div class="optional">
+        <div class="row">
+          <div class="group" style="margin:0"><label for="tPrice">Target Exit Price</label><input type="number" id="tPrice" placeholder="0.00" step="any" min="0"></div>
+          <div class="group" style="margin:0"><label for="dAvg">Desired Average (solver)</label><input type="number" id="dAvg" placeholder="0.00" step="any" min="0"></div>
+        </div>
+        <div class="group" style="margin:.8rem 0 0"><label for="tPct">Target Gain % over New Average <small>optional, used when Target Exit Price is empty</small></label>
+          <input type="number" id="tPct" placeholder="e.g. 5" step="any" min="0"></div>
+      </div>
+      <div class="btns">
+        <button class="btn primary" id="copy" type="button">Copy summary</button>
+        <button class="btn" id="csv" type="button">Download CSV</button>
+        <button class="btn" id="reset" type="button">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">Results</div>
+      <div class="kpis">
+        <div class="kpi"><small>New Holding Average</small><b class="pos" id="rAvg">–</b></div>
+        <div class="kpi"><small>Average Change</small><b id="rChg">–</b></div>
+        <div class="kpi"><small>Break-even Price</small><b id="rBE">–</b></div>
+      </div>
+      <div class="res"><span class="l">Existing Investment</span><span class="v" id="rEx">–</span></div>
+      <div class="res"><span class="l">New Investment <span id="feeTxt"></span></span><span class="v" id="rNew">–</span></div>
+      <div class="res"><span class="l">Avg. New Buy Rate</span><span class="v" id="rRate">–</span></div>
+      <div class="res"><span class="l">Price Drop Difference</span><span class="v or" id="rDrop">–</span></div>
+      <div class="res"><span class="l">Percentage Drop</span><span class="v or" id="rPct">–</span></div>
+      <div class="res"><span class="l">Total Combined Quantity</span><span class="v" id="rQty">–</span></div>
+      <div class="res"><span class="l">Total Investment</span><span class="v" id="rTot">–</span></div>
+      <div class="res"><span class="l">Capital Split (existing / new)</span><span class="v" id="rSplit">–</span></div>
+      <div class="bar"><i id="b1" style="background:var(--blue);width:0"></i><i id="b2" style="background:var(--orange);width:0"></i></div>
+
+      <div id="tgt" class="sep hide">
+        <div class="res"><span class="l" id="tUsedL">Target Exit Price</span><span class="v" id="tUsed">–</span></div>
+        <div class="res"><span class="l">Profit/Loss at Target (after averaging)</span><span class="v" id="tPL">–</span></div>
+        <div class="res"><span class="l">Return on Investment</span><span class="v" id="tROI">–</span></div>
+        <div class="res"><span class="l">Profit/Loss without averaging</span><span class="v" id="tNo">–</span></div>
+        <div class="res"><span class="l" style="color:var(--green)">Additional Profit Made via Averaging</span><span class="v hi" id="tAdd">–</span></div>
+      </div>
+
+      <div id="solver" class="sep hide">
+        <div class="res"><span class="l">To reach desired average, buy</span><span class="v" id="sQty">–</span></div>
+        <div class="res"><span class="l">Extra capital needed</span><span class="v" id="sCap">–</span></div>
+        <div class="note" id="sNote"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">Lot-by-Lot Average Tracker</div>
+      <div class="tw"><table><thead><tr><th>Lot</th><th>Qty</th><th>Rate</th><th>Cum. Qty</th><th>Average</th></tr></thead><tbody id="lotTable"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="title">Exit Price Scenarios</div>
+      <div class="tw"><table><thead><tr><th>Exit Price</th><th>vs New Avg</th><th>Profit / Loss</th><th>Return</th></tr></thead><tbody id="scTable"></tbody></table></div>
+      <div class="note">Scenarios are based on your new average and include sell-side charges if entered. This tool is for information only and is not investment advice.</div>
+    </div>
+  </section>
+</main>
+
+<footer>© All rights reserved. Powered by SINANT</footer>
+
+<script>
+(function(){
+  var $ = function(id){return document.getElementById(id)};
+  var LOCALES = {INR:'en-IN',USD:'en-US',EUR:'de-DE',GBP:'en-GB'};
+  var lastCSV = '', lastSummary = '';
+
+  function num(id){var v=parseFloat($(id).value);return isFinite(v)?v:0}
+  function money(x){
+    var c=$('cur').value;
+    try{return new Intl.NumberFormat(LOCALES[c],{style:'currency',currency:c,maximumFractionDigits:2}).format(x)}
+    catch(e){return x.toFixed(2)}
+  }
+  function plain(x,d){return new Intl.NumberFormat(LOCALES[$('cur').value],{maximumFractionDigits:d==null?4:d}).format(x)}
+  function sign(el,x){el.classList.remove('pos','neg');if(x>0)el.classList.add('pos');else if(x<0)el.classList.add('neg')}
+  function set(id,t){$(id).textContent=t}
+
+  /* ---- lots UI ---- */
+  function addLot(q,r){
+    var d=document.createElement('div');d.className='lot';
+    d.innerHTML='<span class="n"></span><input type="number" class="lq" placeholder="Qty" step="any" min="0" aria-label="Lot quantity"><input type="number" class="lr" placeholder="Rate" step="any" min="0" aria-label="Lot buy rate"><button type="button" class="btn x" aria-label="Remove lot">✕</button>';
+    d.querySelector('.lq').value=q||'';d.querySelector('.lr').value=r||'';
+    d.querySelector('button').onclick=function(){
+      if(document.querySelectorAll('.lot').length>1){d.remove();renumber();calc()}
+      else{d.querySelector('.lq').value='';d.querySelector('.lr').value='';calc()}
+    };
+    $('lots').appendChild(d);renumber();
+  }
+  function renumber(){
+    [].forEach.call(document.querySelectorAll('.lot'),function(l,i){l.querySelector('.n').textContent=i+1});
+  }
+  function getLots(){
+    return [].map.call(document.querySelectorAll('.lot'),function(l){
+      var q=parseFloat(l.querySelector('.lq').value),r=parseFloat(l.querySelector('.lr').value);
+      return {q:isFinite(q)?q:0,r:isFinite(r)?r:0,qe:l.querySelector('.lq'),re:l.querySelector('.lr')};
+    });
+  }
+
+  /* ---- main calculation ---- */
+  function calc(){
+    var hQ=num('hQty'),hA=num('hAvg'),fee=num('fee')/100,tP=num('tPrice'),tPct=num('tPct'),dA=num('dAvg');
+    var lots=getLots(),bad=false,msg='';
+
+    // validation
+    [$('hQty'),$('hAvg'),$('fee'),$('tPrice'),$('tPct'),$('dAvg')].forEach(function(e){e.classList.remove('bad')});
+    [$('hQty'),$('hAvg'),$('fee'),$('tPrice'),$('tPct'),$('dAvg')].forEach(function(e){
+      if(e.value!==''&&parseFloat(e.value)<0){e.classList.add('bad');bad=true;msg='Values cannot be negative.'}
+    });
+    if(num('fee')>=100){$('fee').classList.add('bad');bad=true;msg='Charges must be below 100%.'}
+    lots.forEach(function(l){
+      l.qe.classList.remove('bad');l.re.classList.remove('bad');
+      if(l.q<0){l.qe.classList.add('bad');bad=true;msg='Values cannot be negative.'}
+      if(l.r<0){l.re.classList.add('bad');bad=true;msg='Values cannot be negative.'}
+      if((l.q>0)!==(l.r>0)&&(l.qe.value!==''||l.re.value!=='')&&(l.q!==0||l.r!==0)){
+        (l.q>0?l.re:l.qe).classList.add('bad');msg=msg||'Enter both quantity and rate for each lot.'
+      }
+    });
+    $('err').textContent=msg;
+    if(bad){return}
+
+    var valid=lots.filter(function(l){return l.q>0&&l.r>0});
+    var nQ=0,nInvRaw=0;
+    valid.forEach(function(l){nQ+=l.q;nInvRaw+=l.q*l.r});
+    var nFee=nInvRaw*fee, nInv=nInvRaw+nFee;
+    var exInv=hQ*hA, totQ=hQ+nQ, totInv=exInv+nInv;
+    var avgRate=nQ>0?nInvRaw/nQ:0;
+    var newAvg=totQ>0?totInv/totQ:0;
+    var drop=(hA>0&&nQ>0)?hA-avgRate:0;
+    var pct=(hA>0&&nQ>0)?drop/hA*100:0;
+    var be=totQ>0?newAvg/(1-fee):0;
+
+    set('rAvg',totQ>0?money(newAvg):'–');
+    var chg=(hA>0&&totQ>0&&nQ>0)?newAvg-hA:0;
+    set('rChg',(hA>0&&nQ>0)?(chg>0?'+':'')+plain(chg,2)+' ('+(chg/hA*100).toFixed(2)+'%)':'–');
+    sign($('rChg'),-chg);
+    set('rBE',totQ>0?money(be):'–');
+    set('rEx',money(exInv));set('rNew',money(nInv));
+    set('feeTxt',fee>0?'(incl. '+money(nFee)+' charges)':'');
+    set('rRate',nQ>0?money(avgRate):'–');
+    set('rDrop',plain(drop,2));
+    set('rPct',(pct>0?'':'')+pct.toFixed(2)+'%');
+    set('rQty',plain(totQ));
+    set('rTot',money(totInv));
+    var p1=totInv>0?exInv/totInv*100:0,p2=totInv>0?100-p1:0;
+    set('rSplit',totInv>0?p1.toFixed(0)+'% / '+p2.toFixed(0)+'%':'–');
+    $('b1').style.width=p1+'%';$('b2').style.width=p2+'%';
+
+    // target
+    var tgt=$('tgt');
+    var fromPct=!(tP>0)&&tPct>0&&newAvg>0;
+    if(fromPct)tP=newAvg*(1+tPct/100);
+    set('tUsedL',fromPct?'Target Price ('+plain(tPct,2)+'% above new average)':'Target Exit Price');
+    set('tUsed',tP>0?money(tP):'–');
+    var addP=0,plT=0,roi=0,noAvg=0;
+    if(tP>0&&totQ>0){
+      var net=function(p,q){return p*q*(1-fee)};
+      noAvg=hQ>0?net(tP,hQ)-exInv:0;
+      plT=net(tP,totQ)-totInv;
+      roi=totInv>0?plT/totInv*100:0;
+      addP=plT-noAvg;
+      set('tPL',(plT>=0?'+':'')+money(plT));sign($('tPL'),plT);
+      set('tROI',roi.toFixed(2)+'%');sign($('tROI'),roi);
+      set('tNo',(noAvg>=0?'+':'')+money(noAvg));sign($('tNo'),noAvg);
+      set('tAdd',(addP>=0?'+':'')+money(addP));
+      $('tAdd').style.color=addP>=0?'var(--green)':'var(--red)';
+      tgt.classList.remove('hide');
+    }else tgt.classList.add('hide');
+
+    // solver: shares needed at first lot's rate (or any valid lot)
+    var sv=$('solver'),sQty=0,sCap=0,rr=valid.length?valid[0].r:0;
+    if(dA>0&&hQ>0&&hA>0){
+      var note='';
+      if(rr<=0){note='Enter a buy rate in the first lot to use the solver.';set('sQty','–');set('sCap','–')}
+      else if(Math.abs(dA-hA)<1e-9){note='Desired average already equals your current average.';set('sQty','0');set('sCap','–')}
+      else if((dA<hA&&!(rr<dA))||(dA>hA&&!(rr>dA))){
+        note='Not reachable at a rate of '+money(rr)+': the buy rate must be '+(dA<hA?'below':'above')+' the desired average.';
+        set('sQty','–');set('sCap','–');
+      }else{
+        sQty=Math.ceil(hQ*(hA-dA)/(dA-rr)*1e4)/1e4;
+        sQty=Math.ceil(sQty);
+        sCap=sQty*rr*(1+fee);
+        set('sQty',plain(sQty,0)+' shares @ '+money(rr));set('sCap',money(sCap));
+        note='Rounded up to whole shares, based on your holding only (existing lots not counted).';
+      }
+      $('sNote').textContent=note;sv.classList.remove('hide');
+    }else sv.classList.add('hide');
+
+    // lot tracker
+    var rows='',cq=hQ,ci=exInv;
+    if(hQ>0&&hA>0)rows+='<tr><td>Existing</td><td>'+plain(hQ)+'</td><td>'+plain(hA,2)+'</td><td>'+plain(hQ)+'</td><td>'+plain(hA,2)+'</td></tr>';
+    valid.forEach(function(l,i){
+      cq+=l.q;ci+=l.q*l.r*(1+fee);
+      rows+='<tr'+(i===valid.length-1?' class="me"':'')+'><td>Lot '+(i+1)+'</td><td>'+plain(l.q)+'</td><td>'+plain(l.r,2)+'</td><td>'+plain(cq)+'</td><td>'+plain(ci/cq,2)+'</td></tr>';
+    });
+    $('lotTable').innerHTML=rows||'<tr><td colspan="5" style="text-align:center;color:var(--muted)">Enter holding and purchase details</td></tr>';
+
+    // scenarios
+    var sc='',steps=[-20,-10,-5,0,5,10,20,30],csv=['Exit Price,vs New Avg %,Profit/Loss,Return %'];
+    if(totQ>0&&newAvg>0){
+      steps.forEach(function(s){
+        var p=newAvg*(1+s/100),pl=p*totQ*(1-fee)-totInv,rt=totInv>0?pl/totInv*100:0;
+        sc+='<tr><td>'+plain(p,2)+'</td><td>'+(s>0?'+':'')+s+'%</td><td class="'+(pl>=0?'pos':'neg')+'">'+(pl>=0?'+':'')+plain(pl,2)+'</td><td class="'+(rt>=0?'pos':'neg')+'">'+rt.toFixed(2)+'%</td></tr>';
+        csv.push([p.toFixed(2),s,pl.toFixed(2),rt.toFixed(2)].join(','));
+      });
+    }
+    $('scTable').innerHTML=sc||'<tr><td colspan="4" style="text-align:center;color:var(--muted)">Scenarios appear once you enter data</td></tr>';
+
+    // export data
+    var head=['SinSigma Stock Average Calculator','Holding Qty,'+hQ,'Holding Avg,'+hA,'Charges %,'+num('fee'),''];
+    head.push('Lot,Qty,Rate');valid.forEach(function(l,i){head.push((i+1)+','+l.q+','+l.r)});
+    head.push('','Total Qty,'+totQ,'Total Investment,'+totInv.toFixed(2),'New Average,'+newAvg.toFixed(4),'Break-even,'+be.toFixed(4),'');
+    lastCSV=head.concat(csv).join('\n');
+    lastSummary='SinSigma Stock Average\n'+
+      'Holding: '+plain(hQ)+' @ '+plain(hA,2)+'\n'+
+      'New buys: '+plain(nQ)+' @ avg '+plain(avgRate,2)+'\n'+
+      'Total qty: '+plain(totQ)+'\nNew average: '+plain(newAvg,2)+'\nBreak-even: '+plain(be,2)+
+      (tP>0?'\nTarget '+plain(tP,2)+' P/L: '+plain(plT,2)+' (extra via averaging: '+plain(addP,2)+')':'');
+  }
+
+  /* ---- events ---- */
+  ['hQty','hAvg','fee','tPrice','tPct','dAvg'].forEach(function(id){$(id).addEventListener('input',calc)});
+  $('cur').addEventListener('change',calc);
+  $('lots').addEventListener('input',calc);
+  $('addLot').onclick=function(){addLot();var l=document.querySelectorAll('.lq');l[l.length-1].focus()};
+  $('reset').onclick=function(){
+    ['hQty','hAvg','fee','tPrice','tPct','dAvg'].forEach(function(id){$(id).value=''});
+    $('lots').innerHTML='';addLot();calc();
+  };
+  $('copy').onclick=function(){
+    var b=$('copy');
+    function done(){b.textContent='Copied ✓';setTimeout(function(){b.textContent='Copy summary'},1500)}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(lastSummary).then(done,function(){alert(lastSummary)})}
+    else{var t=document.createElement('textarea');t.value=lastSummary;document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){alert(lastSummary)}t.remove()}
+  };
+  $('csv').onclick=function(){
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([lastCSV],{type:'text/csv'}));
+    a.download='stock-average.csv';document.body.appendChild(a);a.click();a.remove();
+  };
+
+  addLot();calc();
+})();
+</script>
+</body>
+</html>
