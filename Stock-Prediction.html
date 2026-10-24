@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SinSigma // Predictive Engine</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'%3E%CE%A3%3C/text%3E%3C/svg%3E">
+<style>
+:root{color-scheme:light;--ac:#4f46e5;--bg:#f6f7f9;--card:#fff;--bd:#e5e7eb;--tx:#111827;--tx2:#6b7280;--g:#059669;--r:#dc2626;--b:#2563eb;--a:#d97706;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:24px 16px}
+.wrap{max-width:1180px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid var(--bd)}
+h1{font-size:24px;letter-spacing:-.5px}h1 span{color:var(--tx2);font-weight:300}
+.sub{font-size:12px;color:var(--tx2);text-transform:uppercase;letter-spacing:1px}
+.grid{display:grid;grid-template-columns:320px 1fr;gap:20px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:18px;margin-bottom:16px}
+.card h3{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--tx2);margin-bottom:10px;border-left:3px solid var(--ac);padding-left:8px}
+.card p,.card li{font-size:13px;color:var(--tx2)}.card ol{padding-left:18px}
+a.lnk{color:var(--tx);font-weight:600;text-decoration:none;border-bottom:1px solid var(--tx)}
+.drop{border:2px dashed #cbd5e1;border-radius:10px;padding:26px 12px;text-align:center;position:relative;background:#fafbfc;transition:.2s}
+.drop.on,.drop:hover{border-color:var(--g);background:#f0fdf4}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop strong{display:block;color:var(--tx)}
+label{display:block;font-size:12px;color:var(--tx2);margin:10px 0 4px}
+select,input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font:inherit;background:#fff;color:var(--tx)}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:#fff;border-radius:6px;padding:7px 12px;color:var(--tx)}
+button:hover{border-color:var(--g)}button.pri{background:var(--tx);color:#fff;border-color:var(--tx)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#dash{display:none}
+.top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.badge{display:inline-block;background:var(--tx);color:#fff;padding:4px 12px;border-radius:5px;font-weight:600}
+.meta{font-size:12px;color:var(--tx2)}
+.mg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:700px){.mg{grid-template-columns:repeat(2,1fr)}}
+.m{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:12px}
+.m .l{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px}.m .v{font-size:18px;font-weight:600}
+.g{color:var(--g)}.r{color:var(--r)}.b{color:var(--b)}.a{color:var(--a)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{padding:5px 11px;border-radius:99px;font-size:12px}.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+canvas{width:100%;height:360px;display:block;touch-action:pan-y;cursor:crosshair}
+.sh{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 0 16px}
+.logo{font-size:20px;font-weight:700;color:var(--tx);text-decoration:none;display:flex;align-items:center;gap:8px;letter-spacing:-.3px}
+.logo i{font-style:normal;background:var(--ac);color:#fff;width:32px;height:32px;border-radius:8px;display:grid;place-items:center}
+.nav{display:flex;gap:20px;flex-wrap:wrap}.nav a{color:var(--tx2);text-decoration:none;font-weight:500}.nav a:hover{color:var(--ac)}
+.hero{padding:8px 0 18px;margin-bottom:20px;border-bottom:1px solid var(--bd)}.hero .sub{color:var(--ac);font-weight:600}
+footer{text-align:center;margin-top:28px;padding:22px 0 8px;border-top:1px solid var(--bd);color:var(--tx2);font-size:13px}footer b{color:var(--tx)}footer a{color:var(--ac);text-decoration:none}
+.cw{position:relative}
+.tip{position:absolute;top:12px;left:0;pointer-events:none;display:none;background:rgba(17,24,39,.96);color:#fff;border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.6;box-shadow:0 10px 28px rgba(0,0,0,.25);z-index:5;white-space:nowrap}
+.tip b{color:#fff}.tip .k{color:#9ca3af;display:inline-block;min-width:78px}.tip .gg{color:#6ee7b7}.tip .rr{color:#fca5a5}
+.tg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--tx2);margin-bottom:8px}.tg label{display:inline-flex;gap:5px;align-items:center;margin:0;cursor:pointer}
+.sc{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+th{text-align:right;font-size:11px;text-transform:uppercase;color:var(--tx2);padding:8px;border-bottom:1px solid var(--bd);font-weight:600}
+td{text-align:right;padding:8px;border-bottom:1px solid #f1f2f4}
+th:first-child,td:first-child{text-align:left}tr.sel td{background:#f0fdf4}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.two{grid-template-columns:1fr}}
+.lv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f2f4;font-size:13px}.lv:last-child{border:0}.lv span:first-child{color:var(--tx2)}
+.ph{border:1px solid var(--bd);background:var(--card);border-radius:10px;min-height:280px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--tx2);padding:30px}
+.warn{font-size:12px;color:var(--tx2);background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-top:4px}
+@media print{.side,.noprint,.sh,footer{display:none}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="sh"><a class="logo" href="https://sinsigma.com/"><i>Σ</i>SinSigma</a><nav class="nav"><a href="https://sinsigma.com/citation">Intellectual</a><a href="https://sinsigma.com/forecasting">Intelligence</a><a href="https://sinsigma.com/Finance-Tools">Stocks &amp; Finance</a><a href="https://sinsigma.com/#about">About</a></nav></div>
+<div class="hero"><div class="sub">RESEARCH. ANALYSE. PREDICT.</div><h1>Predictive Engine <span>// NSE equities · 1 day → 10 years</span></h1><div class="meta">Offline quant model · Your data in, results out, nothing stored.</div></div>
+<div class="grid">
+<div class="side">
+<div class="card"><h3>1 · Get data from NSE</h3>
+<ol><li>Open <a class="lnk" href="https://www.nseindia.com/report-detail/eq_security#" target="_blank" rel="noopener">NSE Security-wise Price Volume report ↗</a></li><li>Pick the symbol, series <b>EQ</b> and the longest date range (more history = better long-term forecasts).</li><li>Download the CSV and upload it below.</li></ol></div>
+<div class="card"><h3>2 · Upload CSV</h3>
+<div class="drop" id="drop"><input type="file" id="file" accept=".csv,.txt"><strong>Drop NSE CSV here</strong><span style="font-size:12px;color:var(--tx2)">or click to browse</span></div>
+<div class="row"><button id="demo">Try demo data</button></div></div>
+<div class="card"><h3>3 · Model settings</h3>
+<label>Forecast model</label>
+<select id="model"><option value="blend">Blended (history shrunk to 10% long-run)</option><option value="hist">Historical drift</option><option value="trend">Trend regression</option><option value="flat">Zero drift (neutral)</option></select>
+<label>Confidence band</label>
+<select id="conf"><option value="1">68% (±1σ)</option><option value="1.645" selected>90%</option><option value="1.96">95%</option></select>
+<label>Your target price (₹) – optional</label>
+<input type="number" id="tgt" placeholder="e.g. 1500" step="any"></div>
+</div>
+<div>
+<div id="ph" class="ph">Upload an NSE price-volume CSV to generate forecasts, levels and risk metrics.</div>
+<div id="dash">
+<div class="top"><div><span class="badge" id="badge"></span> <span class="meta" id="meta"></span></div>
+<div class="row noprint" style="margin:0"><button id="csvBtn">⬇ Export forecast CSV</button><button id="prBtn">🖨 Print / PDF</button></div></div>
+<div class="mg" id="mg"></div>
+<div class="card"><h3>Forecast fan chart</h3><div class="chips" id="chips"></div><div class="tg"><label><input type="checkbox" id="tSR" checked> Support / Resistance</label><label><input type="checkbox" id="tPR" checked> Predicted values</label><label><input type="checkbox" id="tMA"> Moving averages (20 / 50 / 200)</label></div><div class="cw"><canvas id="cv"></canvas><div class="tip" id="tip"></div></div><div class="meta" id="legend" style="margin-top:6px"></div></div>
+<div class="card"><h3>Price forecast by horizon</h3><div class="sc"><table id="tb"></table></div></div>
+<div class="two"><div class="card"><h3>Key levels</h3><div id="lv"></div></div><div class="card"><h3>Signal scorecard</h3><div id="sg"></div></div></div>
+<div class="warn" id="warn"></div>
+</div></div></div>
+<footer><b>Σ SinSigma</b> · Technology made simpler.<br>Your Data In. Your Results Out. Nothing Stored. Fast, Secure, and Completely Private.<br>© All rights reserved. Powered by SINANT · <a href="https://sinsigma.com/">sinsigma.com</a></footer>
+</div>
+<script>
+const $=i=>document.getElementById(i);
+const HZ=[["1 Day",1],["1 Week",5],["2 Weeks",10],["1 Month",21],["3 Months",63],["6 Months",126],["1 Year",252],["2 Years",504],["3 Years",756],["5 Years",1260],["10 Years",2520]];
+let D=null,sel=252;
+const inr=v=>"₹"+v.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pc=v=>(v>=0?"+":"")+(v*100).toFixed(1)+"%";
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const cls=v=>v>=0?"g":"r";
+function erf(x){const s=x<0?-1:1;x=Math.abs(x);const t=1/(1+.3275911*x);return s*(1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-.284496736)*t+.254829592)*t*Math.exp(-x*x))}
+const Phi=z=>.5*(1+erf(z/Math.SQRT2));
+function csv(t){const R=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const h=t[i];if(q){if(h=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=h}else if(h=='"')q=true;else if(h==","){r.push(c);c=""}else if(h=="\n"||h=="\r"){if(h=="\r"&&t[i+1]=="\n")i++;r.push(c);c="";if(r.some(x=>x.trim()))R.push(r);r=[]}else c+=h}r.push(c);if(r.some(x=>x.trim()))R.push(r);return R}
+const num=v=>{const x=parseFloat(String(v==null?"":v).replace(/[₹,\s"]/g,""));return x};
+const nm=s=>String(s).toLowerCase().replace(/[^a-z0-9]/g,"");
+function pdate(s){s=String(s).trim().replace(/"/g,"");let m;const M={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+if(m=s.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3})[a-z]*[-\/ ](\d{4})$/))return new Date(+m[3],M[m[2].toLowerCase()],+m[1]);
+if(m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/))return new Date(+m[3],+m[2]-1,+m[1]);
+if(m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))return new Date(+m[1],+m[2]-1,+m[3]);
+const d=new Date(s);return isNaN(d)?null:d}
+function load(text){
+ const R=csv(text);let hi=R.slice(0,12).findIndex(r=>r.some(x=>nm(x).includes("close")));
+ if(hi<0)return alert("Could not find a Close price column. Please use the NSE Security-wise Price Volume CSV.");
+ const H=R[hi].map(nm),f=(...n)=>{for(const k of n){const i=H.indexOf(k);if(i>=0)return i}return -1};
+ const iS=f("symbol"),iSe=f("series"),iD=f("date","timestamp"),iC=f("closeprice","close","lastprice","ltp"),iH=f("highprice","high"),iL=f("lowprice","low"),iO=f("openprice","open"),iV=f("totaltradedquantity","volume","ttlTrdQnty".toLowerCase());
+ if(iC<0||iD<0)return alert("Need Date and Close columns.");
+ let rows=[];for(const r of R.slice(hi+1)){const d=pdate(r[iD]),c=num(r[iC]);if(!d||!(c>0))continue;
+  if(iSe>=0&&r[iSe]&&r[iSe].trim()&&!/^EQ$|^BE$|^BZ$|^SM$/i.test(r[iSe].trim()))continue;
+  rows.push({d,c,h:iH>=0&&num(r[iH])>0?num(r[iH]):c,l:iL>=0&&num(r[iL])>0?num(r[iL]):c,o:iO>=0?num(r[iO]):c,v:iV>=0?num(r[iV])||0:0,s:iS>=0?r[iS].trim():"STOCK"})}
+ rows.sort((a,b)=>a.d-b.d);rows=rows.filter((x,i)=>!i||+x.d!=+rows[i-1].d);
+ if(rows.length<30)return alert("Need at least 30 trading days of data (found "+rows.length+"). Download a longer date range.");
+ analyse(rows)}
+function ema(a,k){const m=2/(k+1);const o=[a[0]];for(let i=1;i<a.length;i++)o.push(a[i]*m+o[i-1]*(1-m));return o}
+function sma(a,k){return a.length>=k?a.slice(-k).reduce((x,y)=>x+y,0)/k:null}
+function analyse(rows){
+ const c=rows.map(r=>r.c),n=c.length,S=c[n-1];
+ const ret=[];for(let i=1;i<n;i++)ret.push(Math.log(c[i]/c[i-1]));
+ const mean=a=>a.reduce((x,y)=>x+y,0)/a.length,sd=a=>{const m=mean(a);return Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/Math.max(1,a.length-1))};
+ const sigF=sd(ret)*Math.sqrt(252),sigR=sd(ret.slice(-60))*Math.sqrt(252),sig=Math.sqrt(.5*sigF**2+.5*sigR**2);
+ const mua=mean(ret)*252;
+ const w=Math.min(n,756),y=c.slice(-w).map(Math.log),xm=(w-1)/2,ym=mean(y);let sxy=0,sxx=0;y.forEach((v,i)=>{sxy+=(i-xm)*(v-ym);sxx+=(i-xm)**2});const slope=sxy/sxx*252;
+ let g=0,l=0;const rp=Math.min(14,n-1);
+ for(let i=n-rp;i<n;i++){const d=c[i]-c[i-1];d>0?g+=d:l-=d}let rsi=l===0?100:100-100/(1+g/l);
+ const e12=ema(c,12),e26=ema(c,26),mc=e12.map((v,i)=>v-e26[i]),sg=ema(mc,9),macd=mc[n-1],sigl=sg[n-1];
+ let tr=[];for(let i=Math.max(1,n-14);i<n;i++)tr.push(Math.max(rows[i].h-rows[i].l,Math.abs(rows[i].h-c[i-1]),Math.abs(rows[i].l-c[i-1])));const atr=mean(tr);
+ const yr=rows.slice(-252),hi52=Math.max(...yr.map(r=>r.h)),lo52=Math.min(...yr.map(r=>r.l));
+ let pk=c[0],mdd=0;for(const v of c){pk=Math.max(pk,v);mdd=Math.min(mdd,v/pk-1)}
+ const yrs=(rows[n-1].d-rows[0].d)/31557600000,cagr=yrs>.25?Math.pow(S/c[0],1/yrs)-1:null;
+ const s20=sma(c,20),s50=sma(c,50),s200=sma(c,200);
+ const sig5=[["Price above 50-day average",s50?S>s50:null],["Price above 200-day average",s200?S>s200:null],["50-day above 200-day (golden cross)",s50&&s200?s50>s200:null],["MACD above signal line",macd>sigl],["RSI in healthy zone (45–70)",rsi>=45&&rsi<=70]];
+ const ok=sig5.filter(x=>x[1]!==null),score=ok.filter(x=>x[1]).length/ok.length;
+ const bias=score>=.7?["BULLISH","g"]:score<=.3?["BEARISH","r"]:["NEUTRAL","b"];
+ const L=rows[n-1],P=(L.h+L.l+L.c)/3;
+ D={rows,c,n,S,sig,sigF,sigR,mua,slope,rsi,macd,sigl,atr,hi52,lo52,mdd,cagr,s20,s50,s200,sig5,score,bias,P,L,
+  lv:[["Resistance 2 (R2)",P+(L.h-L.l),"r"],["Resistance 1 (R1)",2*P-L.l,"r"],["Pivot",P,"b"],["Support 1 (S1)",2*P-L.h,"g"],["Support 2 (S2)",P-(L.h-L.l),"g"],["52-week high",hi52,"r"],["52-week low",lo52,"g"],["ATR stop-loss (2×ATR)",S-2*atr,"a"],["ATR trailing (3×ATR)",S-3*atr,"a"]]};
+ $("ph").style.display="none";$("dash").style.display="block";render()}
+function drift(){const m=$("model").value,C=x=>cl(x,-.3,.45);return m=="hist"?C(D.mua):m=="trend"?C(D.slope):m=="flat"?0:.5*C(D.mua)+.05}
+function fc(days){const T=days/252,mu=drift(),s=D.sig,z=+$("conf").value,v=s*Math.sqrt(T),m0=(mu-.5*s*s)*T;
+ const tg=num($("tgt").value);
+ return{med:D.S*Math.exp(m0),lo:D.S*Math.exp(m0-z*v),hi:D.S*Math.exp(m0+z*v),mean:D.S*Math.exp(mu*T),pp:Phi(m0/v),pt:tg>0?1-Phi((Math.log(tg/D.S)-m0)/v):null,tg}}
+function render(){
+ const d=D,mu=drift();
+ $("badge").textContent=d.rows[0].s+" // EQ";
+ const fd=x=>x.d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+ $("meta").textContent=d.n+" sessions · "+fd(d.rows[0])+" → "+fd(d.L);
+ const M=[["Last close",inr(d.S),""],["RSI (14)",d.rsi.toFixed(1),d.rsi>70?"r":d.rsi<30?"g":""],["Trend bias",d.bias[0],d.bias[1]],["Signal score",Math.round(d.score*100)+"%",d.bias[1]],
+ ["Annual volatility",(d.sig*100).toFixed(1)+"%",d.sig>.4?"r":d.sig>.25?"a":"g"],["Assumed drift / yr",pc(mu),cls(mu)],["Max drawdown",(d.mdd*100).toFixed(1)+"%","r"],["Historical CAGR",d.cagr==null?"n/a (short data)":pc(d.cagr),d.cagr==null?"":cls(d.cagr)]];
+ $("mg").innerHTML=M.map(x=>`<div class="m"><div class="l">${x[0]}</div><div class="v ${x[2]}">${x[1]}</div></div>`).join("");
+ $("chips").innerHTML=HZ.map(h=>`<button class="chip ${h[1]==sel?"on":""}" data-d="${h[1]}">${h[0]}</button>`).join("");
+ document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{sel=+b.dataset.d;render()});
+ const hasT=num($("tgt").value)>0;
+ let t=`<tr><th>Horizon</th><th>Median price</th><th>Range (${$("conf").selectedOptions[0].text.split(" ")[0]})</th><th>Median return</th><th>Expected return</th><th>P(profit)</th>${hasT?"<th>P(≥ "+inr(num($("tgt").value))+")</th>":""}<th>History</th></tr>`;
+ HZ.forEach(h=>{const f=fc(h[1]),need=h[1]/252,en=d.n/252;
+  const rel=en>=need?"✓ good":en>=need/3?"~ fair":"✗ thin";
+  t+=`<tr class="${h[1]==sel?"sel":""}"><td><b>${h[0]}</b></td><td>${inr(f.med)}</td><td style="white-space:nowrap">${inr(f.lo)} – ${inr(f.hi)}</td><td class="${cls(f.med/d.S-1)}">${pc(f.med/d.S-1)}</td><td class="${cls(f.mean/d.S-1)}">${pc(f.mean/d.S-1)}</td><td>${(f.pp*100).toFixed(0)}%</td>${hasT?`<td>${(f.pt*100).toFixed(0)}%</td>`:""}<td class="meta">${rel}</td></tr>`});
+ $("tb").innerHTML=t;
+ $("lv").innerHTML=d.lv.map(x=>`<div class="lv"><span>${x[0]}</span><b class="${x[2]}">${inr(x[1])}</b></div>`).join("")+
+  `<div class="lv"><span>20 / 50 / 200-day avg</span><b>${[d.s20,d.s50,d.s200].map(v=>v?v.toFixed(1):"–").join(" / ")}</b></div>`;
+ $("sg").innerHTML=d.sig5.map(x=>`<div class="lv"><span>${x[0]}</span><b class="${x[1]===null?"":x[1]?"g":"r"}">${x[1]===null?"n/a":x[1]?"✓ Yes":"✗ No"}</b></div>`).join("");
+ $("warn").innerHTML="<b>Read this:</b> forecasts are statistical projections (lognormal model on your uploaded history), not predictions of certainty or investment advice. Long horizons carry very wide ranges and depend on how much history you supply (see the History column). Past performance does not guarantee future results. Consult a SEBI-registered adviser before investing.";
+ draw()}
+function draw(mo){
+ const cv=$("cv"),W=cv.clientWidth,Hh=360,dp=window.devicePixelRatio||1;cv.width=W*dp;cv.height=Hh*dp;const g=cv.getContext("2d");g.scale(dp,dp);
+ const hl=Math.min(D.n,Math.max(120,sel)),hist=D.c.slice(-hl),base=D.n-hl,pl=64,pr=14,pt=16,pb=28,tot=hl-1+sel,steps=60,pts=[];
+ for(let k=0;k<=steps;k++){const dd=sel*k/steps;pts.push([dd,dd?fc(dd):{med:D.S,lo:D.S,hi:D.S}])}
+ const sR=$("tSR").checked,sM=$("tMA").checked,sP=$("tPR").checked,srl=D.lv.slice(0,5),srs=["R2","R1","P","S1","S2"],src=["#dc2626","#dc2626","#2563eb","#059669","#059669"];
+ const SH={1:"1D",5:"1W",10:"2W",21:"1M",63:"3M",126:"6M",252:"1Y",504:"2Y",756:"3Y",1260:"5Y",2520:"10Y"};
+ let all=hist.concat(pts.map(p=>p[1].lo),pts.map(p=>p[1].hi));if(sR)srl.forEach(x=>{if(x[1]>0)all.push(x[1])});
+ const mn=Math.log(Math.min(...all)*.96),mx=Math.log(Math.max(...all)*1.04),pw=W-pl-pr,ph=Hh-pt-pb;
+ const X=i=>pl+pw*i/tot,Y=v=>pt+ph*(1-(Math.log(v)-mn)/(mx-mn)),fx=X(hl-1);
+ const dAt=i=>i<=hl-1?D.rows[base+Math.round(i)].d:new Date(D.L.d.getTime()+(i-hl+1)*365/252*864e5);
+ const m0=v=>"₹"+Math.round(v).toLocaleString("en-IN");
+ const rr=(x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
+ const pill=(t,x,y,fg,bg,right)=>{y=Math.min(Math.max(y,pt+9),pt+ph-9);g.font="600 11px sans-serif";const w=g.measureText(t).width+10,x0=right?x-w:x;rr(x0,y-9,w,18,5);g.fillStyle=bg;g.fill();g.fillStyle=fg;g.textBaseline="middle";g.textAlign="left";g.fillText(t,x0+5,y);g.textBaseline="alphabetic"};
+ const dot=(x,y,c)=>{g.beginPath();g.arc(x,y,5,0,7);g.fillStyle="#fff";g.fill();g.strokeStyle=c;g.lineWidth=2.5;g.stroke()};
+ const cs=[0];D.c.forEach(v=>cs.push(cs[cs.length-1]+v));
+ g.font="11px sans-serif";g.lineWidth=1;
+ for(let i=0;i<=5;i++){const lv=Math.exp(mn+(mx-mn)*i/5),y=Y(lv);g.strokeStyle="#eef0f3";g.beginPath();g.moveTo(pl,y);g.lineTo(W-pr,y);g.stroke();g.fillStyle="#6b7280";g.textAlign="right";g.fillText(m0(lv),pl-6,y+4)}
+ g.textAlign="center";for(let i=0;i<=5;i++){const ix=tot*i/5;g.fillStyle="#9ca3af";g.fillText(dAt(ix).toLocaleDateString("en-IN",{month:"short",year:"2-digit"}),Math.min(Math.max(X(ix),pl+16),W-pr-16),Hh-9)}g.textAlign="left";
+ g.fillStyle="rgba(79,70,229,.04)";g.fillRect(fx,pt,W-pr-fx,ph);g.strokeStyle="#c7d2fe";g.setLineDash([4,4]);g.beginPath();g.moveTo(fx,pt);g.lineTo(fx,pt+ph);g.stroke();g.setLineDash([]);g.fillStyle="#6366f1";g.font="600 10px sans-serif";g.fillText("TODAY",fx+4,pt+10);
+ g.beginPath();pts.forEach((p,i)=>{const x=X(hl-1+p[0]);i?g.lineTo(x,Y(p[1].hi)):g.moveTo(x,Y(p[1].hi))});for(let i=pts.length-1;i>=0;i--)g.lineTo(X(hl-1+pts[i][0]),Y(pts[i][1].lo));g.closePath();
+ const gf=g.createLinearGradient(0,pt,0,pt+ph);gf.addColorStop(0,"rgba(5,150,105,.24)");gf.addColorStop(1,"rgba(5,150,105,.06)");g.fillStyle=gf;g.fill();
+ g.beginPath();hist.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.lineTo(X(hl-1),pt+ph);g.lineTo(X(0),pt+ph);g.closePath();
+ const ga=g.createLinearGradient(0,pt,0,pt+ph);ga.addColorStop(0,"rgba(79,70,229,.26)");ga.addColorStop(1,"rgba(79,70,229,0)");g.fillStyle=ga;g.fill();
+ if(sM)[[20,"#f59e0b"],[50,"#2563eb"],[200,"#9ca3af"]].forEach(([k,col])=>{g.beginPath();let st=false;for(let i=0;i<hl;i++){const j=base+i+1;if(j<k)continue;const v=(cs[j]-cs[j-k])/k;st?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v));st=true}g.strokeStyle=col;g.lineWidth=1.3;g.setLineDash([2,3]);g.stroke();g.setLineDash([])});
+ if(sR){let ly=-99;srl.map((x,i)=>({v:x[1],t:srs[i],c:src[i]})).filter(o=>o.v>0).sort((a,b)=>Y(a.v)-Y(b.v)).forEach(o=>{const y=Y(o.v);g.strokeStyle=o.c;g.globalAlpha=.7;g.lineWidth=1.2;g.setLineDash([6,4]);g.beginPath();g.moveTo(pl,y);g.lineTo(W-pr,y);g.stroke();g.setLineDash([]);g.globalAlpha=1;const py=Math.max(y,ly+19);ly=py;pill(o.t+" "+m0(o.v),pl+6,py,"#fff",o.c)})}
+ const tg=num($("tgt").value);if(tg>0&&Math.log(tg)>mn&&Math.log(tg)<mx){g.strokeStyle="#d97706";g.lineWidth=1.2;g.setLineDash([3,3]);g.beginPath();g.moveTo(pl,Y(tg));g.lineTo(W-pr,Y(tg));g.stroke();g.setLineDash([]);pill("Target "+m0(tg),W-pr-4,Y(tg)-12,"#fff","#d97706",true)}
+ g.beginPath();hist.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.strokeStyle="#4f46e5";g.lineWidth=2;g.lineJoin="round";g.stroke();
+ ["hi","lo"].forEach(k=>{g.beginPath();pts.forEach((p,i)=>{const x=X(hl-1+p[0]),y=Y(p[1][k]);i?g.lineTo(x,y):g.moveTo(x,y)});g.strokeStyle="rgba(5,150,105,.55)";g.lineWidth=1;g.stroke()});
+ g.beginPath();pts.forEach((p,i)=>{const x=X(hl-1+p[0]),y=Y(p[1].med);i?g.lineTo(x,y):g.moveTo(x,y)});g.strokeStyle="#059669";g.setLineDash([7,4]);g.lineWidth=2.2;g.stroke();g.setLineDash([]);
+ if(sP){let lx=-99;HZ.forEach(h=>{if(h[1]>sel)return;const f=fc(h[1]),x=X(hl-1+h[1]),y=Y(f.med);g.beginPath();g.arc(x,y,4,0,7);g.fillStyle="#fff";g.fill();g.strokeStyle="#059669";g.lineWidth=2;g.stroke();if(x-lx>34){g.fillStyle="#065f46";g.font="600 10px sans-serif";g.textAlign="center";g.fillText(SH[h[1]],x,y-9);g.textAlign="left";lx=x}});
+ const f=fc(sel),ex=W-pr-4;pill("High "+m0(f.hi),ex,Y(f.hi)-12,"#065f46","#d1fae5",true);pill("Median "+m0(f.med)+" ("+pc(f.med/D.S-1)+")",ex,Y(f.med),"#fff","#059669",true);pill("Low "+m0(f.lo),ex,Y(f.lo)+12,"#991b1b","#fee2e2",true)}
+ const tip=$("tip");
+ if(mo!=null&&mo>=pl&&mo<=W-pr){const i=cl(Math.round((mo-pl)/pw*tot),0,tot),x=X(i);g.strokeStyle="#6b7280";g.lineWidth=1;g.setLineDash([3,3]);g.beginPath();g.moveTo(x,pt);g.lineTo(x,pt+ph);g.stroke();g.setLineDash([]);
+  let h;const dt=dAt(i).toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
+  if(i<=hl-1){const j=base+i,r=D.rows[j],pv=j?D.c[j-1]:r.c,ch=r.c/pv-1;dot(x,Y(r.c),"#4f46e5");const s=k=>j+1>=k?(cs[j+1]-cs[j+1-k])/k:null,f1=v=>v?v.toFixed(1):"–";
+   h=`<b>${dt}</b><br><span class=k>Close</span><b>${inr(r.c)}</b> <span class="${ch>=0?"gg":"rr"}">${pc(ch)}</span><br><span class=k>High / Low</span>${inr(r.h)} / ${inr(r.l)}`+(r.v?`<br><span class=k>Volume</span>${r.v.toLocaleString("en-IN")}`:"")+`<br><span class=k>SMA 20 / 50</span>${f1(s(20))} / ${f1(s(50))}<br><span class=k>vs Pivot</span>${pc(r.c/D.P-1)}`}
+  else{const dd=i-hl+1,f=fc(dd);dot(x,Y(f.hi),"#6ee7b7");dot(x,Y(f.lo),"#fca5a5");dot(x,Y(f.med),"#059669");
+   h=`<b>${dt}</b> · forecast<br><span class=k>Horizon</span>${dd} trading days (~${(dd/252).toFixed(2)}y)<br><span class=k>Median</span><b>${inr(f.med)}</b> <span class="${f.med>=D.S?"gg":"rr"}">${pc(f.med/D.S-1)}</span><br><span class=k>Range</span>${inr(f.lo)} – ${inr(f.hi)}<br><span class=k>P(profit)</span>${(f.pp*100).toFixed(0)}%`}
+  tip.innerHTML=h;tip.style.display="block";const tw=tip.offsetWidth;tip.style.left=(x+16+tw>W?x-tw-16:x+16)+"px"}else tip.style.display="none";
+ const f=fc(sel),lab=HZ.find(h=>h[1]==sel)[0];
+ $("legend").innerHTML=`<b style="color:#111827">${lab}:</b> median <b class="g">${inr(f.med)}</b> · range ${inr(f.lo)} – ${inr(f.hi)} · hover the chart for exact values · log-scale`}
+function drawOld(){
+ const cv=$("cv"),W=cv.clientWidth,Hh=300,dp=window.devicePixelRatio||1;cv.width=W*dp;cv.height=Hh*dp;const g=cv.getContext("2d");g.scale(dp,dp);g.clearRect(0,0,W,Hh);
+ const hl=Math.min(D.n,Math.max(120,sel)),hist=D.c.slice(-hl),steps=60,pts=[];
+ for(let k=0;k<=steps;k++){const dd=sel*k/steps;pts.push([dd,dd?fc(dd):{med:D.S,lo:D.S,hi:D.S}])}
+ const all=hist.concat(pts.map(p=>p[1].lo),pts.map(p=>p[1].hi)),mn=Math.log(Math.min(...all)*.97),mx=Math.log(Math.max(...all)*1.03),pl=62,pr=10,pt=10,pb=22,tot=hl-1+sel;
+ const X=i=>pl+(W-pl-pr)*i/tot,Y=v=>pt+(Hh-pt-pb)*(1-(Math.log(v)-mn)/(mx-mn));
+ g.font="11px sans-serif";g.fillStyle="#6b7280";g.strokeStyle="#eef0f3";g.lineWidth=1;
+ for(let i=0;i<=4;i++){const lv=Math.exp(mn+(mx-mn)*i/4),y=Y(lv);g.beginPath();g.moveTo(pl,y);g.lineTo(W-pr,y);g.stroke();g.fillText("₹"+(lv>=1000?Math.round(lv).toLocaleString("en-IN"):lv.toFixed(0)),4,y+4)}
+ g.beginPath();pts.forEach((p,i)=>{const x=X(hl-1+p[0]);i?g.lineTo(x,Y(p[1].hi)):g.moveTo(x,Y(p[1].hi))});for(let i=pts.length-1;i>=0;i--)g.lineTo(X(hl-1+pts[i][0]),Y(pts[i][1].lo));g.closePath();g.fillStyle="rgba(5,150,105,.14)";g.fill();
+ g.beginPath();hist.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.strokeStyle="#111827";g.lineWidth=1.6;g.stroke();
+ g.beginPath();pts.forEach((p,i)=>{const x=X(hl-1+p[0]);i?g.lineTo(x,Y(p[1].med)):g.moveTo(x,Y(p[1].med))});g.strokeStyle="#059669";g.setLineDash([6,4]);g.lineWidth=2;g.stroke();g.setLineDash([]);
+ const tg=num($("tgt").value);if(tg>0&&Math.log(tg)>mn&&Math.log(tg)<mx){g.strokeStyle="#d97706";g.setLineDash([3,3]);g.beginPath();g.moveTo(pl,Y(tg));g.lineTo(W-pr,Y(tg));g.stroke();g.setLineDash([]);g.fillStyle="#d97706";g.fillText("Target",W-pr-40,Y(tg)-4)}
+ g.fillStyle="#6b7280";g.fillText("History",pl,Hh-6);g.fillText("Forecast →",X(hl-1)+6,Hh-6);
+ const f=fc(sel),lab=HZ.find(h=>h[1]==sel)[0];
+ $("legend").innerHTML=`<b style="color:#111827">${lab}:</b> median <b class="g">${inr(f.med)}</b> · range ${inr(f.lo)} – ${inr(f.hi)} · log-scale chart`}
+function dl(){const rows=[["Horizon","Trading days","Median price","Low","High","Median return %","Expected return %","P(profit) %"]];
+ HZ.forEach(h=>{const f=fc(h[1]);rows.push([h[0],h[1],f.med.toFixed(2),f.lo.toFixed(2),f.hi.toFixed(2),((f.med/D.S-1)*100).toFixed(2),((f.mean/D.S-1)*100).toFixed(2),(f.pp*100).toFixed(1)])});
+ const b=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=D.rows[0].s+"_forecast.csv";a.click()}
+$("file").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=x=>load(x.target.result);r.readAsText(f)};
+const dr=$("drop");["dragenter","dragover"].forEach(v=>dr.addEventListener(v,e=>{e.preventDefault();dr.classList.add("on")}));
+["dragleave","drop"].forEach(v=>dr.addEventListener(v,()=>dr.classList.remove("on")));
+$("demo").onclick=()=>{let s=7,rnd=()=>(s=(s*16807)%2147483647)/2147483647,p=1200,t="Symbol,Series,Date,High Price,Low Price,Close Price\n",d=new Date();d.setDate(d.getDate()-1100);
+ for(let i=0;i<760;i++){d.setDate(d.getDate()+1);if(d.getDay()%6==0)continue;const r=(rnd()+rnd()+rnd()-1.5)*.025+.0004;p*=1+r;t+=`DEMO,EQ,${d.getDate()}-${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]}-${d.getFullYear()},${(p*1.01).toFixed(2)},${(p*.99).toFixed(2)},${p.toFixed(2)}\n`}load(t)};
+["model","conf"].forEach(i=>$(i).onchange=()=>D&&render());$("tgt").oninput=()=>D&&render();
+$("csvBtn").onclick=dl;$("prBtn").onclick=()=>window.print();
+window.addEventListener("resize",()=>D&&draw());
+["tSR","tPR","tMA"].forEach(i=>$(i).onchange=()=>D&&draw());
+const cvEl=$("cv");cvEl.addEventListener("pointermove",e=>{if(D)draw(e.clientX-cvEl.getBoundingClientRect().left)});cvEl.addEventListener("pointerleave",()=>{if(D)draw()});
+</script>
+</body>
+</html>
