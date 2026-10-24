@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="SinSigma Stock Average Calculator: average down or up, multiple buy lots, break-even, target profit and exit scenarios. Your data in. Your results out.">
 <title>SinSigma | Stock Average Calculator</title>
+  <link rel="icon" type="image/png" href="favicon.png">
 <style>
 :root{
   --bg:#0d0f12;--card:#161a22;--text:#fff;--muted:#94a3b8;
@@ -18,10 +19,10 @@ header{border-bottom:1px solid var(--border);padding:1.2rem 2rem;display:flex;ju
 .logo{font-size:1.5rem;font-weight:700;letter-spacing:.5px}.logo span{color:var(--blue)}
 nav{display:flex;gap:1.5rem;color:var(--muted);font-size:.9rem;flex-wrap:wrap}
 nav a:hover,nav a.active{color:var(--blue)}
-.main{flex:1;max-width:1240px;width:100%;margin:0 auto;padding:2.5rem 2rem;display:grid;grid-template-columns:1fr 1.45fr;gap:2.5rem;align-items:start}
-@media(max-width:992px){.main{grid-template-columns:1fr;gap:1.5rem;padding:1.5rem 1rem}header{padding:1rem}}
+.main{flex:1;max-width:1240px;width:100%;margin:0 auto;padding:1.5rem 2rem 2rem;display:grid;grid-template-columns:1.3fr 1fr;gap:0 2rem;align-items:start}
+@media(max-width:992px){.main{grid-template-columns:1fr;padding:1rem}header{padding:1rem}.col-inputs{order:1;position:static!important;max-height:none!important}.col-results{order:2}.about{order:3}}
 .tagline{color:var(--blue);font-size:.85rem;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin-bottom:.5rem}
-h1{font-size:2.4rem;font-weight:800;line-height:1.2;margin-bottom:1rem}
+h1{font-size:1.8rem;font-weight:800;line-height:1.2;margin-bottom:1rem}
 .hero-desc{color:var(--muted);font-size:1.05rem;margin-bottom:1.5rem}
 .features{list-style:none;color:var(--muted);font-size:.95rem}
 .features li{margin-bottom:.7rem;display:flex;gap:.5rem}
@@ -64,6 +65,12 @@ tr.me td{background:rgba(56,189,248,.08)}
 .bar i{display:block;height:100%}
 footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;color:var(--muted);font-size:.85rem;margin-top:auto}
 .hide{display:none}
+.top{grid-column:1/-1}
+.col-inputs{position:sticky;top:1rem;max-height:calc(100vh - 2rem);overflow-y:auto}
+.about{grid-column:1/-1;border-top:1px solid var(--border);margin-top:.5rem;padding-top:1rem;color:var(--muted);font-size:.8rem;display:flex;flex-wrap:wrap;gap:.4rem 2rem;align-items:center}
+.about p{flex:1 1 100%}
+.about ul{list-style:none;display:flex;flex-wrap:wrap;gap:.3rem 1.5rem}
+.about li::before{content:"✓ ";color:var(--green);font-weight:700}
 </style>
 </head>
 <body>
@@ -79,53 +86,12 @@ footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;colo
 </header>
 
 <main class="main">
-  <section>
+  <div class="top">
     <div class="tagline">Next-Generation Finance Tools</div>
     <h1>Stock Average Calculator</h1>
-    <p class="hero-desc">Average down or up across multiple buy lots. See your new cost, break-even, target profit and exit scenarios instantly.</p>
-    <ul class="features">
-      <li>Your Data In. Your Results Out. Nothing Stored.</li>
-      <li>Multiple buy lots with step-by-step average tracking.</li>
-      <li>Reverse solver: how many shares to reach a target average?</li>
-      <li>Brokerage-aware break-even and profit/loss scenarios.</li>
-    </ul>
-  </section>
+  </div>
 
-  <section>
-    <div class="card">
-      <div class="title">Settings</div>
-      <div class="row">
-        <div class="group"><label for="cur">Currency</label>
-          <select id="cur"><option value="INR">₹ INR</option><option value="USD">$ USD</option><option value="EUR">€ EUR</option><option value="GBP">£ GBP</option></select></div>
-        <div class="group"><label for="fee">Charges per trade (%) <small>optional</small></label>
-          <input type="number" id="fee" placeholder="0.00" step="any" min="0" max="100"></div>
-      </div>
-
-      <div class="title">Existing Holding</div>
-      <div class="row">
-        <div class="group"><label for="hQty">Holding Qty</label><input type="number" id="hQty" placeholder="0" step="any" min="0"></div>
-        <div class="group"><label for="hAvg">Holding Average Price</label><input type="number" id="hAvg" placeholder="0.00" step="any" min="0"></div>
-      </div>
-
-      <div class="title"><span>New Purchases</span><button class="btn" id="addLot" type="button">+ Add lot</button></div>
-      <div id="lots"></div>
-      <div class="err" id="err"></div>
-
-      <div class="optional">
-        <div class="row">
-          <div class="group" style="margin:0"><label for="tPrice">Target Exit Price</label><input type="number" id="tPrice" placeholder="0.00" step="any" min="0"></div>
-          <div class="group" style="margin:0"><label for="dAvg">Desired Average (solver)</label><input type="number" id="dAvg" placeholder="0.00" step="any" min="0"></div>
-        </div>
-        <div class="group" style="margin:.8rem 0 0"><label for="tPct">Target Gain % over New Average <small>optional, used when Target Exit Price is empty</small></label>
-          <input type="number" id="tPct" placeholder="e.g. 5" step="any" min="0"></div>
-      </div>
-      <div class="btns">
-        <button class="btn primary" id="copy" type="button">Copy summary</button>
-        <button class="btn" id="csv" type="button">Download CSV</button>
-        <button class="btn" id="reset" type="button">Reset</button>
-      </div>
-    </div>
-
+  <section class="col-results">
     <div class="card">
       <div class="title">Results</div>
       <div class="kpis">
@@ -168,6 +134,53 @@ footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;colo
       <div class="tw"><table><thead><tr><th>Exit Price</th><th>vs New Avg</th><th>Profit / Loss</th><th>Return</th></tr></thead><tbody id="scTable"></tbody></table></div>
       <div class="note">Scenarios are based on your new average and include sell-side charges if entered. This tool is for information only and is not investment advice.</div>
     </div>
+  </section>
+
+  <section class="col-inputs">
+    <div class="card">
+      <div class="title">Settings</div>
+      <div class="row">
+        <div class="group"><label for="cur">Currency</label>
+          <select id="cur"><option value="INR">₹ INR</option><option value="USD">$ USD</option><option value="EUR">€ EUR</option><option value="GBP">£ GBP</option></select></div>
+        <div class="group"><label for="fee">Charges per trade (%) <small>optional</small></label>
+          <input type="number" id="fee" placeholder="0.00" step="any" min="0" max="100"></div>
+      </div>
+
+      <div class="title">Existing Holding</div>
+      <div class="row">
+        <div class="group"><label for="hQty">Holding Qty</label><input type="number" id="hQty" placeholder="0" step="any" min="0"></div>
+        <div class="group"><label for="hAvg">Holding Average Price</label><input type="number" id="hAvg" placeholder="0.00" step="any" min="0"></div>
+      </div>
+
+      <div class="title"><span>New Purchases</span><button class="btn" id="addLot" type="button">+ Add lot</button></div>
+      <div id="lots"></div>
+      <div class="err" id="err"></div>
+
+      <div class="optional">
+        <div class="row">
+          <div class="group" style="margin:0"><label for="tPrice">Target Exit Price</label><input type="number" id="tPrice" placeholder="0.00" step="any" min="0"></div>
+          <div class="group" style="margin:0"><label for="dAvg">Desired Average (solver)</label><input type="number" id="dAvg" placeholder="0.00" step="any" min="0"></div>
+        </div>
+        <div class="group" style="margin:.8rem 0 0"><label for="tPct">Target Gain % over New Average <small>optional, used when Target Exit Price is empty</small></label>
+          <input type="number" id="tPct" placeholder="e.g. 5" step="any" min="0"></div>
+      </div>
+      <div class="btns">
+        <button class="btn primary" id="copy" type="button">Copy summary</button>
+        <button class="btn" id="csv" type="button">Download CSV</button>
+        <button class="btn" id="reset" type="button">Reset</button>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="about">
+    <p>Average down or up across multiple buy lots. See your new cost, break-even, target profit and exit scenarios instantly.</p>
+    <ul>
+      <li>Your Data In. Your Results Out. Nothing Stored.</li>
+      <li>Multiple buy lots with step-by-step average tracking.</li>
+      <li>Reverse solver: how many shares to reach a target average?</li>
+      <li>Brokerage-aware break-even and profit/loss scenarios.</li>
+    </ul>
   </section>
 </main>
 
