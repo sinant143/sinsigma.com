@@ -1,1 +1,0 @@
-# sinsigma.com
