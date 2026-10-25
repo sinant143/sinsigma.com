@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SinSigma Style - NSE Predictive Forecaster</title>
+    <!-- Tailwind CSS for SinSigma Minimalistic Clean UI Theme -->
+    <script src="https://tailwindcss.com"></script>
+    <!-- ChartJS for Technical Plots -->
+    <script src="https://jsdelivr.net"></script>
+</head>
+<body class="bg-[#0f172a] text-[#f8fafc] font-sans antialiased">
+
+    <!-- Header Section -->
+    <header class="border-b border-[#334155] py-6 px-8 max-w-7xl mx-auto flex justify-between items-center">
+        <h1 class="text-2xl font-bold tracking-tight text-emerald-400">Σ SinSigma <span class="text-slate-400 text-base font-normal">Forecasting Tool</span></h1>
+        <span class="text-xs bg-[#1e293b] text-slate-400 px-3 py-1 rounded border border-[#334155]">0-Maintenance Client-Side Engine</span>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-8">
+        <!-- Input Area -->
+        <div class="bg-[#1e293b] p-6 rounded-lg border border-[#334155] mb-8">
+            <h2 class="text-lg font-semibold mb-3 text-slate-200">Paste NSE CSV Data (with column names)</h2>
+            <textarea id="csvInput" class="w-full h-44 bg-[#0f172a] border border-[#334155] rounded p-3 font-mono text-xs text-emerald-300 focus:outline-none focus:border-emerald-500" placeholder="Paste data here..."></textarea>
+            <button onclick="runForecastingEngine()" class="mt-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-6 py-2 rounded transition-colors text-sm">
+                Run Predictive Analytics
+            </button>
+        </div>
+
+        <!-- Dashboard Outputs Grid -->
+        <div id="dashboard" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Metric Card 1 -->
+            <div class="bg-[#1e293b] p-5 rounded-lg border border-[#334155]">
+                <p class="text-xs text-slate-400 uppercase tracking-wider">Next Day Price Forecast (Linear Drift)</p>
+                <p id="priceForecast" class="text-3xl font-bold text-emerald-400 mt-2">₹0.00</p>
+            </div>
+            <!-- Metric Card 2 -->
+            <div class="bg-[#1e293b] p-5 rounded-lg border border-[#334155]">
+                <p class="text-xs text-slate-400 uppercase tracking-wider">Expected Volatility Range</p>
+                <p id="volatilityRange" class="text-xl font-bold text-amber-400 mt-2">₹0.00 - ₹0.00</p>
+            </div>
+            <!-- Metric Card 3 -->
+            <div class="bg-[#1e293b] p-5 rounded-lg border border-[#334155]">
+                <p class="text-xs text-slate-400 uppercase tracking-wider">Delivery Accumulation Score</p>
+                <p id="deliveryScore" class="text-xl font-bold text-sky-400 mt-2">Neutral</p>
+            </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="bg-[#1e293b] p-6 rounded-lg border border-[#334155]">
+            <canvas id="forecastChart" class="w-full max-h-96"></canvas>
+        </div>
+    </main>
+
+    <script>
+        let chartInstance = null;
+
+        function runForecastingEngine() {
+            const rawData = document.getElementById('csvInput').value.trim();
+            if (!rawData) return alert("Please paste the CSV data first!");
+
+            // 1. Parsing CSV data manually
+            const lines = rawData.split('\n').map(line => line.replace(/"/g, '').split(','));
+            const headers = lines[0].map(h => h.trim());
+            
+            // Extract index locations of needed columns
+            const closeIdx = headers.findIndex(h => h.startsWith('Close Price'));
+            const highIdx = headers.findIndex(h => h.startsWith('High Price'));
+            const lowIdx = headers.findIndex(h => h.startsWith('Low Price'));
+            const dlyPctIdx = headers.findIndex(h => h.startsWith('% Dly Qt'));
+            const dateIdx = headers.findIndex(h => h.startsWith('Date'));
+
+            // Parse numbers (NSE data flows from newest date to oldest, so we reverse it for forecasting chronologically)
+            let historicalData = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].length < headers.length) continue;
+                historicalData.push({
+                    date: lines[i][dateIdx].trim(),
+                    close: parseFloat(lines[i][closeIdx]),
+                    high: parseFloat(lines[i][highIdx]),
+                    low: parseFloat(lines[i][lowIdx]),
+                    delivery: parseFloat(lines[i][dlyPctIdx])
+                });
+            }
+            historicalData.reverse(); // Now array goes oldest -> newest
+
+            const closes = historicalData.map(d => d.close);
+            const dates = historicalData.map(d => d.date);
+            const n = closes.length;
+
+            // 2. Statistical Analysis & Forecasting Methods
+            // Method A: Linear Regression (Drift/Trend Projection)
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            for (let i = 0; i < n; i++) {
+                sumX += i;
+                sumY += closes[i];
+                sumXY += i * closes[i];
+                sumXX += i * i;
+            }
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            
+            // Predict Next Day Price Point
+            const nextDayPredictedPrice = (slope * n) + intercept;
+
+            // Method B: Historical Volatility Range (Bloomberg style standard deviation bands)
+            let logReturns = [];
+            for(let i=1; i<n; i++) {
+                logReturns.push(Math.log(closes[i] / closes[i-1]));
+            }
+            const avgReturn = logReturns.reduce((a,b)=>a+b, 0) / logReturns.length;
+            const variance = logReturns.reduce((a,b)=> a + Math.pow(b - avgReturn, 2), 0) / logReturns.length;
+            const standardDeviation = Math.sqrt(variance);
+            
+            // Calculate Upper and Lower Price Boundary for next trading day
+            const lastPrice = closes[n-1];
+            const upperRange = lastPrice * Math.exp(standardDeviation);
+            const lowerRange = lastPrice * Math.exp(-standardDeviation);
+
+            // Method C: Delivery Accumulation Health check
+            const recentDeliveryAvg = historicalData.slice(-5).reduce((a,b)=> a+b.delivery, 0) / 5;
+            let deliverySignal = "Neutral / Stable Accumulation";
+            if(recentDeliveryAvg > 45) deliverySignal = "Strong Institutional Delivery Buying";
+            if(recentDeliveryAvg < 25) deliverySignal = "Low Delivery Volatility / Speculative Trading";
+
+            // 3. Update Dashboard Metrics View
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('priceForecast').innerText = `₹${nextDayPredictedPrice.toFixed(2)}`;
+            document.getElementById('volatilityRange').innerText = `₹${lowerRange.toFixed(2)} - ₹${upperRange.toFixed(2)}`;
+            document.getElementById('deliveryScore').innerText = deliverySignal;
+
+            // 4. Chart Rendering
+            const extendedDates = [...dates, "T+1 (Forecast)"];
+            const forecastLine = Array(n).fill(null);
+            forecastLine[n-1] = lastPrice; // connect last actual data point to forecast point
+            forecastLine.push(nextDayPredictedPrice);
+
+            if(chartInstance) chartInstance.destroy();
+
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: extendedDates.slice(-20), // Show last 20 sessions for clean viewing
+                    datasets: [
+                        {
+                            label: 'Historical Close Price',
+                            data: closes.slice(-20),
+                            borderColor: '#10b981',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Predictive Point Forecast',
+                            data: forecastLine.slice(-21),
+                            borderColor: '#f59e0b',
+                            borderDash:,
+                            backgroundColor: 'transparent',
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+    </script>
+  <script>
+  // Right-click डिसेबल करने के लिए
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // कीबोर्ड शॉर्टकट्स (Ctrl+U, F12, Ctrl+Shift+I) ब्लॉक करने के लिए
+  document.addEventListener('keydown', (e) => {
+    if (
+      e.key === 'F12' ||
+      (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+      (e.ctrlKey && e.key === 'u') ||
+      (e.ctrlKey && e.shiftKey && e.key === 'J')
+    ) {
+      e.preventDefault();
+    }
+  });
+</script>
+</body>
+</html>
