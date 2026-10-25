@@ -1,178 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SinSigma Style - NSE Predictive Forecaster</title>
-    <!-- Tailwind CSS for SinSigma Minimalistic Clean UI Theme -->
-    <script src="https://tailwindcss.com"></script>
-    <!-- ChartJS for Technical Plots -->
-    <script src="https://jsdelivr.net"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title> Quick Forecaster | SinSigma</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Ctext x='32' y='47' font-size='44' font-weight='700' text-anchor='middle' fill='%2310b981' font-family='Arial,sans-serif'%3E%CE%A3%3C/text%3E%3C/svg%3E">
+<meta name="description" content="Upload NSE historical CSV and get forecasts, volatility ranges, indicators, delivery analysis and a backtest. Runs fully in your browser.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--line:#334155;--tx:#f8fafc;--mu:#94a3b8;--g:#10b981;--r:#f43f5e;--a:#f59e0b;--b:#38bdf8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{border-bottom:1px solid var(--line);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.logo{font-size:22px;font-weight:700;color:var(--g);text-decoration:none}
+nav.top{display:flex;gap:22px;margin:0;overflow:visible;padding:0}nav.top a{color:var(--mu);text-decoration:none;font-size:14px}nav.top a:hover,nav.top a:focus-visible{color:var(--g);outline:none}
+.hero{text-align:center;padding:34px 20px 6px}.hero h1{margin:0;font-size:clamp(26px,5vw,38px)}.hero p{margin:8px auto 0;color:var(--mu);max-width:560px}
+a.btn{display:inline-block;text-decoration:none;border-radius:8px;padding:8px 16px}a.btn.p{background:var(--g);color:#052e22;font-weight:700}a.btn.p:hover{background:#34d399}a.btn:focus-visible{outline:2px solid #fff}
+main{max-width:1180px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:16px}.card h3{margin:0 0 6px;font-size:14px;color:var(--mu);font-weight:600}
+#drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--mu);cursor:pointer;transition:.15s}
+#drop.on,#drop:hover,#drop:focus-visible{border-color:var(--g);color:var(--tx);outline:none}
+textarea{width:100%;height:90px;margin-top:12px;background:var(--bg);color:#6ee7b7;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px/1.4 ui-monospace,Consolas,monospace;resize:vertical}
+textarea:focus{outline:2px solid var(--g);border-color:transparent}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+button,select{font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx);padding:8px 14px;cursor:pointer}
+button.p{background:var(--g);color:#052e22;font-weight:700;border-color:var(--g)}button.p:hover{background:#34d399}
+button:focus-visible,select:focus-visible{outline:2px solid var(--g)}
+#err{color:var(--r);margin-top:10px;display:none}
+.hint{color:var(--mu);font-size:13px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px}
+.stat span{display:block;font-size:12px;color:var(--mu)}.stat b{display:block;font-size:20px;margin-top:2px}.stat i{font-style:normal;font-size:12px;color:var(--mu)}
+.up{color:var(--g)}.dn{color:var(--r)}.nu{color:var(--a)}
+#tabs{display:flex;gap:6px;overflow-x:auto;margin:6px 0 14px;padding-bottom:4px}
+#tabs button{white-space:nowrap}#tabs button.on{background:var(--g);color:#052e22;border-color:var(--g);font-weight:700}
+.pane{display:none}.pane.on{display:block}
+.cw{position:relative;height:340px}.cw.s{height:200px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mu);font-weight:600;font-size:13px}
+.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.tag.u{background:#064e3b;color:#6ee7b7}.tag.d{background:#4c0519;color:#fda4af}.tag.n{background:#451a03;color:#fcd34d}
+.two{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.note{border-left:3px solid var(--a);padding:8px 12px;background:#2a2410;border-radius:0 8px 8px 0;font-size:13px;color:#fde68a}
+footer{color:var(--mu);font-size:13px;text-align:center;padding:26px 20px;border-top:1px solid var(--line);margin-top:20px;line-height:1.8}footer b{color:var(--g)}footer span{font-size:12px}
+@media print{#in,nav,.hero{display:none}.pane{display:block!important}body{background:#fff;color:#000}}
+</style>
 </head>
-<body class="bg-[#0f172a] text-[#f8fafc] font-sans antialiased">
+<body>
+<header><a class="logo" href="https://sinsigma.com/">Σ SinSigma</a><nav class="top"><a href="https://sinsigma.com/Finance-Tools">Stocks & Finance</a><a href="https://sinsigma.com">Home</a><a href="https://sinsigma.com/">About</a></nav></header>
+<div class="hero"><h1>Quick Forecaster</h1><p>Download the data file, upload it here, and get forecasts, ranges and signals in seconds.</p></div>
+<main>
+<section class="card" id="in">
+ <h2>1. Get data from NSE</h2>
+ <p class="hint">Open the NSE report page, pick the stock symbol and date range (up to 1 year), then download the CSV file.</p>
+ <div class="row"><a class="btn p" href="https://www.nseindia.com/report-detail/eq_security#" target="_blank" rel="noopener">Get Data</a></div>
+ <h2 style="margin-top:22px">2. Upload the CSV file</h2>
+ <div id="drop" tabindex="0" role="button" aria-label="Choose CSV file">Drop the NSE CSV here, or click to choose a file<br><span id="fn" class="hint">Only .csv files. The file stays in your browser.</span></div>
+ <input type="file" id="file" accept=".csv,.txt,.tsv" hidden><input type="hidden" id="txt">
+ <div class="row"><label class="hint">Forecast days <select id="hz"><option value="1">1</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option></select></label><button id="clr">Clear</button></div>
+ <div id="err" role="alert"></div>
+</section>
 
-    <!-- Header Section -->
-    <header class="border-b border-[#334155] py-6 px-8 max-w-7xl mx-auto flex justify-between items-center">
-        <h1 class="text-2xl font-bold tracking-tight text-emerald-400">Σ SinSigma <span class="text-slate-400 text-base font-normal">Forecasting Tool</span></h1>
-        <span class="text-xs bg-[#1e293b] text-slate-400 px-3 py-1 rounded border border-[#334155]">0-Maintenance Client-Side Engine</span>
-    </header>
+<div id="out" hidden>
+ <div class="grid" id="stats"></div>
+ <nav id="tabs"><button data-t="over" class="on">Overview</button><button data-t="fc">Forecast</button><button data-t="ind">Indicators</button><button data-t="vol">Volume &amp; Delivery</button><button data-t="risk">Risk &amp; Levels</button></nav>
 
-    <main class="max-w-7xl mx-auto p-8">
-        <!-- Input Area -->
-        <div class="bg-[#1e293b] p-6 rounded-lg border border-[#334155] mb-8">
-            <h2 class="text-lg font-semibold mb-3 text-slate-200">Paste NSE CSV Data (with column names)</h2>
-            <textarea id="csvInput" class="w-full h-44 bg-[#0f172a] border border-[#334155] rounded p-3 font-mono text-xs text-emerald-300 focus:outline-none focus:border-emerald-500" placeholder="Paste data here..."></textarea>
-            <button onclick="runForecastingEngine()" class="mt-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-6 py-2 rounded transition-colors text-sm">
-                Run Predictive Analytics
-            </button>
-        </div>
+ <div class="pane on" id="p-over">
+  <div class="card"><h2>Price, trend bands and forecast fan</h2><div class="cw"><canvas id="c1"></canvas></div><p class="hint" id="c1n"></p></div>
+  <div class="card"><h2>Signal scoreboard</h2><div class="tw" id="sigs"></div></div>
+ </div>
+ <div class="pane" id="p-fc">
+  <div class="card"><h2>Forecast by method</h2><div class="tw" id="fct"></div></div>
+  <div class="card"><h2>Probability view (Monte Carlo, 3000 paths)</h2><div class="grid" id="mcs"></div></div>
+  <div class="note" id="trust"></div>
+ </div>
+ <div class="pane" id="p-ind">
+  <div class="two"><div class="card"><h2>RSI (14)</h2><div class="cw s"><canvas id="c2"></canvas></div></div><div class="card"><h2>MACD (12, 26, 9)</h2><div class="cw s"><canvas id="c3"></canvas></div></div></div>
+  <div class="card"><h2>Indicator values</h2><div class="tw" id="indt"></div></div>
+ </div>
+ <div class="pane" id="p-vol">
+  <div class="card"><h2>Volume and delivery %</h2><div class="cw"><canvas id="c4"></canvas></div></div>
+  <div class="card"><h2>What delivery data says</h2><div class="tw" id="volt"></div></div>
+ </div>
+ <div class="pane" id="p-risk">
+  <div class="two"><div class="card"><h2>Volatility</h2><div class="tw" id="volat"></div></div><div class="card"><h2>Risk</h2><div class="tw" id="riskt"></div></div></div>
+  <div class="card"><h2>Support and resistance</h2><div class="tw" id="lvl"></div></div>
+ </div>
+ <div class="row"><button id="cp">Copy summary</button><button id="pr">Print / Save PDF</button></div>
+</div>
+</main>
+<footer><b>Σ SinSigma</b> Technology made simpler.<br>Your Data In. Your Results Out. Fast, Secure, and Completely Private.<br><span>For education only. Not investment advice. Forecasts can be wrong; markets can move outside any range shown.</span><br>© All rights reserved. Powered by SINANT</footer>
 
-        <!-- Dashboard Outputs Grid -->
-        <div id="dashboard" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <!-- Metric Card 1 -->
-            <div class="bg-[#1e293b] p-5 rounded-lg border border-[#334155]">
-                <p class="text-xs text-slate-400 uppercase tracking-wider">Next Day Price Forecast (Linear Drift)</p>
-                <p id="priceForecast" class="text-3xl font-bold text-emerald-400 mt-2">₹0.00</p>
-            </div>
-            <!-- Metric Card 2 -->
-            <div class="bg-[#1e293b] p-5 rounded-lg border border-[#334155]">
-                <p class="text-xs text-slate-400 uppercase tracking-wider">Expected Volatility Range</p>
-                <p id="volatilityRange" class="text-xl font-bold text-amber-400 mt-2">₹0.00 - ₹0.00</p>
-            </div>
-            <!-- Metric Card 3 -->
-            <div class="bg-[#1e293b] p-5 rounded-lg border border-[#334155]">
-                <p class="text-xs text-slate-400 uppercase tracking-wider">Delivery Accumulation Score</p>
-                <p id="deliveryScore" class="text-xl font-bold text-sky-400 mt-2">Neutral</p>
-            </div>
-        </div>
+<script>
+const $=i=>document.getElementById(i);
+const sum=a=>a.reduce((x,y)=>x+y,0),mean=a=>a.length?sum(a)/a.length:NaN,sd=a=>{const m=mean(a);return Math.sqrt(sum(a.map(x=>(x-m)**2))/Math.max(1,a.length-1))};
+const last=(a,k=1)=>a[a.length-k],lr=a=>a.slice(1).map((x,i)=>Math.log(x/a[i]));
+const fmt=(x,d=2)=>x==null||isNaN(x)?'–':x.toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+const rs=x=>'₹'+fmt(x),pc=(x,d=2)=>x==null||isNaN(x)?'–':(x>=0?'+':'')+(x*100).toFixed(d)+'%';
+const cls=x=>x>0?'up':x<0?'dn':'nu';
+const lab=t=>new Date(t).toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'});
+const MO={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function pd(s){s=s.trim();let m=s.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3})[a-z]*[-\/ ](\d{4})$/);if(m)return Date.UTC(+m[3],MO[m[2].toLowerCase()],+m[1]);
+ m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);if(m)return Date.UTC(+m[3],+m[2]-1,+m[1]);
+ m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return Date.UTC(+m[1],+m[2]-1,+m[3]);return NaN}
+const num=s=>{const v=parseFloat(String(s==null?'':s).replace(/[,₹%\s]/g,''));return isNaN(v)?null:v};
 
-        <!-- Chart Container -->
-        <div class="bg-[#1e293b] p-6 rounded-lg border border-[#334155]">
-            <canvas id="forecastChart" class="w-full max-h-96"></canvas>
-        </div>
-    </main>
+/* ---------- CSV (handles quotes, Indian 4,39,556 numbers, BOM, spaces in headers) ---------- */
+function parseCSV(t,del){t=t.replace(/^\uFEFF/,'');const R=[];let r=[],f='',q=false;
+ for(let i=0;i<t.length;i++){const c=t[i];
+  if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+  else if(c=='"')q=true;else if(c==del){r.push(f);f=''}
+  else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;r.push(f);R.push(r);r=[];f=''}else f+=c}
+ if(f||r.length){r.push(f);R.push(r)}return R.filter(r=>r.some(x=>x.trim()))}
+function load(text){
+ const del=text.split(/\r?\n/)[0].includes('\t')&&!text.split(/\r?\n/)[0].includes(',')?'\t':',';
+ const R=parseCSV(text,del);if(R.length<2)throw new Error('No data rows found. Paste the header row and the data rows.');
+ const H=R[0].map(h=>h.replace(/[\s\u00a0]+/g,' ').trim().toLowerCase());
+ const ix=(...k)=>H.findIndex(h=>k.some(x=>h.startsWith(x)));
+ const I={d:ix('date'),o:ix('open'),h:ix('high'),l:ix('low'),c:ix('close'),v:ix('total traded','volume'),t:ix('turnover'),dq:ix('deliverable'),dp:ix('% dly','delivery'),sy:ix('symbol')};
+ const miss=['d','h','l','c'].filter(k=>I[k]<0).map(k=>({d:'Date',h:'High Price',l:'Low Price',c:'Close Price'}[k]));
+ if(miss.length)throw new Error('Missing column(s): '+miss.join(', ')+'. Use the NSE Security-wise historical CSV.');
+ let rows=R.slice(1),sym=I.sy>=0?rows[0][I.sy].trim():'';
+ if(I.sy>=0)rows=rows.filter(r=>(r[I.sy]||'').trim()==sym);
+ const g=(r,k)=>I[k]>=0?num(r[I[k]]):null;
+ const D=rows.map(r=>{const o={d:pd(r[I.d]||''),o:g(r,'o'),h:g(r,'h'),l:g(r,'l'),c:g(r,'c'),v:g(r,'v'),t:g(r,'t'),dq:g(r,'dq'),dp:g(r,'dp')};
+  if(o.dp==null&&o.dq!=null&&o.v)o.dp=o.dq/o.v*100;return o}).filter(o=>!isNaN(o.d)&&o.c>0&&o.h>0&&o.l>0).sort((a,b)=>a.d-b.d);
+ if(D.length<30)throw new Error('Need at least 30 trading days. Found '+D.length+'.');
+ return {D,sym:sym||'Stock'}}
 
+/* ---------- indicators ---------- */
+const sma=(a,n)=>a.map((_,i)=>i<n-1?null:mean(a.slice(i-n+1,i+1)));
+const ema=(a,n)=>{const k=2/(n+1);let e=null;return a.map(x=>x==null?null:(e=e==null?x:x*k+e*(1-k)))};
+function rsi(c,n=14){const o=Array(c.length).fill(null);let g=0,l=0;for(let i=1;i<=n;i++){const d=c[i]-c[i-1];d>0?g+=d:l-=d}g/=n;l/=n;o[n]=100-100/(1+g/(l||1e-9));
+ for(let i=n+1;i<c.length;i++){const d=c[i]-c[i-1];g=(g*(n-1)+Math.max(d,0))/n;l=(l*(n-1)+Math.max(-d,0))/n;o[i]=100-100/(1+g/(l||1e-9))}return o}
+function atr(D,n=14){const tr=D.map((x,i)=>i?Math.max(x.h-x.l,Math.abs(x.h-D[i-1].c),Math.abs(x.l-D[i-1].c)):x.h-x.l);let a=mean(tr.slice(0,n));const o=Array(D.length).fill(null);o[n-1]=a;for(let i=n;i<D.length;i++){a=(a*(n-1)+tr[i])/n;o[i]=a}return o}
+function ewma(r,lam=.94){let v=sd(r.slice(0,20))**2||1e-6;for(const x of r)v=lam*v+(1-lam)*x*x;return Math.sqrt(v)}
+const park=D=>Math.sqrt(mean(D.map(x=>Math.log(x.h/x.l)**2))/(4*Math.LN2));
+
+/* ---------- forecasting methods ---------- */
+const M={
+ naive:(c,h)=>Array(h).fill(last(c)),
+ linreg:(c,h)=>{const w=c.slice(-20),n=w.length,xm=(n-1)/2,ym=mean(w);let a=0,b=0;w.forEach((y,i)=>{a+=(i-xm)*(y-ym);b+=(i-xm)**2});const s=a/b;return Array.from({length:h},(_,k)=>ym+s*(n+k-xm))},
+ holt:(c,h)=>{let B=null;for(const al of[.2,.4,.6])for(const be of[.05,.1,.2]){let L=c[0],T=c[1]-c[0],e=0;for(let i=1;i<c.length;i++){e+=(c[i]-L-T)**2;const nL=al*c[i]+(1-al)*(L+T);T=be*(nL-L)+(1-be)*T;L=nL}if(!B||e<B.e)B={e,L,T}}
+  return Array.from({length:h},(_,k)=>{let d=0;for(let j=1;j<=k+1;j++)d+=.9**j;return B.L+B.T*d})},
+ drift:(c,h)=>{const m=mean(lr(c).slice(-20));return Array.from({length:h},(_,k)=>last(c)*Math.exp(m*(k+1)*.5))}
+};
+M.ens=(c,h)=>{const a=M.linreg(c,h),b=M.holt(c,h),d=M.drift(c,h);return a.map((x,i)=>(x+b[i]+d[i])/3)};
+const NAMES={naive:'Naive (tomorrow = today)',linreg:'Linear trend (20 days)',holt:'Holt smoothing (damped)',drift:'Momentum drift',ens:'Ensemble (average)'};
+
+function backtest(c,B=40){const ks=Object.keys(NAMES),R={};ks.forEach(k=>R[k]={e:[],d:0,n:0});let hit=0,tot=0;
+ for(let i=Math.max(30,c.length-1-B);i<c.length-1;i++){const hs=c.slice(0,i+1),a=c[i+1],p0=c[i],P={naive:p0,linreg:M.linreg(hs,1)[0],holt:M.holt(hs,1)[0],drift:M.drift(hs,1)[0]};P.ens=(P.linreg+P.holt+P.drift)/3;
+  ks.forEach(k=>{R[k].e.push(Math.abs(P[k]-a)/a);R[k].n++;if(Math.sign(P[k]-p0)==Math.sign(a-p0))R[k].d++});
+  tot++;if(Math.abs(Math.log(a/p0))<=sd(lr(hs).slice(-20)))hit++}
+ const nm=mean(R.naive.e);ks.forEach(k=>{R[k].mae=mean(R[k].e);R[k].dir=R[k].d/R[k].n;R[k].skill=1-R[k].mae/nm});return {R,band:hit/tot,n:tot}}
+
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function mc(c,h,sig,N=3000){const r=lr(c).slice(-120),m=mean(r),s=sd(r)||1e-6,z=r.map(x=>(x-m)/s),Rn=rng(42),P=[];
+ for(let p=0;p<N;p++){let x=last(c);const row=[];for(let k=0;k<h;k++){x*=Math.exp(sig*z[Math.floor(Rn()*z.length)]-.5*sig*sig);row.push(x)}P.push(row)}
+ const q={5:[],25:[],50:[],75:[],95:[]};for(let k=0;k<h;k++){const col=P.map(r=>r[k]).sort((a,b)=>a-b);for(const p in q)q[p].push(col[Math.floor(p/100*(N-1))])}
+ return {q,up:P.filter(r=>r[h-1]>last(c)).length/N}}
+
+function nextDays(t,h){const o=[];let d=new Date(t);while(o.length<h){d=new Date(d.getTime()+864e5);if(d.getUTCDay()%6)o.push(+d)}return o}
+
+/* ---------- rendering ---------- */
+let charts=[],STATE=null;
+const mk=(id,cfg)=>{const ch=new Chart($(id),cfg);charts.push(ch);return ch};
+const tb=(h,rows)=>'<table><thead><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+const tg=s=>s>0?'<span class="tag u">Bullish</span>':s<0?'<span class="tag d">Bearish</span>':'<span class="tag n">Neutral</span>';
+const stat=(a,b,c,k='')=>`<div class="stat"><span>${a}</span><b class="${k}">${b}</b><i>${c||'&nbsp;'}</i></div>`;
+
+function analyse(){
+ const {D,sym}=load($('txt').value);const h=+$('hz').value,n=D.length,c=D.map(x=>x.c),lc=last(c),rt=lr(c),hasDP=D.some(x=>x.dp!=null),hasV=D.some(x=>x.v);
+ const s5=sma(c,5),s20=sma(c,20),s50=sma(c,50),e12=ema(c,12),e26=ema(c,26),macd=c.map((_,i)=>e12[i]-e26[i]),msig=ema(macd,9),hist=macd.map((x,i)=>x-msig[i]);
+ const R=rsi(c),A=atr(D),sd20=s20.map((m,i)=>m==null?null:sd(c.slice(i-19,i+1))),bu=s20.map((m,i)=>m==null?null:m+2*sd20[i]),bl=s20.map((m,i)=>m==null?null:m-2*sd20[i]);
+ const sig=ewma(rt),sig20=sd(rt.slice(-20)),sigAll=sd(rt),ann=sig*Math.sqrt(250);
+ const fc={};Object.keys(NAMES).forEach(k=>fc[k]=M[k](c,h));
+ const BT=backtest(c),MC=mc(c,h,sig),fd=nextDays(last(D).d,h);
+ let peak=c[0],mdd=0;c.forEach(x=>{peak=Math.max(peak,x);mdd=Math.min(mdd,x/peak-1)});
+ const srt=[...rt].sort((a,b)=>a-b),var95=srt[Math.floor(.05*(srt.length-1))];
+ let ob=0;const obv=D.map((x,i)=>i?(ob+=Math.sign(x.c-D[i-1].c)*(x.v||0)):0);
+ const dp5=hasDP?mean(D.slice(-5).map(x=>x.dp)):null,dp20=hasDP?mean(D.slice(-20).map(x=>x.dp)):null,dpAll=hasDP?mean(D.map(x=>x.dp).filter(x=>x!=null)):null;
+
+ /* signals */
+ const S=[],add=(a,b,s,t)=>S.push([a,b,s,t]);
+ const tr=lc>last(s20)&&(last(s50)==null||last(s20)>last(s50))?1:lc<last(s20)&&(last(s50)==null||last(s20)<last(s50))?-1:0;
+ add('Trend',`Close ${rs(lc)} vs SMA20 ${rs(last(s20))}`,tr,'Price above rising averages is bullish');
+ add('SMA 5 / 20',`${fmt(last(s5))} / ${fmt(last(s20))}`,last(s5)>last(s20)?1:-1,'Short average above long average is bullish');
+ add('MACD histogram',fmt(last(hist),2),last(hist)>0?1:-1,'Above zero means momentum is rising');
+ const rv=last(R);add('RSI 14',fmt(rv,1),rv<30?1:rv>70?-1:0,rv<30?'Oversold, a bounce is possible':rv>70?'Overbought, a pullback is possible':'Between 30 and 70');
+ const pb=(lc-last(bl))/(last(bu)-last(bl));add('Bollinger %B',fmt(pb*100,0)+'%',pb<.15?1:pb>.85?-1:0,'Near the lower band can bounce, near the upper band can stall');
+ const r10=lc/c[n-11]-1;add('10-day return',pc(r10),r10>.03?1:r10<-.03?-1:0,'Beyond ±3% counts as momentum');
+ if(hasV)add('OBV (10 days)',obv[n-1]>obv[n-11]?'Rising':'Falling',obv[n-1]>obv[n-11]?1:-1,'Volume flowing with or against price');
+ if(hasDP){const rt5=lc/c[n-6]-1,k=dp5/dp20;add('Delivery 5d vs 20d',`${fmt(dp5,1)}% vs ${fmt(dp20,1)}%`,k>1.1&&rt5>0?1:k>1.1&&rt5<0?-1:0,k>1.1?(rt5>0?'Rising delivery on rising price: accumulation':'Rising delivery on falling price: selling with conviction'):'Delivery is not unusual')}
+ const score=Math.round(mean(S.map(x=>x[2]))*100),sl=score>=40?'Bullish':score>=15?'Mildly bullish':score>-15?'Neutral':score>-40?'Mildly bearish':'Bearish';
+
+ /* stats strip */
+ const chg=lc/c[n-2]-1,e1=fc.ens[0];
+ $('stats').innerHTML=stat(sym,rs(lc),`${pc(chg)} today · ${lab(D[0].d)} to ${lab(last(D).d)}`,cls(chg))+
+  stat('Ensemble forecast, '+lab(fd[h-1]),rs(last(fc.ens)),pc(last(fc.ens)/lc-1)+' vs last close',cls(last(fc.ens)-lc))+
+  stat(`Likely range (±1σ, ${h}d)`,rs(lc*Math.exp(-sig*Math.sqrt(h)))+' – '+rs(lc*Math.exp(sig*Math.sqrt(h))),'About 68% of outcomes')+
+  stat('Chance of closing higher',fmt(MC.up*100,0)+'%',`after ${h} trading day${h>1?'s':''}`,MC.up>.55?'up':MC.up<.45?'dn':'nu')+
+  stat('Signal score',(score>0?'+':'')+score,sl,cls(score))+
+  stat('Volatility (yearly)',fmt(ann*100,1)+'%','EWMA estimate');
+
+ /* main chart */
+ const W=Math.min(90,n),off=n-W,lbl=[...D.slice(off).map(x=>lab(x.d)),...fd.map(lab)],pad=a=>[...a.slice(off),...Array(h).fill(null)];
+ const fut=a=>[...Array(W-1).fill(null),lc,...a];
+ const L=(l,d,co,x={})=>({label:l,data:d,borderColor:co,backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.1,...x});
+ mk('c1',{type:'line',data:{labels:lbl,datasets:[
+  L('Close',pad(c),'#10b981'),L('SMA 20',pad(s20),'#38bdf8',{borderWidth:1.2}),L('Bollinger upper',pad(bu),'#64748b',{borderWidth:1,borderDash:[3,3]}),L('Bollinger lower',pad(bl),'#64748b',{borderWidth:1,borderDash:[3,3]}),
+  L('5% – 95%',fut(MC.q[5]),'transparent'),L('',fut(MC.q[95]),'transparent',{fill:'-1',backgroundColor:'rgba(245,158,11,.12)'}),
+  L('25% – 75%',fut(MC.q[25]),'transparent'),L('',fut(MC.q[75]),'transparent',{fill:'-1',backgroundColor:'rgba(245,158,11,.25)'}),
+  L('Ensemble forecast',fut(fc.ens),'#f59e0b',{borderDash:[6,4],pointRadius:3})]},
+  options:chartOpt({plugins:{legend:{labels:{filter:i=>i.text&&!/^(5%|25%)/.test(i.text)}}}})});
+ $('c1n').textContent='The shaded fan shows where 50% and 90% of simulated paths land. Dates skip weekends but not exchange holidays.';
+
+ /* forecast table */
+ const ks=Object.keys(NAMES);
+ $('fct').innerHTML=tb(['Method','Forecast','Change','Avg error (1-day)','Direction hits','Beats naive?'],ks.map(k=>{const b=BT.R[k],f=last(fc[k]);
+  return [NAMES[k],rs(f),`<span class="${cls(f-lc)}">${pc(f/lc-1)}</span>`,fmt(b.mae*100,2)+'%',k=='naive'?'–':fmt(b.dir*100,0)+'%',k=='naive'?'baseline':b.skill>.02?'<span class="tag u">Yes '+fmt(b.skill*100,0)+'%</span>':'<span class="tag d">No</span>']}));
+ $('mcs').innerHTML=stat('Median outcome',rs(last(MC.q[50])),pc(last(MC.q[50])/lc-1))+stat('Cautious case (5%)',rs(last(MC.q[5])),'Only 1 in 20 paths ends lower','dn')+stat('Optimistic case (95%)',rs(last(MC.q[95])),'Only 1 in 20 paths ends higher','up')+stat('Chance of closing higher',fmt(MC.up*100,0)+'%','Close to 50% means no edge');
+ const bestK=ks.filter(k=>k!='naive').sort((a,b)=>BT.R[b].skill-BT.R[a].skill)[0],bs=BT.R[bestK].skill;
+ $('trust').innerHTML=`<b>How far to trust this:</b> tested on the last ${BT.n} days, the ±1σ range held ${fmt(BT.band*100,0)}% of the time (ideal is about 68%). `+
+  (bs>.02?`The best price method (${NAMES[bestK]}) beat "tomorrow = today" by ${fmt(bs*100,0)}%, but a short test like this can be luck.`:`No price method beat "tomorrow = today" in this test, so treat price targets as weak. The range and probability numbers are more reliable than the point forecast.`)+` Error and direction figures are for 1-day-ahead forecasts only.`;
+
+ /* signals table */
+ $('sigs').innerHTML=tb(['Indicator','Value','Reading','Why'],S.map(x=>[x[0],x[1],tg(x[2]),x[3]]))+`<p>Overall: <b class="${cls(score)}">${sl} (${score>0?'+':''}${score})</b> from ${S.length} indicators.</p>`;
+
+ /* indicators */
+ const lines=(id,ds,x={})=>mk(id,{type:'line',data:{labels:D.slice(off).map(x=>lab(x.d)),datasets:ds},options:chartOpt(x)});
+ lines('c2',[L('RSI',R.slice(off),'#a78bfa'),L('70',Array(W).fill(70),'#f43f5e',{borderWidth:1,borderDash:[4,4]}),L('30',Array(W).fill(30),'#10b981',{borderWidth:1,borderDash:[4,4]})],{scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}});
+ mk('c3',{data:{labels:D.slice(off).map(x=>lab(x.d)),datasets:[{type:'bar',label:'Histogram',data:hist.slice(off),backgroundColor:hist.slice(off).map(x=>x>=0?'rgba(16,185,129,.6)':'rgba(244,63,94,.6)')},L('MACD',macd.slice(off),'#38bdf8',{type:'line'}),L('Signal',msig.slice(off),'#f59e0b',{type:'line'})]},options:chartOpt()});
+ $('indt').innerHTML=tb(['Indicator','Latest'],[['SMA 5 / 20 / 50',[last(s5),last(s20),last(s50)].map(x=>x==null?'–':fmt(x)).join(' / ')],['EMA 12 / 26',fmt(last(e12))+' / '+fmt(last(e26))],['MACD / signal',fmt(last(macd))+' / '+fmt(last(msig))],['RSI 14',fmt(rv,1)],['Bollinger (20, 2σ)',fmt(last(bl))+' – '+fmt(last(bu))],['ATR 14',rs(last(A))+' ('+fmt(last(A)/lc*100,1)+'% of price)']]);
+
+ /* volume & delivery */
+ const vd=[{type:'bar',label:'Volume',data:D.slice(off).map(x=>x.v),backgroundColor:'rgba(56,189,248,.45)',yAxisID:'y'}];
+ if(hasDP)vd.push(L('Delivery %',D.slice(off).map(x=>x.dp),'#f59e0b',{type:'line',yAxisID:'y1'}));
+ mk('c4',{data:{labels:D.slice(off).map(x=>lab(x.d)),datasets:vd},options:chartOpt({scales:{y:{position:'left'},y1:{position:'right',grid:{drawOnChartArea:false}}}})});
+ const tv=sum(D.slice(-20).map(x=>x.t||0)),qv=sum(D.slice(-20).map(x=>x.v||0)),vw=tv&&qv?tv/qv:null,v5=mean(D.slice(-5).map(x=>x.v)),v20=mean(D.slice(-20).map(x=>x.v));
+ const hi=hasDP?D.filter(x=>x.dp>dpAll+sd(D.map(x=>x.dp))).length:0;
+ $('volt').innerHTML=tb(['Measure','Value','Meaning'],[
+  ...(hasV?[['Volume 5d vs 20d avg',fmt(v5,0)+' vs '+fmt(v20,0),v5>v20*1.2?'Activity is picking up':v5<v20*.8?'Activity is fading':'Normal activity'],['VWAP (20 days)',vw?rs(vw):'–',vw?(lc>vw?'Price is above the average traded price':'Price is below the average traded price'):'']]:[]),
+  ...(hasDP?[['Delivery % (5d / 20d / all)',[dp5,dp20,dpAll].map(x=>fmt(x,1)).join(' / '),dp5>dp20*1.1?'More people are holding, not day-trading':dp5<dp20*.9?'More speculative trading than usual':'Normal mix'],['High-delivery days',hi+' of '+n,'Days well above the average delivery %'],['Delivery quantity (latest)',fmt(last(D).dq,0),'Shares actually taken for holding']]:[['Delivery data','Not in file','Add the "% Dly Qt" column for delivery analysis','']])]);
+
+ /* risk */
+ const pk=park(D.slice(-20));
+ $('volat').innerHTML=tb(['Estimate','Daily','Yearly'],[['EWMA (λ 0.94)',fmt(sig*100)+'%',fmt(ann*100,1)+'%'],['Last 20 days',fmt(sig20*100)+'%',fmt(sig20*Math.sqrt(250)*100,1)+'%'],['Whole file',fmt(sigAll*100)+'%',fmt(sigAll*Math.sqrt(250)*100,1)+'%'],['High–Low (Parkinson, 20d)',fmt(pk*100)+'%',fmt(pk*Math.sqrt(250)*100,1)+'%'],['ATR 14',fmt(last(A)/lc*100)+'%','–']])+
+  `<p class="hint">Tomorrow: ${rs(lc*Math.exp(-sig))} – ${rs(lc*Math.exp(sig))} (±1σ), ${rs(lc*Math.exp(-2*sig))} – ${rs(lc*Math.exp(2*sig))} (±2σ).</p>`;
+ const tot=lc/c[0]-1;
+ $('riskt').innerHTML=tb(['Measure','Value'],[['Return over file',`<span class="${cls(tot)}">${pc(tot)}</span>`],['Maximum drawdown',`<span class="dn">${pc(mdd)}</span>`],['1-day loss, 95% confidence (VaR)',pc(var95)],['Best day / worst day',pc(Math.max(...rt))+' / '+pc(Math.min(...rt))],['Return per unit risk (yearly)',fmt(mean(rt)/sigAll*Math.sqrt(250),2)],['Period high / low',rs(Math.max(...D.map(x=>x.h)))+' / '+rs(Math.min(...D.map(x=>x.l)))]]);
+ const Z=last(D),P=(Z.h+Z.l+Z.c)/3,h20=Math.max(...D.slice(-20).map(x=>x.h)),l20=Math.min(...D.slice(-20).map(x=>x.l));
+ $('lvl').innerHTML=tb(['Level','Price','From last close'],[['20-day high',h20],['Resistance 2',P+Z.h-Z.l],['Resistance 1',2*P-Z.l],['Pivot',P],['Support 1',2*P-Z.h],['Support 2',P-(Z.h-Z.l)],['20-day low',l20]].map(x=>[x[0],rs(x[1]),`<span class="${cls(x[1]-lc)}">${pc(x[1]/lc-1)}</span>`]));
+
+ STATE=`${sym} | last close ${rs(lc)} (${lab(last(D).d)})\nEnsemble forecast ${h}d: ${rs(last(fc.ens))} (${pc(last(fc.ens)/lc-1)})\n±1σ range: ${rs(lc*Math.exp(-sig*Math.sqrt(h)))} – ${rs(lc*Math.exp(sig*Math.sqrt(h)))}\nChance of closing higher: ${fmt(MC.up*100,0)}%\nSignal: ${sl} (${score})\nSupport/resistance: ${rs(2*P-Z.h)} / ${rs(2*P-Z.l)}\nSource: sinsigma.com`;
+}
+function chartOpt(x={}){const o={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#94a3b8',boxWidth:14}}},scales:{x:{grid:{color:'#263449'},ticks:{color:'#94a3b8',maxTicksLimit:10}},y:{grid:{color:'#263449'},ticks:{color:'#94a3b8'}}}};
+ for(const k in x){if(k=='plugins')o.plugins={...o.plugins,...x.plugins,legend:{...o.plugins.legend,...(x.plugins.legend||{}),labels:{...o.plugins.legend.labels,...((x.plugins.legend||{}).labels||{})}}};
+  else if(k=='scales'){for(const s in x.scales)o.scales[s]={...(o.scales[s]||{grid:{color:'#263449'}}),...x.scales[s],ticks:{color:'#94a3b8'}}}else o[k]=x[k]}return o}
+
+/* ---------- wiring ---------- */
+function run(){const e=$('err');e.style.display='none';charts.forEach(c=>c.destroy());charts=[];
+ try{if(!$('txt').value.trim())throw new Error('Upload the NSE CSV file first.');if(typeof Chart=='undefined')throw new Error('Chart library did not load. Check your internet connection and reload.');
+  analyse();$('out').hidden=false;$('out').scrollIntoView({behavior:'smooth'})}catch(x){e.textContent=x.message;e.style.display='block';$('out').hidden=true}}
+const rd=f=>f.text().then(t=>{$('txt').value=t;$('fn').textContent='Loaded: '+f.name+' (click to change)';run()});
+$('hz').onchange=()=>{if($('txt').value.trim())run()};
+$('clr').onclick=()=>{$('txt').value='';$('file').value='';$('fn').textContent='Only .csv files. The file stays in your browser.';$('out').hidden=true;$('err').style.display='none'};
+$('drop').onclick=()=>$('file').click();$('drop').onkeydown=e=>{if(e.key=='Enter'||e.key==' '){e.preventDefault();$('file').click()}};
+$('file').onchange=e=>e.target.files[0]&&rd(e.target.files[0]);
+['dragover','dragenter'].forEach(v=>$('drop').addEventListener(v,e=>{e.preventDefault();$('drop').classList.add('on')}));
+['dragleave','drop'].forEach(v=>$('drop').addEventListener(v,e=>{e.preventDefault();$('drop').classList.remove('on')}));
+$('drop').addEventListener('drop',e=>e.dataTransfer.files[0]&&rd(e.dataTransfer.files[0]));
+$('tabs').onclick=e=>{const t=e.target.dataset.t;if(!t)return;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b==e.target));document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id=='p-'+t));charts.forEach(c=>c.resize())};
+$('cp').onclick=()=>navigator.clipboard.writeText(STATE).then(()=>{$('cp').textContent='Copied';setTimeout(()=>$('cp').textContent='Copy summary',1500)});
+$('pr').onclick=()=>window.print();
+</script>
     <script>
-        let chartInstance = null;
-
-        function runForecastingEngine() {
-            const rawData = document.getElementById('csvInput').value.trim();
-            if (!rawData) return alert("Please paste the CSV data first!");
-
-            // 1. Parsing CSV data manually
-            const lines = rawData.split('\n').map(line => line.replace(/"/g, '').split(','));
-            const headers = lines[0].map(h => h.trim());
-            
-            // Extract index locations of needed columns
-            const closeIdx = headers.findIndex(h => h.startsWith('Close Price'));
-            const highIdx = headers.findIndex(h => h.startsWith('High Price'));
-            const lowIdx = headers.findIndex(h => h.startsWith('Low Price'));
-            const dlyPctIdx = headers.findIndex(h => h.startsWith('% Dly Qt'));
-            const dateIdx = headers.findIndex(h => h.startsWith('Date'));
-
-            // Parse numbers (NSE data flows from newest date to oldest, so we reverse it for forecasting chronologically)
-            let historicalData = [];
-            for (let i = 1; i < lines.length; i++) {
-                if (lines[i].length < headers.length) continue;
-                historicalData.push({
-                    date: lines[i][dateIdx].trim(),
-                    close: parseFloat(lines[i][closeIdx]),
-                    high: parseFloat(lines[i][highIdx]),
-                    low: parseFloat(lines[i][lowIdx]),
-                    delivery: parseFloat(lines[i][dlyPctIdx])
-                });
-            }
-            historicalData.reverse(); // Now array goes oldest -> newest
-
-            const closes = historicalData.map(d => d.close);
-            const dates = historicalData.map(d => d.date);
-            const n = closes.length;
-
-            // 2. Statistical Analysis & Forecasting Methods
-            // Method A: Linear Regression (Drift/Trend Projection)
-            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-            for (let i = 0; i < n; i++) {
-                sumX += i;
-                sumY += closes[i];
-                sumXY += i * closes[i];
-                sumXX += i * i;
-            }
-            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-            const intercept = (sumY - slope * sumX) / n;
-            
-            // Predict Next Day Price Point
-            const nextDayPredictedPrice = (slope * n) + intercept;
-
-            // Method B: Historical Volatility Range (Bloomberg style standard deviation bands)
-            let logReturns = [];
-            for(let i=1; i<n; i++) {
-                logReturns.push(Math.log(closes[i] / closes[i-1]));
-            }
-            const avgReturn = logReturns.reduce((a,b)=>a+b, 0) / logReturns.length;
-            const variance = logReturns.reduce((a,b)=> a + Math.pow(b - avgReturn, 2), 0) / logReturns.length;
-            const standardDeviation = Math.sqrt(variance);
-            
-            // Calculate Upper and Lower Price Boundary for next trading day
-            const lastPrice = closes[n-1];
-            const upperRange = lastPrice * Math.exp(standardDeviation);
-            const lowerRange = lastPrice * Math.exp(-standardDeviation);
-
-            // Method C: Delivery Accumulation Health check
-            const recentDeliveryAvg = historicalData.slice(-5).reduce((a,b)=> a+b.delivery, 0) / 5;
-            let deliverySignal = "Neutral / Stable Accumulation";
-            if(recentDeliveryAvg > 45) deliverySignal = "Strong Institutional Delivery Buying";
-            if(recentDeliveryAvg < 25) deliverySignal = "Low Delivery Volatility / Speculative Trading";
-
-            // 3. Update Dashboard Metrics View
-            document.getElementById('dashboard').classList.remove('hidden');
-            document.getElementById('priceForecast').innerText = `₹${nextDayPredictedPrice.toFixed(2)}`;
-            document.getElementById('volatilityRange').innerText = `₹${lowerRange.toFixed(2)} - ₹${upperRange.toFixed(2)}`;
-            document.getElementById('deliveryScore').innerText = deliverySignal;
-
-            // 4. Chart Rendering
-            const extendedDates = [...dates, "T+1 (Forecast)"];
-            const forecastLine = Array(n).fill(null);
-            forecastLine[n-1] = lastPrice; // connect last actual data point to forecast point
-            forecastLine.push(nextDayPredictedPrice);
-
-            if(chartInstance) chartInstance.destroy();
-
-            const ctx = document.getElementById('forecastChart').getContext('2d');
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: extendedDates.slice(-20), // Show last 20 sessions for clean viewing
-                    datasets: [
-                        {
-                            label: 'Historical Close Price',
-                            data: closes.slice(-20),
-                            borderColor: '#10b981',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            tension: 0.1
-                        },
-                        {
-                            label: 'Predictive Point Forecast',
-                            data: forecastLine.slice(-21),
-                            borderColor: '#f59e0b',
-                            borderDash:,
-                            backgroundColor: 'transparent',
-                            borderWidth: 2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { labels: { color: '#94a3b8' } } },
-                    scales: {
-                        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
-                    }
-                }
-            });
-        }
-    </script>
-  <script>
   // Right-click डिसेबल करने के लिए
   document.addEventListener('contextmenu', (e) => e.preventDefault());
 
