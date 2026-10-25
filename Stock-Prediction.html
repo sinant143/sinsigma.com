@@ -245,5 +245,22 @@ window.addEventListener("resize",()=>D&&draw());
 ["tSR","tPR","tMA"].forEach(i=>$(i).onchange=()=>D&&draw());
 const cvEl=$("cv");cvEl.addEventListener("pointermove",e=>{if(D)draw(e.clientX-cvEl.getBoundingClientRect().left)});cvEl.addEventListener("pointerleave",()=>{if(D)draw()});
 </script>
+ <script>
+  // Right-click डिसेबल करने के लिए
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // कीबोर्ड शॉर्टकट्स (Ctrl+U, F12, Ctrl+Shift+I) ब्लॉक करने के लिए
+  document.addEventListener('keydown', (e) => {
+    if (
+      e.key === 'F12' ||
+      (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+      (e.ctrlKey && e.key === 'u') ||
+      (e.ctrlKey && e.shiftKey && e.key === 'J')
+    ) {
+      e.preventDefault();
+    }
+  });
+</script>
+
 </body>
 </html>
