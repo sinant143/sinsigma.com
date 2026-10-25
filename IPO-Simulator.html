@@ -321,5 +321,22 @@ $('runBtn').addEventListener('click', () => {
   if (lots > applicants.length) $('seedLine').textContent += ' Lots exceeded applicants, so everyone was allotted.';
 });
 </script>
+   <script>
+  // Right-click डिसेबल करने के लिए
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // कीबोर्ड शॉर्टकट्स (Ctrl+U, F12, Ctrl+Shift+I) ब्लॉक करने के लिए
+  document.addEventListener('keydown', (e) => {
+    if (
+      e.key === 'F12' ||
+      (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+      (e.ctrlKey && e.key === 'u') ||
+      (e.ctrlKey && e.shiftKey && e.key === 'J')
+    ) {
+      e.preventDefault();
+    }
+  });
+</script>
+
 </body>
 </html>
