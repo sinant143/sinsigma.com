@@ -103,8 +103,10 @@ footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;colo
       <div class="res"><span class="l">Existing Investment</span><span class="v" id="rEx">–</span></div>
       <div class="res"><span class="l">New Investment <span id="feeTxt"></span></span><span class="v" id="rNew">–</span></div>
       <div class="res"><span class="l">Avg. New Buy Rate</span><span class="v" id="rRate">–</span></div>
-      <div class="res"><span class="l">Price Drop Difference</span><span class="v or" id="rDrop">–</span></div>
-      <div class="res"><span class="l">Percentage Drop</span><span class="v or" id="rPct">–</span></div>
+      <div class="res"><span class="l">Average Price Drop (Old Avg − New Avg)</span><span class="v or" id="rDrop">–</span></div>
+      <div class="res"><span class="l">Current Loss % (at new buy rate)</span><span class="v" id="rLossB">–</span></div>
+      <div class="res"><span class="l">Loss % After Adding This Lot</span><span class="v" id="rLossA">–</span></div>
+      <div class="res"><span class="l">Loss % Dropped By</span><span class="v or" id="rPct">–</span></div>
       <div class="res"><span class="l">Total Combined Quantity</span><span class="v" id="rQty">–</span></div>
       <div class="res"><span class="l">Total Investment</span><span class="v" id="rTot">–</span></div>
       <div class="res"><span class="l">Capital Split (existing / new)</span><span class="v" id="rSplit">–</span></div>
@@ -253,7 +255,7 @@ footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;colo
     var exInv=hQ*hA, totQ=hQ+nQ, totInv=exInv+nInv;
     var avgRate=nQ>0?nInvRaw/nQ:0;
     var newAvg=totQ>0?totInv/totQ:0;
-    var drop=(hA>0&&nQ>0)?hA-avgRate:0;
+    var drop=(hA>0&&nQ>0)?hA-newAvg:0;
     var pct=(hA>0&&nQ>0)?drop/hA*100:0;
     var be=totQ>0?newAvg/(1-fee):0;
 
@@ -266,7 +268,16 @@ footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;colo
     set('feeTxt',fee>0?'(incl. '+money(nFee)+' charges)':'');
     set('rRate',nQ>0?money(avgRate):'–');
     set('rDrop',plain(drop,2));
-    set('rPct',(pct>0?'':'')+pct.toFixed(2)+'%');
+    var pNow=valid.length?valid[valid.length-1].r:0;
+    var lossB=(hA>0&&pNow>0)?(hA-pNow)/hA*100:0;
+    var lossA=(newAvg>0&&pNow>0&&nQ>0)?(newAvg-pNow)/newAvg*100:0;
+    var lossDrop=(hA>0&&pNow>0&&nQ>0)?lossB-lossA:0;
+    var okL=hA>0&&pNow>0&&nQ>0;
+    set('rLossB',okL?lossB.toFixed(2)+'%':'–');
+    set('rLossA',okL?lossA.toFixed(2)+'%':'–');
+    set('rPct',okL?lossDrop.toFixed(2)+' pts':'–');
+    $('rLossB').style.color=lossB>0?'var(--red)':'var(--green)';
+    $('rLossA').style.color=lossA>0?'var(--red)':'var(--green)';
     set('rQty',plain(totQ));
     set('rTot',money(totInv));
     var p1=totInv>0?exInv/totInv*100:0,p2=totInv>0?100-p1:0;
@@ -385,6 +396,5 @@ footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;colo
     }
   });
 </script>
-
 </body>
 </html>
